@@ -35,6 +35,9 @@ pub fn folder_from_arg(arg: &OsString, cwd: Option<&Path>) -> Option<PathBuf> {
     {
         path = cwd.join(path);
     }
+    // Rebuilding from components drops a trailing separator ("D:\Photos\"
+    // becomes "D:\Photos") but keeps a drive's root ("C:\").
+    let path: PathBuf = path.components().collect();
     path.is_dir().then_some(path)
 }
 
@@ -125,6 +128,18 @@ mod tests {
         let dir = base.join(name);
         std::fs::create_dir_all(&dir).unwrap();
         let found = folder_from_arg(&OsString::from(name), Some(&base));
+        std::fs::remove_dir(&dir).unwrap();
+        assert_eq!(found, Some(dir));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_trailing_backslash_is_dropped() {
+        // `"D:\Photos\"` arrives as `D:\Photos"`.
+        let dir = std::env::temp_dir().join("tessera-launch-test-trail");
+        std::fs::create_dir_all(&dir).unwrap();
+        let mangled = OsString::from(format!("{}\\\"", dir.display()));
+        let found = folder_from_arg(&mangled, None);
         std::fs::remove_dir(&dir).unwrap();
         assert_eq!(found, Some(dir));
     }
