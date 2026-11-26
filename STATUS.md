@@ -13,8 +13,8 @@ Last updated: 2026-11-26.
 | Item | Status | Evidence / notes |
 |---|---|---|
 | Dev environment (Rust 1.100.0 pinned, VS 2022 Build Tools, Node 24, Git, gh) | Done | Installed and used for every build below |
-| Repository structure, workspace | Done | Private repo `hullash007/tessera` |
-| CI (Windows + macOS runners) | **Blocked** | Workflow file is committed locally; GitHub needs the owner to grant hullash007's CLI login the `workflow` permission before it can be uploaded |
+| Repository structure, workspace | Done | Private repo `hullashoo6/tessera` |
+| CI (Windows + macOS runners) | Implemented | `.github/workflows/ci.yml`; results recorded below once runs complete |
 | Filesystem data model | Automatically tested | Invariants checked in every test, including during live scans |
 | Test fixtures (exact trees, junctions, sparse, ACL denial, generator) | Automatically tested | `crates/testkit` |
 | Security requirements | Draft | SECURITY.md |
