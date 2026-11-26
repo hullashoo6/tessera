@@ -14,7 +14,7 @@ Last updated: 2026-11-26.
 |---|---|---|
 | Dev environment (Rust 1.100.0 pinned, VS 2022 Build Tools, Node 24, Git, gh) | Done | Installed and used for every build below |
 | Repository structure, workspace | Done | Private repo `hullashoo6/tessera` |
-| CI (Windows + macOS runners) | Implemented | `.github/workflows/ci.yml`; results recorded below once runs complete |
+| CI (Windows + macOS runners) | Passing | GitHub Actions on `windows-latest` and `macos-latest` (macOS 26, Apple Silicon): fmt, clippy, all tests, fixture benchmark. Tests may not skip in CI |
 | Filesystem data model | Automatically tested | Invariants checked in every test, including during live scans |
 | Test fixtures (exact trees, junctions, sparse, ACL denial, generator) | Automatically tested | `crates/testkit` |
 | Security requirements | Draft | SECURITY.md |
@@ -30,14 +30,14 @@ Last updated: 2026-11-26.
 | Permission-denied handling | Real platform tested (Windows) | Test + 50 protected folders in `C:\Windows` |
 | Unicode, long paths (>300 chars) | Automatically tested (Windows) | |
 | Files changing during scan | Automatically tested (Windows) | Churn thread across 3 scans |
-| Links / junctions not followed | Automatically tested (Windows junctions) | Windows dir symlinks need Developer Mode; macOS covered by CI once it runs |
+| Links / junctions not followed | Automatically tested (Windows junctions + symlinks in CI; macOS symlinks in CI) | Locally, Windows dir symlinks need Developer Mode |
 | Hard-link de-duplication | Real platform tested (Windows) | `C:\Windows`: 45.16 → 34.52 GiB (Auto), 33.99 GiB (Thorough) |
 | Sparse files (measured allocation) | Automatically tested (Windows) | 256 MiB sparse → tiny allocation |
 | Compressed / WOF files (measured allocation) | Implemented but unverified | Code path uses GetCompressedFileSizeW; needs a test with a compressed file |
 | Allocated-size estimate for ordinary NTFS files | Automatically tested | Labelled "estimated"; MFT-resident small files over-estimated |
 | Cloud placeholders (OneDrive / iCloud) not downloaded | Implemented but unverified | Never opened by design; needs a test machine with OneDrive Files On-Demand / iCloud |
 | Drive enumeration + OS capacity | Real platform tested (Windows) | `tessera-cli volumes` |
-| macOS adapter (lstat, st_blocks, dataless, getmntinfo, mount boundaries) | Implemented but unverified | Compiles only on macOS; CI will be the first check; needs a real Mac |
+| macOS adapter (lstat, st_blocks, dataless, getmntinfo, mount boundaries) | Automatically tested (CI VM only) | 16 scanner tests pass on a macOS 26 arm64 runner, incl. permissions, symlinks, sparse, hard links. Not yet run on real Mac hardware; dataless (iCloud) and mount boundaries untested |
 | External drive disconnect mid-scan | Not tested | Errors are recorded per folder by design |
 | Single folder with millions of entries | Not tested | Whole listing held in memory per folder |
 | Deterministic owner for hard-linked bytes | Not implemented | First path seen gets the bytes; may vary between scans |
