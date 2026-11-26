@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    # Text-only changes do not need a build (saves the account's Actions minutes;
+    # macOS minutes count ten times). The website job still runs for website/.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'bench-results/**'
   pull_request:
 
 permissions:
