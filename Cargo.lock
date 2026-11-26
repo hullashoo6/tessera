@@ -4145,6 +4145,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tessera-insights"
+version = "0.1.0"
+dependencies = [
+ "tessera-scan",
+ "tessera-testkit",
+]
+
+[[package]]
 name = "tessera-licensing"
 version = "0.1.0"
 dependencies = [

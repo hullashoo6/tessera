@@ -5,6 +5,7 @@ members = [
     "crates/treemap",
     "crates/cleanup",
     "crates/licensing",
+    "crates/insights",
     "crates/testkit",
     "crates/cli",
     "apps/desktop/src-tauri",
