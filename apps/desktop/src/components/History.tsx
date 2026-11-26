@@ -73,19 +73,27 @@ export function History({ pro, onOpenSettings, onError }: Props) {
         .slice(0, 20)
     : []
 
-  // Small line chart of the total over time.
+  // Small line chart of the total over time, labelled with the highest and
+  // lowest size (left) and the first and latest scan dates (below).
   const w = 640
-  const h = 140
+  const h = 164
+  const left = 76
+  const right = 12
+  const top = 12
+  const bottom = 26
+  const plotW = w - left - right
+  const plotH = h - top - bottom
   const vals = entries.map((s) => s.allocated)
   const lo = Math.min(...vals)
   const hi = Math.max(...vals)
   const t0 = entries[0]!.at
   const t1 = latest.at
+  const yOf = (v: number) => (hi === lo ? top + plotH / 2 : top + plotH - ((v - lo) / (hi - lo)) * plotH)
   const pts = entries.map((s) => {
-    const x = t1 === t0 ? w / 2 : ((s.at - t0) / (t1 - t0)) * (w - 20) + 10
-    const y = hi === lo ? h / 2 : h - 10 - ((s.allocated - lo) / (hi - lo)) * (h - 20)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
+    const x = t1 === t0 ? left + plotW / 2 : left + ((s.at - t0) / (t1 - t0)) * plotW
+    return `${x.toFixed(1)},${yOf(s.allocated).toFixed(1)}`
   })
+  const yLabels = hi === lo ? [hi] : [hi, lo]
 
   return (
     <div className="overview suggestions">
@@ -115,7 +123,28 @@ export function History({ pro, onOpenSettings, onError }: Props) {
         {base ? `, ${signed(latest.allocated - base.allocated)} since ${formatDate(base.at)}.` : '. Scan again later to see changes.'}
       </p>
       {entries.length > 1 && (
-        <svg className="history-chart" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Size of ${root} over ${entries.length} scans`}>
+        <svg
+          className="history-chart"
+          viewBox={`0 0 ${w} ${h}`}
+          role="img"
+          aria-label={`Size of ${root} over ${entries.length} scans, from ${formatBytes(entries[0]!.allocated)} on ${formatDate(t0)} to ${formatBytes(latest.allocated)} on ${formatDate(t1)}`}
+        >
+          {yLabels.map((v) => (
+            <g key={v} className="axis">
+              <line x1={left} x2={w - right} y1={yOf(v)} y2={yOf(v)} />
+              <text x={left - 8} y={yOf(v) + 4} textAnchor="end">
+                {formatBytes(v)}
+              </text>
+            </g>
+          ))}
+          <g className="axis">
+            <text x={left} y={h - 6} textAnchor="start">
+              {formatDate(t0)}
+            </text>
+            <text x={w - right} y={h - 6} textAnchor="end">
+              {formatDate(t1)}
+            </text>
+          </g>
           <polyline points={pts.join(' ')} fill="none" strokeWidth="2" />
           {pts.map((p, i) => {
             const [x, y] = p.split(',')

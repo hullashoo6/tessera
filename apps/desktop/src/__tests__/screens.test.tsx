@@ -171,6 +171,10 @@ describe('History', () => {
     render(<History pro onOpenSettings={noop} onError={noop} />)
     expect(await screen.findByText('Games')).toBeTruthy()
     expect(screen.getByText('new since then')).toBeTruthy()
+    // The chart is labelled: highest and lowest size, first and latest date.
+    const chart = screen.getByRole('img')
+    expect(chart.getAttribute('aria-label')).toMatch(/over 2 scans, from .+ to .+/)
+    expect(chart.querySelectorAll('.axis text')).toHaveLength(4)
   })
 })
 

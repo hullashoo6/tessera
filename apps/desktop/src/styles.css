@@ -345,7 +345,9 @@ button, input, select { font: inherit; color: inherit; }
 .safety-staysInCloud { background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- Storage history ---------- */
-.history-chart { width: 100%; max-width: 640px; height: 140px; margin: 8px 0 18px; }
+.history-chart { width: 100%; max-width: 640px; height: auto; margin: 8px 0 18px; }
+.history-chart .axis line { stroke: var(--line); stroke-width: 1; }
+.history-chart .axis text { fill: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
 .history-chart polyline { stroke: var(--accent); }
 .history-chart circle { fill: var(--accent); }
 .grew { color: var(--ink); font-weight: 600; }
