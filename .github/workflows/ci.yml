@@ -33,6 +33,7 @@ jobs:
         run: |
           npm ci
           npx oxlint src
+          npm test
           npm run build
       - name: Install pinned toolchain (rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install

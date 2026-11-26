@@ -103,3 +103,7 @@ Last updated: 2026-11-26.
 ## Website
 
 Live at https://tessera-96w.pages.dev (Cloudflare Pages, 26 Nov 2026): contact (Beyond Enterprises, hullashoo6@gmail.com), privacy policy and terms with a 14-day refund policy published (not lawyer-reviewed), FAQ updated, price shown as not yet on sale, no download links. See docs/WEBSITE.md.
+
+## Screen tests
+
+12 automated screen tests (Vitest + Testing Library, simulated browser, backend replaced by test data): Cleanup Pro lock; Smart Scan bulk-add safety and paging; Duplicates keep-oldest and every-copy warning; Restore states; Apps confirmation, Store removal, Mac leftovers; licence entry and test-mode notice; History Pro lock and growth comparison; error safety net. Run in CI on Windows and macOS.
