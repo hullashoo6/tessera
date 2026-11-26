@@ -4136,6 +4136,8 @@ dependencies = [
 name = "tessera-cleanup"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "tessera-scan",
  "tessera-testkit",
  "trash",

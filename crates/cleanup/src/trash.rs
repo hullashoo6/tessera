@@ -8,8 +8,17 @@ use std::path::Path;
 /// On Windows, items the Recycle Bin cannot hold (for example files larger
 /// than its capacity, or on drives without one) are refused: the operation
 /// is aborted for that item instead of Windows deleting it permanently.
-pub fn move_to_trash(path: &Path) -> io::Result<()> {
+///
+/// Returns where the item now sits inside the Recycle Bin when the system
+/// reports it (Windows), so it can be put back later; `None` otherwise.
+pub fn move_to_trash(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
     imp::move_to_trash(path)
+}
+
+/// Puts an item Tessera moved back where it was. Never overwrites: fails if
+/// something already exists at `original`. Windows only for now.
+pub fn put_back(recycled: &Path, original: &Path) -> io::Result<()> {
+    imp::put_back(recycled, original)
 }
 
 #[cfg(windows)]
@@ -25,7 +34,7 @@ mod imp {
     use windows::Win32::UI::Shell::{
         FOF_ALLOWUNDO, FOF_NO_UI, FOFX_EARLYFAILURE, FOFX_RECYCLEONDELETE, FileOperation,
         IFileOperation, IFileOperationProgressSink, IFileOperationProgressSink_Impl, IShellItem,
-        SHCreateItemFromParsingName, TSF_DELETE_RECYCLE_IF_POSSIBLE,
+        SHCreateItemFromParsingName, SIGDN_FILESYSPATH, TSF_DELETE_RECYCLE_IF_POSSIBLE,
     };
     use windows::core::{HRESULT, PCWSTR, Ref, Result as WinResult, implement};
 
@@ -34,6 +43,7 @@ mod imp {
     struct RecycleGuard {
         refused: Cell<bool>,
         failed: Cell<Option<HRESULT>>,
+        landed: std::cell::RefCell<Option<std::path::PathBuf>>,
     }
 
     impl IFileOperationProgressSink_Impl for RecycleGuard_Impl {
@@ -109,10 +119,21 @@ mod imp {
             _f: u32,
             _i: Ref<IShellItem>,
             hr: HRESULT,
-            _c: Ref<IShellItem>,
+            created: Ref<IShellItem>,
         ) -> WinResult<()> {
             if hr.is_err() {
                 self.failed.set(Some(hr));
+            } else if let Some(item) = created.as_ref() {
+                // Where the item now lives inside the Recycle Bin.
+                // SAFETY: the returned string is freed with CoTaskMemFree.
+                unsafe {
+                    if let Ok(p) = item.GetDisplayName(SIGDN_FILESYSPATH) {
+                        if let Ok(s) = p.to_string() {
+                            *self.landed.borrow_mut() = Some(std::path::PathBuf::from(s));
+                        }
+                        windows::Win32::System::Com::CoTaskMemFree(Some(p.0 as *const _));
+                    }
+                }
             }
             Ok(())
         }
@@ -149,7 +170,7 @@ mod imp {
         io::Error::other(e.message())
     }
 
-    pub(super) fn move_to_trash(path: &Path) -> io::Result<()> {
+    pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
         let wide: Vec<u16> = path
             .as_os_str()
             .encode_wide()
@@ -163,7 +184,7 @@ mod imp {
             if init.is_err() && init != RPC_E_CHANGED_MODE {
                 return Err(io::Error::other("the Windows shell could not be started"));
             }
-            let result = (|| -> io::Result<()> {
+            let result = (|| -> io::Result<Option<std::path::PathBuf>> {
                 let op: IFileOperation =
                     CoCreateInstance(&FileOperation, None, CLSCTX_ALL).map_err(to_io)?;
                 op.SetOperationFlags(
@@ -175,6 +196,7 @@ mod imp {
                 let guard = windows_core::ComObject::new(RecycleGuard {
                     refused: Cell::new(false),
                     failed: Cell::new(None),
+                    landed: std::cell::RefCell::new(None),
                 });
                 let sink: IFileOperationProgressSink = guard.to_interface();
                 op.DeleteItem(&item, &sink).map_err(to_io)?;
@@ -191,13 +213,61 @@ mod imp {
                 if op.GetAnyOperationsAborted().map_err(to_io)?.as_bool() {
                     return Err(io::Error::other("the move was cancelled"));
                 }
-                Ok(())
+                Ok(guard.landed.borrow_mut().take())
             })();
             if owns_com {
                 CoUninitialize();
             }
             result
         }
+    }
+
+    fn wide(p: &Path) -> Vec<u16> {
+        p.as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    pub(super) fn put_back(recycled: &Path, original: &Path) -> io::Result<()> {
+        use windows::Win32::Storage::FileSystem::{MOVE_FILE_FLAGS, MoveFileExW};
+        if std::fs::symlink_metadata(recycled).is_err() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "it is no longer in the Recycle Bin",
+            ));
+        }
+        if std::fs::symlink_metadata(original).is_ok() {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "something with that name is already there",
+            ));
+        }
+        if let Some(parent) = original.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        // No MOVEFILE_REPLACE_EXISTING: the move fails rather than overwrite.
+        // The Recycle Bin is on the same drive, so this is a rename.
+        let (from, to) = (wide(recycled), wide(original));
+        // SAFETY: both strings are NUL-terminated and outlive the call.
+        unsafe {
+            MoveFileExW(
+                PCWSTR(from.as_ptr()),
+                PCWSTR(to.as_ptr()),
+                MOVE_FILE_FLAGS(0),
+            )
+        }
+        .map_err(|e| io::Error::other(e.message()))?;
+        // Remove the Recycle Bin's index entry ($I...) for this item so it
+        // no longer appears there. It holds only the old name and date.
+        if let (Some(dir), Some(name)) = (
+            recycled.parent(),
+            recycled.file_name().and_then(|n| n.to_str()),
+        ) && let Some(rest) = name.strip_prefix("$R")
+        {
+            let _ = std::fs::remove_file(dir.join(format!("$I{rest}")));
+        }
+        Ok(())
     }
 }
 
@@ -207,12 +277,20 @@ mod imp {
     use std::path::Path;
     use trash::macos::{DeleteMethod, TrashContextExtMacos};
 
-    pub(super) fn move_to_trash(path: &Path) -> io::Result<()> {
+    pub(super) fn put_back(_recycled: &Path, _original: &Path) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "use Put Back in the Finder's Trash",
+        ))
+    }
+
+    pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
         // NSFileManager trashItemAtURL: moves to the Trash or fails; it
         // never deletes permanently and does not script the Finder.
         let mut ctx = trash::TrashContext::default();
         ctx.set_delete_method(DeleteMethod::NsFileManager);
         ctx.delete(path)
+            .map(|_| None)
             .map_err(|e| io::Error::other(e.to_string()))
     }
 }
@@ -222,7 +300,14 @@ mod imp {
     use std::io;
     use std::path::Path;
 
-    pub(super) fn move_to_trash(_path: &Path) -> io::Result<()> {
+    pub(super) fn put_back(_recycled: &Path, _original: &Path) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "not supported on this system",
+        ))
+    }
+
+    pub(super) fn move_to_trash(_path: &Path) -> io::Result<Option<std::path::PathBuf>> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "moving to the Trash is not supported on this system",

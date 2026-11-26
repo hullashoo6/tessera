@@ -36,12 +36,12 @@ fn id(tree: &Tree, rel: &str) -> u32 {
 }
 
 /// Simulated Trash: moves items into a holding folder beside the scan root.
-fn holding_mover(hold: PathBuf) -> impl FnMut(&Path) -> io::Result<()> {
+fn holding_mover(hold: PathBuf) -> impl FnMut(&Path) -> io::Result<Option<PathBuf>> {
     fs::create_dir_all(&hold).unwrap();
     let mut n = 0;
     move |p: &Path| {
         n += 1;
-        fs::rename(p, hold.join(format!("{n}")))
+        fs::rename(p, hold.join(format!("{n}"))).map(|()| None)
     }
 }
 
@@ -161,7 +161,7 @@ fn mover_failures_are_reported_not_retried() {
         if p.ends_with("x.bin") {
             Err(io::Error::other("simulated failure"))
         } else {
-            fs::rename(p, hold.join("k"))
+            fs::rename(p, hold.join("k")).map(|()| None)
         }
     });
     assert_eq!(calls, 2, "one attempt per item");
@@ -173,7 +173,7 @@ fn mover_failures_are_reported_not_retried() {
 fn success_claimed_but_item_still_present_counts_as_failure() {
     let (_t, tree) = fixture();
     let plan = build_plan(&tree, &[id(&tree, "a/keep.txt")], &open());
-    let report = execute(&plan, &open(), &mut |_p: &Path| Ok(()));
+    let report = execute(&plan, &open(), &mut |_p: &Path| Ok(None));
     assert_eq!((report.moved, report.failed), (0, 1));
 }
 
@@ -281,4 +281,45 @@ fn links_above_the_scanned_folder_are_allowed() {
         "{:?}",
         report.outcomes
     );
+}
+
+/// Real Recycle Bin round trip with disposable files (Windows). Run with:
+/// cargo test -p tessera-cleanup -- --ignored put_back
+#[cfg(windows)]
+#[test]
+#[ignore]
+fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
+    let t = tessera_testkit::tempfile::Builder::new()
+        .prefix("tessera-putback-")
+        .tempdir()
+        .unwrap();
+    let original = t.path().join("put-back-trial.txt");
+    fs::write(&original, b"restore me exactly").unwrap();
+    let recycled = tessera_cleanup::move_to_trash(&original)
+        .unwrap()
+        .expect("Windows reports where it landed");
+    assert!(!original.exists() && recycled.exists());
+    tessera_cleanup::put_back(&recycled, &original).unwrap();
+    assert_eq!(fs::read(&original).unwrap(), b"restore me exactly");
+    assert!(!recycled.exists(), "no longer in the Recycle Bin");
+    let index = recycled.with_file_name(
+        recycled
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .replacen("$R", "$I", 1),
+    );
+    assert!(!index.exists(), "Recycle Bin entry removed");
+
+    // Something new at the original path: never overwritten.
+    let second = t.path().join("collision-trial.txt");
+    fs::write(&second, b"old").unwrap();
+    let recycled2 = tessera_cleanup::move_to_trash(&second).unwrap().unwrap();
+    fs::write(&second, b"new file the person made").unwrap();
+    let err = tessera_cleanup::put_back(&recycled2, &second).unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
+    assert_eq!(fs::read(&second).unwrap(), b"new file the person made");
+    fs::remove_file(&second).unwrap(); // the test's own file
+    tessera_cleanup::put_back(&recycled2, &second).unwrap();
+    assert_eq!(fs::read(&second).unwrap(), b"old");
 }

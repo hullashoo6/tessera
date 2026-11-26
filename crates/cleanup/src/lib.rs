@@ -9,7 +9,8 @@ pub mod protect;
 mod trash;
 
 pub use protect::Protection;
-pub use trash::move_to_trash;
+pub mod history;
+pub use trash::{move_to_trash, put_back};
 
 use std::fs::Metadata;
 use std::io;
@@ -242,6 +243,8 @@ pub struct Outcome {
     pub allocated: u64,
     /// `Err` holds the reason the item was left in place.
     pub result: Result<(), String>,
+    /// Where the item now sits in the Recycle Bin, when the system says.
+    pub recycled: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -258,12 +261,15 @@ pub struct Report {
 pub fn execute(
     plan: &Plan,
     protection: &Protection,
-    mover: &mut dyn FnMut(&Path) -> io::Result<()>,
+    mover: &mut dyn FnMut(&Path) -> io::Result<Option<PathBuf>>,
 ) -> Report {
     let mut report = Report::default();
     for c in &plan.items {
+        let mut recycled = None;
         let mut result = revalidate(c, &plan.root, protection).and_then(|()| {
-            mover(&c.path).map_err(|e| format!("It could not be moved to the Trash: {e}"))
+            mover(&c.path)
+                .map(|r| recycled = r)
+                .map_err(|e| format!("It could not be moved to the Trash: {e}"))
         });
         if result.is_ok() && std::fs::symlink_metadata(&c.path).is_ok() {
             result = Err("It is still in place after the move.".into());
@@ -282,6 +288,7 @@ pub fn execute(
             logical: c.logical,
             allocated: c.allocated,
             result,
+            recycled,
         });
     }
     report
