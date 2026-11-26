@@ -22,6 +22,8 @@ interface Props {
   theme: Theme
   /** The system asks for high contrast (redraws with the high-contrast palette). */
   contrast: boolean
+  /** "windows" or "macos": the Backspace key is labelled Delete on a Mac. */
+  os: string
   /** Changing this re-requests the layout (used while a scan is running). */
   version: number
   selected: number | null
@@ -244,7 +246,7 @@ function neighbour(tiles: Tile[], from: Tile, dir: Direction): Tile | null {
 }
 
 export function Treemap(props: Props) {
-  const { scanId, rootId, rootName, metric, theme, contrast, version, selected, highlight, onSelect, onZoom, onUp, onMenu, onError } =
+  const { scanId, rootId, rootName, metric, theme, contrast, os, version, selected, highlight, onSelect, onZoom, onUp, onMenu, onError } =
     props
   const wrapRef = useRef<HTMLDivElement>(null)
   const baseRef = useRef<HTMLCanvasElement>(null)
@@ -336,7 +338,7 @@ export function Treemap(props: Props) {
         tabIndex={0}
         role="application"
         aria-roledescription="storage map"
-        aria-label={`Storage map of ${rootName}. Use arrow keys to move between items, Enter to open a folder, Backspace to go up.`}
+        aria-label={`Storage map of ${rootName}. Use arrow keys to move between items, Enter to open a folder, ${os === 'macos' ? 'Delete' : 'Backspace'} to go up.`}
         onKeyDown={onKeyDown}
         onMouseMove={(e) => {
           const p = local(e)

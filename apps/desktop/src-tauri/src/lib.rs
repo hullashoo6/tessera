@@ -129,15 +129,62 @@ async fn start_scan(
         }
     };
     let root = prepare_root(&chosen).map_err(|e| format!("Cannot scan this location: {e}."))?;
-    let opts = ScanOptions {
-        hard_links: match settings.hard_links {
+    remember_scan_settings(&app, settings.hard_links);
+    let opts = options_for(settings.hard_links);
+    begin_scan(app, &state, root, opts).map(Some)
+}
+
+fn options_for(hard_links: HardLinkSetting) -> ScanOptions {
+    ScanOptions {
+        hard_links: match hard_links {
             HardLinkSetting::Auto => HardLinkMode::Auto,
             HardLinkSetting::Thorough => HardLinkMode::Thorough,
             HardLinkSetting::Off => HardLinkMode::Off,
         },
         ..ScanOptions::default()
+    }
+}
+
+/// The person's hard-link setting is kept on disk as well as in the window,
+/// so scans started from outside it (File Explorer, Finder, a drop, a second
+/// launch, before the window has even loaded) use the same choice.
+fn scan_settings_file(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("scan-settings.txt"))
+}
+
+fn remember_scan_settings(app: &AppHandle, hard_links: HardLinkSetting) {
+    let word = match hard_links {
+        HardLinkSetting::Auto => "auto",
+        HardLinkSetting::Thorough => "thorough",
+        HardLinkSetting::Off => "off",
     };
-    begin_scan(app, &state, root, opts).map(Some)
+    if let Some(path) = scan_settings_file(app) {
+        if let Some(d) = path.parent() {
+            let _ = std::fs::create_dir_all(d);
+        }
+        let _ = std::fs::write(path, word);
+    }
+}
+
+/// Options for a scan started from outside the window.
+pub(crate) fn remembered_scan_options(app: &AppHandle) -> ScanOptions {
+    let word = scan_settings_file(app)
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
+    options_for(match word.trim() {
+        "thorough" => HardLinkSetting::Thorough,
+        "off" => HardLinkSetting::Off,
+        _ => HardLinkSetting::Auto,
+    })
+}
+
+/// Called when the setting changes in Settings, so the next outside scan uses it.
+#[tauri::command(async)]
+fn set_scan_settings(app: AppHandle, settings: ScanSettings) {
+    remember_scan_settings(&app, settings.hard_links);
 }
 
 /// Replaces any running scan with a new one on a background thread.
@@ -1292,7 +1339,8 @@ pub fn run() {
                 && let Ok(root) = prepare_root(&p)
             {
                 let state = app.state::<AppState>();
-                let _ = begin_scan(app.handle().clone(), &state, root, ScanOptions::default());
+                let opts = remembered_scan_options(app.handle());
+                let _ = begin_scan(app.handle().clone(), &state, root, opts);
             }
             Ok(())
         })
@@ -1350,6 +1398,7 @@ pub fn run() {
             background::background_settings,
             background::set_background_settings,
             print_report,
+            set_scan_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting Tessera");

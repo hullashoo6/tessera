@@ -15,7 +15,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager};
-use tessera_scan::{ScanOptions, prepare_root};
+use tessera_scan::prepare_root;
 
 /// Turns a command-line argument into a folder to scan, if it is one.
 ///
@@ -51,15 +51,17 @@ pub fn folder_from_args<I: IntoIterator<Item = OsString>>(
         .and_then(|a| folder_from_arg(&a, cwd))
 }
 
-/// Starts a scan of `folder` with default settings and tells the interface,
-/// which switches to the storage map. Returns false if it could not start.
+/// Starts a scan of `folder` with the person's scan settings and tells the
+/// interface, which switches to the storage map. Returns false if it could
+/// not start.
 pub fn scan_folder(app: &AppHandle, folder: &Path) -> bool {
     let Ok(root) = prepare_root(folder) else {
         refuse(app, "That folder cannot be scanned.");
         return false;
     };
     let state = app.state::<super::AppState>();
-    match super::begin_scan(app.clone(), &state, root, ScanOptions::default()) {
+    let opts = super::remembered_scan_options(app);
+    match super::begin_scan(app.clone(), &state, root, opts) {
         Ok(id) => {
             let _ = app.emit("scan-started", id);
             true

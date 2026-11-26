@@ -39,6 +39,7 @@ const COMMANDS: &[&str] = &[
     "background_settings",
     "set_background_settings",
     "print_report",
+    "set_scan_settings",
 ];
 
 fn main() {

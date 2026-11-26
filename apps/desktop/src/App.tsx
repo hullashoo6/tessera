@@ -198,6 +198,7 @@ export function App() {
   }, [toast])
 
   const updateSettings = (s: Settings) => {
+    if (s.hardLinks !== settings.hardLinks) void api.setScanSettings(s.hardLinks).catch(() => undefined)
     setSettings(s)
     saveSettings(s)
   }
@@ -474,6 +475,7 @@ export function App() {
                   metric={settings.metric}
                   theme={theme}
                   contrast={contrast}
+                  os={info.os}
                   version={version}
                   selected={selected}
                   highlight={highlight}

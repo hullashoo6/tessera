@@ -250,6 +250,8 @@ export const api = {
   startScan: (target: ScanTarget, hardLinks: HardLinks) =>
     invoke<number | null>('start_scan', { target, settings: { hardLinks } }),
   cancelScan: () => invoke<void>('cancel_scan'),
+  /** Remembers the hard-link setting for scans started from outside the window. */
+  setScanSettings: (hardLinks: HardLinks) => invoke<void>('set_scan_settings', { settings: { hardLinks } }),
   scanStatus: () => invoke<Status | null>('scan_status'),
   nodeDetails: (scanId: number, id: number) => invoke<Details>('node_details', { scanId, id }),
   children: (scanId: number, id: number, metric: Metric, offset: number, limit: number) =>
