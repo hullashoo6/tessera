@@ -3,6 +3,7 @@
 //! 1. Group files by exact size (free: from the scan).
 //! 2. For same-size files, hash the first and last 64 KiB.
 //! 3. For files whose partial hashes match, hash the whole file (BLAKE3).
+//!
 //! Only files with identical full hashes are reported as duplicates.
 //!
 //! Reads file contents locally; nothing leaves the computer. Online-only
