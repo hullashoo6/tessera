@@ -48,3 +48,19 @@ jobs:
         run: |
           cargo run --release --locked -p tessera-cli -- gen "$RUNNER_TEMP/fx" --files 20000
           cargo run --release --locked -p tessera-cli -- bench "$RUNNER_TEMP/fx" --runs 3
+
+  website:
+    name: Website build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install and build
+        working-directory: website
+        run: |
+          npm ci
+          npm run build

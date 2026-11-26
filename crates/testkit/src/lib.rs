@@ -10,6 +10,9 @@ use std::path::{Path, PathBuf};
 
 pub use tempfile;
 
+mod demo;
+pub use demo::generate_demo;
+
 /// Name of the marker file placed at the root of generated fixtures.
 pub const MARKER: &str = ".tessera-fixture";
 

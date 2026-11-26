@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro'
+import Prose from '../components/Prose.astro'
+import Faq from '../components/Faq.astro'
+---
+
+<Base title="Help and FAQ | Tessera" description="Answers about how Tessera works, privacy, supported systems, and installing or removing it.">
+  <Prose title="Help" intro="How Tessera works, what it can and cannot do yet, and how to get it onto and off your computer.">
+    <h2>Common questions</h2>
+    <Faq />
+    <h2 id="install">Install and uninstall</h2>
+    <p>Installers are still in testing, so there is nothing to install yet. When a version passes testing on real machines it will be listed in the download section with its checksum, and this page will give step-by-step instructions for Windows and Mac.</p>
+    <h2>Reading the numbers</h2>
+    <ul>
+      <li><strong>Size on disk</strong> is the space files actually occupy, which is what you get back when you remove them.</li>
+      <li><strong>File size</strong> is the amount of data they contain. Compressed, sparse and online-only files can be much smaller on disk.</li>
+      <li><strong>Estimated</strong> means Windows did not report the exact figure, so Tessera calculated it from the drive's allocation size.</li>
+      <li><strong>Not attributed to scanned files</strong> is space the drive reports as used that belongs to the system, other accounts or folders Tessera was not allowed to read.</li>
+    </ul>
+  </Prose>
+</Base>

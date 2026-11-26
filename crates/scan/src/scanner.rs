@@ -228,6 +228,8 @@ pub fn scan_shared(
     if let Err(e) = std::fs::read_dir(&root_path) {
         return Err(ScanError::RootUnreadable(root_path, e));
     }
+    tree.write().unwrap_or_else(|e| e.into_inner()).nodes[ROOT as usize].modified =
+        platform::unix_seconds(&root_meta);
 
     let identity_min_size = match opts.hard_links {
         HardLinkMode::Off => None,

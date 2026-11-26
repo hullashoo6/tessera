@@ -1,0 +1,15 @@
+---
+// Tessera mark: a five-tile treemap. Same geometry as the app icon.
+interface Props {
+  size?: number
+}
+const { size = 24 } = Astro.props
+---
+
+<svg width={size} height={size} viewBox="0 0 22 22" aria-hidden="true">
+  <rect x="1" y="1" width="11" height="20" rx="1.6" fill="#e9ae63"></rect>
+  <rect x="13" y="1" width="8" height="9" rx="1.6" fill="#cdd5c7"></rect>
+  <rect x="13" y="11" width="8" height="5" rx="1.4" fill="#a7b5a2"></rect>
+  <rect x="13" y="17" width="3.5" height="4" rx="1" fill="#5d7363"></rect>
+  <rect x="17.5" y="17" width="3.5" height="4" rx="1" fill="#f3ecdf"></rect>
+</svg>

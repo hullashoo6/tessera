@@ -24,6 +24,17 @@ fn main() -> ExitCode {
         Some("volumes") => cmd_volumes(),
         Some("scan") => cmd_scan(&args[1..]),
         Some("gen") => cmd_gen(&args[1..]),
+        Some("demo") => match args.get(1) {
+            Some(dir) => tessera_testkit::generate_demo(Path::new(dir))
+                .map(|s| {
+                    println!(
+                        "Demo library: {} files, {} folders, {} logical bytes (sparse)",
+                        s.files, s.dirs, s.logical_bytes
+                    )
+                })
+                .map_err(|e| format!("demo generation failed: {e}")),
+            None => Err("demo needs a new, empty directory".into()),
+        },
         Some("bench") => cmd_bench(&args[1..]),
         _ => Err(USAGE.to_string()),
     };

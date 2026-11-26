@@ -1,0 +1,51 @@
+---
+import Mark from './Mark.astro'
+const year = new Date().getFullYear()
+---
+
+<footer class="site-footer">
+  <div class="wrap grid">
+    <div class="about">
+      <a class="brand" href="/"><Mark size={22} /><span>Tessera</span></a>
+      <p class="muted">A disk space analyzer for Windows and Mac. Every scan stays on your computer.</p>
+    </div>
+    <nav aria-label="Product">
+      <h2>Product</h2>
+      <a href="/#features">Features</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/#download">Download</a>
+      <a href="/changelog">Changelog</a>
+    </nav>
+    <nav aria-label="Support">
+      <h2>Support</h2>
+      <a href="/help">Help and FAQ</a>
+      <a href="/help#install">Install and uninstall</a>
+    </nav>
+    <nav aria-label="Legal">
+      <h2>Legal</h2>
+      <a href="/privacy">Privacy policy</a>
+      <a href="/terms">Terms of use</a>
+    </nav>
+  </div>
+  <div class="wrap base muted">
+    <span>© {year} Tessera</span>
+    <span>Contact details will be published before launch.</span>
+  </div>
+</footer>
+
+<style>
+  .site-footer { border-top: 1px solid var(--line); padding: 64px 0 36px; background: var(--night); font-size: 15px; }
+  .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; }
+  .about p { margin-top: 14px; max-width: 34ch; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--serif); font-variation-settings: 'SOFT' 100; font-size: 20px; }
+  nav { display: grid; gap: 10px; align-content: start; }
+  nav h2 { font: 600 14px/1.4 var(--sans); letter-spacing: 0; color: var(--cream); margin-bottom: 4px; }
+  nav a { color: var(--sage); text-decoration: none; }
+  nav a:hover { color: var(--cream); }
+  .base { display: flex; justify-content: space-between; gap: 16px; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 14px; }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .about { grid-column: 1 / -1; }
+    .base { flex-direction: column; }
+  }
+</style>

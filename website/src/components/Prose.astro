@@ -1,0 +1,25 @@
+---
+// Layout for text pages (help, legal, changelog).
+interface Props {
+  title: string
+  intro?: string
+  draft?: boolean
+}
+const { title, intro, draft = false } = Astro.props
+---
+
+<article class="prose wrap">
+  {draft && <p class="tag">Draft for owner and legal review. Not yet in effect.</p>}
+  <h1>{title}</h1>
+  {intro && <p class="lede">{intro}</p>}
+  <slot />
+</article>
+
+<style>
+  .prose { max-width: 760px; padding: 150px 0 110px; display: grid; gap: 20px; }
+  .prose h1 { font-size: clamp(38px, 5vw, 60px); }
+  .prose :global(h2) { font-size: 28px; margin-top: 28px; }
+  .prose :global(p), .prose :global(li) { color: var(--mist); }
+  .prose :global(ul), .prose :global(ol) { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+  .prose .tag { justify-self: start; }
+</style>

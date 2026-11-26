@@ -1,0 +1,63 @@
+// Single source of truth for claims made on the website. Keep in sync with
+// STATUS.md: only features marked "available" may be presented as working.
+
+export const product = {
+  name: 'Tessera',
+  tagline: 'Every byte, accounted for.',
+  summary: 'See what fills your computer. Find the files that matter. Reclaim your space with confidence.',
+  description:
+    'Tessera is a disk space analyzer for Windows and Mac that maps every folder on your drive to scale, finds your largest files, and keeps every scan on your computer.',
+}
+
+/**
+ * Pricing is provisional. While `approved` is false the site shows the
+ * figure only as a clearly marked draft, and no checkout link exists.
+ */
+export const pricing = {
+  approved: false,
+  currency: 'USD',
+  pro: 14.99,
+}
+
+export type Status = 'available' | 'in development'
+
+export interface Feature {
+  name: string
+  status: Status
+}
+
+export const freeFeatures: Feature[] = [
+  { name: 'Unlimited scans of any drive or folder', status: 'available' },
+  { name: 'Interactive storage map', status: 'available' },
+  { name: 'Largest files, ranked', status: 'available' },
+  { name: 'Open, reveal and copy the path of any item', status: 'available' },
+  { name: 'Search and filters', status: 'in development' },
+]
+
+export const proFeatures: Feature[] = [
+  { name: 'Everything in Free', status: 'available' },
+  { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'in development' },
+  { name: 'Developer storage: node_modules, build folders, caches', status: 'in development' },
+  { name: 'Storage history and growth between scans', status: 'in development' },
+  { name: 'Exportable reports', status: 'in development' },
+]
+
+export type PlatformId = 'windows-x64' | 'mac-arm64' | 'mac-x64'
+
+export interface Platform {
+  id: PlatformId
+  label: string
+  requirement: string
+  /** Shown until a verified release exists in releases.json. */
+  state: string
+}
+
+export const platforms: Platform[] = [
+  { id: 'windows-x64', label: 'Windows', requirement: 'Windows 11, 64-bit', state: 'In testing' },
+  { id: 'mac-arm64', label: 'Mac with Apple silicon', requirement: 'macOS version to be confirmed', state: 'In testing' },
+  { id: 'mac-x64', label: 'Mac with Intel', requirement: 'Not yet verified', state: 'Planned' },
+]
+
+export function formatPrice(): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: pricing.currency }).format(pricing.pro)
+}

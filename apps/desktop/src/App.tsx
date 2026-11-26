@@ -7,7 +7,7 @@ import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
 import { SettingsView } from './components/SettingsView'
 import { Treemap } from './components/Treemap'
-import { formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
+import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
@@ -181,7 +181,8 @@ export function App() {
 
   const p = status?.progress
   const scanning = status?.phase === 'scanning'
-  const viewName = crumbs[crumbs.length - 1]?.name ?? status?.root ?? ''
+  const lastCrumb = crumbs[crumbs.length - 1]?.name ?? status?.root ?? ''
+  const viewName = crumbs.length <= 1 ? baseName(lastCrumb) : lastCrumb
 
   const nav: [View, string, boolean][] = [
     ['overview', 'Overview', false],
@@ -270,7 +271,7 @@ export function App() {
                         onClick={() => i < crumbs.length - 1 && zoom(c.id)}
                         title={c.name}
                       >
-                        {c.name}
+                        {i === 0 ? baseName(c.name) : c.name}
                       </button>
                     </span>
                   ))}
@@ -335,7 +336,9 @@ export function App() {
               <span className="num">
                 {plural(p.files, 'file', 'files')} in {plural(p.dirs, 'folder', 'folders')}
               </span>
-              <span className="num">{formatBytes(p.allocated)} on disk</span>
+              <span className="num">
+                {settings.metric === 'allocated' ? `${formatBytes(p.allocated)} on disk` : `${formatBytes(p.logical)} of files`}
+              </span>
               {scanning && <span className="num">{formatDuration(p.elapsedMs)}</span>}
               {p.issues > 0 && <span className="num">{plural(p.issues, 'item', 'items')} could not be read</span>}
               {status.summary?.hardLinks === 'partial' && !scanning && (

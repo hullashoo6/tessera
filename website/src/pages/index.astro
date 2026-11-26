@@ -1,0 +1,247 @@
+---
+import { Image } from 'astro:assets'
+import Base from '../layouts/Base.astro'
+import HeroMosaic from '../components/HeroMosaic.astro'
+import Faq from '../components/Faq.astro'
+import { faqs } from '../data/faq'
+import { formatPrice, freeFeatures, platforms, pricing, product, proFeatures } from '../data/site'
+import { releaseFor } from '../data/releases'
+import shotDark from '../assets/screens/app-dark.png'
+import shotLight from '../assets/screens/app-light.png'
+import shotFiles from '../assets/screens/app-largest.png'
+
+const title = 'Tessera: disk space analyzer for Windows and Mac'
+const description =
+  'See what fills your computer with an interactive storage map. Find your largest files and keep every scan private, on your own machine.'
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: product.name,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Windows 11',
+      description: product.description,
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+    },
+  ],
+}
+
+const features = [
+  ['A map of everything', 'Every folder becomes a tile sized by the space it takes. Open any tile to go deeper, follow the breadcrumbs back, or move through it all with the keyboard.'],
+  ['Your biggest files, ranked', 'The thousand largest files on a drive or in a folder, with where they live and when they last changed. Show any of them in File Explorer or Finder in one click.'],
+  ['Numbers you can trust', 'Files with several names are counted once. Online-only files show as using no space. Estimates are labelled, and folders Tessera could not read are flagged, never silently skipped.'],
+  ['Private by design', 'No account, no uploads, no tracking. This version of Tessera makes no network connections at all.'],
+  ['Read-only, and careful', 'Tessera never changes or deletes your files. It will not open programs or scripts for you, and it does not follow links into other places.'],
+  ['Results as it reads', 'The map fills in while the scan runs, so you can start exploring at once, and you can stop a scan the moment you have seen enough.'],
+] as const
+---
+
+<Base title={title} description={description} schema={schema}>
+  <section class="hero" aria-labelledby="hero-title">
+    <HeroMosaic />
+    <div class="wrap hero-copy">
+      <h1 id="hero-title">{product.tagline}</h1>
+      <p class="lede">{product.summary}</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#download">Download free</a>
+        <a class="btn btn-quiet" href="#product">See it in action</a>
+      </div>
+      <p class="fine">Built for Windows 11, with a Mac version in testing. Scans never leave your computer.</p>
+    </div>
+  </section>
+
+  <section id="product" class="product" aria-labelledby="product-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="product-title">Your whole drive, in one picture.</h2>
+        <p class="lede">The biggest things are the easiest to see. Large videos, forgotten backups and virtual machines stop hiding in folders you never open.</p>
+      </div>
+      <figure class="window">
+        <Image src={shotDark} alt="Tessera's storage map showing a 195 GB library: virtual machines, backups and videos take the most space, with a list of folders and their sizes alongside." widths={[800, 1200, 1602]} sizes="(max-width: 1200px) 100vw, 1160px" loading="eager" />
+      </figure>
+      <p class="caption muted">The real app on Windows 11, exploring a demonstration library.</p>
+      <div class="pair">
+        <figure class="window small">
+          <Image src={shotFiles} alt="The Largest files view listing files by size with their location, date and actions." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Largest files, ranked, with where each one lives.</figcaption>
+        </figure>
+        <figure class="window small">
+          <Image src={shotLight} alt="The same storage map in the light theme." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Light and dark, following your system setting.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="how-title">From full drive to clear answer.</h2>
+      </div>
+      <ol class="steps">
+        <li><h3>Scan</h3><p>Choose a drive, your home folder or any folder. Tessera reads file sizes only, never their contents.</p></li>
+        <li><h3>Explore</h3><p>Follow the largest tiles, open folders in place, or rank every file by size to see what is worth your attention.</p></li>
+        <li><h3>Decide</h3><p>Open anything, or show it in File Explorer or Finder to deal with it there. Tessera never removes a file on its own.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="features-title">Made to tell you the truth about your storage.</h2>
+      </div>
+      <div class="features">
+        {features.map(([t, d]) => (
+          <article><h3>{t}</h3><p>{d}</p></article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" class="privacy" aria-labelledby="privacy-title">
+    <div class="wrap split">
+      <h2 id="privacy-title">Your files stay yours.</h2>
+      <div class="stack">
+        <p class="lede">Scanning happens entirely on your computer. Tessera does not upload file names, folders or results, and it does not ask you to create an account.</p>
+        <p class="muted">When paid licences arrive, activating one will be the only reason Tessera goes online, and it will send your licence key, nothing about your files.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" aria-labelledby="pricing-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="pricing-title">Free to explore. Pro to clean up.</h2>
+        <p class="lede">Scanning is free, with no limits. Pro will be a single purchase, with no subscription.</p>
+      </div>
+      <div class="plans">
+        <article class="plan">
+          <h3>Free</h3>
+          <p class="price num">$0</p>
+          <p class="muted">Yours to keep, with no time limit.</p>
+          <ul>{freeFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
+          <a class="btn btn-quiet" href="#download">Download free</a>
+        </article>
+        <article class="plan pro">
+          <h3>Pro</h3>
+          <p class="price num">{formatPrice()}{!pricing.approved && <span class="tag">Draft price</span>}</p>
+          <p class="muted">One payment. No subscription.</p>
+          <ul>{proFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
+          <span class="btn btn-primary" aria-disabled="true">Available at launch</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="download-title">Download Tessera.</h2>
+        <p class="lede">Each installer appears here with its version, size and SHA-256 checksum on the day it passes testing on real machines. Until then, nothing is offered that has not been checked.</p>
+      </div>
+      <ul class="platforms">
+        {platforms.map((p) => {
+          const r = releaseFor(p.id)
+          return (
+            <li data-platform={p.id}>
+              <div>
+                <h3>{p.label}<span class="yours tag" hidden>Your system</span></h3>
+                <p class="muted">{r ? r.minimumOs : p.requirement}</p>
+              </div>
+              {r ? (
+                <div class="release">
+                  <a class="btn btn-primary" href={r.url}>Download {r.installer}</a>
+                  <p class="muted num">Version {r.version}, {(r.bytes / 1048576).toFixed(1)} MB</p>
+                  <p class="sha num">SHA-256 {r.sha256}</p>
+                  <a href={r.notesUrl}>Release notes</a>
+                </div>
+              ) : (
+                <span class="state">{p.state}</span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <div class="section-head"><h2 id="faq-title">Questions, answered.</h2></div>
+      <Faq />
+    </div>
+  </section>
+
+  <section class="closing" aria-labelledby="closing-title">
+    <div class="wrap">
+      <h2 id="closing-title">Know exactly where your space went.</h2>
+      <a class="btn btn-primary" href="#download">Download free</a>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Highlight the visitor's platform. Manual choice always remains.
+  const ua = navigator.userAgent
+  const id = /Windows/.test(ua) ? 'windows-x64' : /Mac/.test(ua) ? 'mac-arm64' : null
+  if (id) document.querySelector(`[data-platform="${id}"] .yours`)?.removeAttribute('hidden')
+</script>
+
+<style>
+  .hero { position: relative; min-height: min(92vh, 900px); display: grid; align-items: center; overflow: hidden; padding: 140px 0 110px; border: 0; }
+  .hero::after { content: ''; position: absolute; inset: auto 0 0 0; height: 160px; background: linear-gradient(180deg, transparent, var(--forest)); pointer-events: none; }
+  .hero + section { border-top: 0; }
+  .hero-copy { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 26px; }
+  .hero h1 { max-width: 13ch; text-shadow: 0 2px 30px rgba(10, 8, 4, 0.45); }
+  .hero .lede { color: var(--cream); text-shadow: 0 1px 14px rgba(10, 8, 4, 0.6); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+  .fine { font-size: 14px; color: var(--mist); }
+
+  .window { margin: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line-strong); box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7); background: var(--night); }
+  .caption { margin-top: 16px; font-size: 14px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 56px; }
+  .window.small figcaption { padding: 14px 16px; font-size: 14px; color: var(--mist); border-top: 1px solid var(--line); }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: step; }
+  .steps li { counter-increment: step; padding-top: 22px; border-top: 1px solid var(--line-strong); display: grid; gap: 10px; }
+  .steps li::before { content: counter(step); font-family: var(--serif); font-size: 15px; color: var(--amber); }
+  .steps p, .features p { color: var(--mist); }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 36px; }
+  .features article { display: grid; gap: 10px; align-content: start; }
+
+  .privacy { background: linear-gradient(180deg, var(--forest), var(--forest-2)); }
+  .split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: start; }
+  .stack { display: grid; gap: 18px; }
+
+  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 920px; }
+  .plan { display: grid; gap: 12px; align-content: start; padding: 32px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(243, 236, 223, 0.03); }
+  .plan.pro { border-color: rgba(233, 174, 99, 0.35); background: rgba(233, 174, 99, 0.05); }
+  .price { font-family: var(--serif); font-variation-settings: 'SOFT' 100; font-size: 44px; line-height: 1.1; display: flex; align-items: center; gap: 12px; }
+  .plan ul { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 10px; }
+  .plan li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-left: 22px; position: relative; color: var(--mist); }
+  .plan li::before { content: ''; position: absolute; left: 0; top: 0.62em; width: 10px; height: 10px; border-radius: 2px; background: var(--moss); border: 1px solid var(--sage); }
+  .plan .btn { justify-self: start; }
+
+  .platforms { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .platforms li { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .platforms h3 { display: flex; align-items: center; gap: 12px; }
+  .state { color: var(--sage); font-size: 15px; padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 999px; white-space: nowrap; }
+  .release { display: grid; gap: 6px; justify-items: end; text-align: right; }
+  .sha { font-size: 12px; color: var(--sage); word-break: break-all; max-width: 44ch; }
+
+  .closing { text-align: center; }
+  .closing .wrap { display: grid; justify-items: center; gap: 28px; }
+
+  @media (max-width: 900px) {
+    .pair, .steps, .features, .split, .plans { grid-template-columns: 1fr; }
+    .platforms li { flex-direction: column; align-items: flex-start; }
+    .release { justify-items: start; text-align: left; }
+  }
+</style>

@@ -49,12 +49,23 @@ Last updated: 2026-11-26.
 
 | Item | Status |
 |---|---|
-| Desktop app (Tauri 2 + React), dashboard, treemap, views, search | Not implemented |
+| Desktop app shell (Tauri 2 + React + strict TS), command allow-list, strict CSP | Real platform tested (Windows, dev build) |
+| Overview: drives with OS capacity, home folder, folder picker | Real platform tested (Windows, dev build) |
+| Interactive treemap (squarified, nested, aggregation, tile cap, canvas, high-DPI, keyboard, screen-reader announcements) | Layout automatically tested (8 tests); UI checked by screenshots on Windows |
+| Details panel, synced contents list, breadcrumbs, context menu | Real platform tested (Windows, dev build) |
+| Largest files view | Real platform tested (Windows, dev build) |
+| Open refuses programs/scripts; reveal; copy path | Rules automatically tested (3 tests); reveal/open not yet clicked through on an installed build |
+| Light/dark/system theme, size-on-disk vs file size | Real platform tested (Windows, dev build) |
+| Search and filters | Not implemented |
+| Sunburst, tree, table views | Not implemented |
+| UI with 1M-file scans | Not tested (scanner tested at 1M; UI at 100k) |
 | Categorisation, developer storage view | Not implemented |
 | Cleanup (review → Trash) | Not implemented |
 | Storage history, reports | Not implemented |
 | Free/Pro entitlements, Dodo Payments (test mode) | Not implemented |
-| Website (Astro) | Not implemented |
+| Website (Astro 7, static): home, help, changelog, draft privacy/terms, 404, sitemap, robots, JSON-LD, OG image | Built and checked by headless-browser screenshots (desktop and narrow widths). Not deployed. Lighthouse not yet measured |
+| Website downloads | Driven by `website/src/data/releases.json` (empty: no release exists, so no download links are shown) |
+| Website pricing | Shows USD 14.99 marked "Draft price"; no checkout link. `pricing.approved` must be set by owner decision |
 | Installers, signing, release manifest | Not implemented; signing **blocked** on owner decisions (paid certificates) |
 
 ## Owner decisions outstanding
