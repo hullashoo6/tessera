@@ -23,6 +23,8 @@ type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'sea
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 const CONTRAST_QUERY = '(prefers-contrast: more), (forced-colors: active)'
+/** Must match `active()` in src-tauri/src/lib.rs. */
+const SCAN_REPLACED = 'This scan is no longer available. Start a new scan.'
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
@@ -32,7 +34,7 @@ export function App() {
   const [contrast, setContrast] = useState(() => window.matchMedia(CONTRAST_QUERY).matches)
   setHighContrast(contrast) // before children draw; idempotent
 
-  const [info, setInfo] = useState({ os: 'windows', version: '' })
+  const [info, setInfo] = useState({ os: 'windows', version: '', storeManaged: false })
   const [volumes, setVolumes] = useState<Volume[] | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
   const [view, setView] = useState<View>('overview')
@@ -64,7 +66,20 @@ export function App() {
 
   const scanId = status?.scanId ?? null
   const names = platformNames(info.os)
-  const onError = useCallback((m: string) => setError(m), [])
+  // The backend says a scan is "no longer available" only when a newer scan
+  // has replaced it (for example one started from File Explorer or Finder).
+  // A request still in flight for the old scan is not an error to show: the
+  // window just catches up with the new scan.
+  const onError = useCallback((m: string) => {
+    if (m === SCAN_REPLACED) {
+      api
+        .scanStatus()
+        .then(setStatus)
+        .catch(() => undefined)
+      return
+    }
+    setError(m)
+  }, [])
   // The first-run welcome screen is shown until the first scan or a skip.
   const markWelcomed = useCallback(
     () =>
@@ -546,6 +561,7 @@ export function App() {
               settings={settings}
               os={info.os}
               version={info.version}
+              storeManaged={info.storeManaged}
               onChange={updateSettings}
               onShowWelcome={() => {
                 updateSettings({ ...settings, welcomed: false })

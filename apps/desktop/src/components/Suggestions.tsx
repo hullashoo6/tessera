@@ -88,7 +88,7 @@ export function Suggestions({ scanId, scanning, version, marked, onToggleMark, o
       <p className="lede">
         {items.length
           ? 'Each suggestion says why it was found and how safe it is. Nothing is removed until you review it in Cleanup.'
-          : 'Tessera found no caches, build output or temporary files worth removing in this scan.'}
+          : 'Tessera found no caches, build output, old installers, backups or large old files worth a look in this scan.'}
       </p>
       {chosen.length > 0 && (
         <div className="current-scan">

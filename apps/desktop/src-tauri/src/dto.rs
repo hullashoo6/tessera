@@ -8,9 +8,12 @@ use tessera_scan::{
 use tessera_treemap::{Tile, TileKind};
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppInfoDto {
     pub os: &'static str,
     pub version: &'static str,
+    /// Installed from the Microsoft Store, which handles updates.
+    pub store_managed: bool,
 }
 
 #[derive(Deserialize)]

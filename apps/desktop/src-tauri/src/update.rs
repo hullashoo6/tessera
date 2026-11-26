@@ -31,9 +31,40 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
     }
 }
 
+/// True when this copy was installed from the Microsoft Store (it runs inside
+/// an MSIX package). The Store then installs updates itself, and Store rules
+/// say an app must not send people elsewhere to update, so the website check
+/// is skipped and Settings says updates come from the Store.
+pub fn store_managed() -> bool {
+    #[cfg(windows)]
+    {
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetCurrentPackageFullName(length: *mut u32, name: *mut u16) -> i32;
+        }
+        const ERROR_INSUFFICIENT_BUFFER: i32 = 122;
+        let mut len = 0u32;
+        // SAFETY: a zero length with a null buffer only asks for the size.
+        let rc = unsafe { GetCurrentPackageFullName(&mut len, std::ptr::null_mut()) };
+        // APPMODEL_ERROR_NO_PACKAGE (15700) means an ordinary installation.
+        rc == ERROR_INSUFFICIENT_BUFFER
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 #[tauri::command]
 pub async fn check_update(app: AppHandle) -> Result<UpdateDto, String> {
     let current = app.package_info().version.to_string();
+    if store_managed() {
+        return Ok(UpdateDto {
+            available: false,
+            current,
+            latest: None,
+        });
+    }
     let doc =
         tauri::async_runtime::spawn_blocking(|| tessera_licensing::https_get_json(LATEST_URL))
             .await
@@ -60,6 +91,11 @@ pub fn open_download_page(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::is_newer;
+
+    #[test]
+    fn tests_do_not_run_as_a_store_package() {
+        assert!(!super::store_managed());
+    }
 
     #[test]
     fn versions_compare_numerically() {

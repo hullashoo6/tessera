@@ -5,9 +5,14 @@ param(
   [Parameter(Mandatory = $true)][string]$Name,
   [Parameter(Mandatory = $true)][string]$Publisher,
   [Parameter(Mandatory = $true)][string]$PublisherDisplayName,
-  [string]$Version = "0.1.0.0"
+  # Store versions have four parts and the last must be 0; default: the app's version + ".0".
+  [string]$Version = ""
 )
 $root = Split-Path $PSScriptRoot -Parent
+if (-not $Version) {
+  $conf = [IO.File]::ReadAllText((Join-Path $root 'apps\desktop\src-tauri\tauri.conf.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
+  $Version = "$($conf.version).0"
+}
 $exe = Join-Path $root 'target\release\tessera-desktop.exe'
 if (-not (Test-Path $exe)) { throw "Build the app first: npx tauri build (in apps\desktop)" }
 $sdk = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
@@ -17,6 +22,8 @@ $layout = Join-Path $root 'target\msix\layout'
 Remove-Item $layout -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force (Join-Path $layout 'Assets') | Out-Null
 Copy-Item $exe (Join-Path $layout 'tessera-desktop.exe')
+# Licence credits ship next to the program, as in the .exe installer.
+Copy-Item (Join-Path $root 'THIRD_PARTY_NOTICES.md') (Join-Path $layout 'THIRD_PARTY_NOTICES.md')
 $icons = Join-Path $root 'apps\desktop\src-tauri\icons'
 Copy-Item (Join-Path $icons 'StoreLogo.png') (Join-Path $layout 'Assets\StoreLogo.png')
 Copy-Item (Join-Path $icons 'Square150x150Logo.png') (Join-Path $layout 'Assets\Square150x150Logo.png')

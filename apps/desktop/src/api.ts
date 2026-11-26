@@ -238,7 +238,8 @@ export interface Entitlement {
 export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
 
 export const api = {
-  appInfo: () => invoke<{ os: string; version: string }>('app_info'),
+  /** `storeManaged`: installed from the Microsoft Store, which handles updates. */
+  appInfo: () => invoke<{ os: string; version: string; storeManaged: boolean }>('app_info'),
   listVolumes: () => invoke<Volume[]>('list_volumes'),
   startScan: (target: ScanTarget, hardLinks: HardLinks) =>
     invoke<number | null>('start_scan', { target, settings: { hardLinks } }),

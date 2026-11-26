@@ -60,6 +60,8 @@ type CmdResult<T> = Result<T, String>;
 fn active(state: &AppState, scan_id: u64) -> CmdResult<Arc<ActiveScan>> {
     match &*state.scan.lock().unwrap_or_else(|e| e.into_inner()) {
         Some(s) if s.id == scan_id => Ok(s.clone()),
+        // The interface recognises this exact text (SCAN_REPLACED in App.tsx):
+        // a newer scan replaced this one, so it quietly catches up.
         _ => Err("This scan is no longer available. Start a new scan.".into()),
     }
 }
@@ -81,6 +83,7 @@ fn app_info() -> AppInfoDto {
     AppInfoDto {
         os: std::env::consts::OS,
         version: env!("CARGO_PKG_VERSION"),
+        store_managed: update::store_managed(),
     }
 }
 
