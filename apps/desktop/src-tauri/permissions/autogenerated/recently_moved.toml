@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-recently-moved"
+description = "Enables the recently_moved command without any pre-configured scope."
+commands.allow = ["recently_moved"]
+
+[[permission]]
+identifier = "deny-recently-moved"
+description = "Denies the recently_moved command without any pre-configured scope."
+commands.deny = ["recently_moved"]

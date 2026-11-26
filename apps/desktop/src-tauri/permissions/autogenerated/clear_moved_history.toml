@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-clear-moved-history"
+description = "Enables the clear_moved_history command without any pre-configured scope."
+commands.allow = ["clear_moved_history"]
+
+[[permission]]
+identifier = "deny-clear-moved-history"
+description = "Denies the clear_moved_history command without any pre-configured scope."
+commands.deny = ["clear_moved_history"]

@@ -8,6 +8,7 @@ import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
 import { SettingsView } from './components/SettingsView'
+import { Restore } from './components/Restore'
 import { Search } from './components/Search'
 import { Suggestions } from './components/Suggestions'
 import { Treemap, type Highlight } from './components/Treemap'
@@ -15,7 +16,7 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
+type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -220,6 +221,7 @@ export function App() {
     ['largest', 'Largest files', scanId === null],
     ['search', 'Search', scanId === null],
     ['cleanup', 'Cleanup', scanId === null],
+    ['restore', 'Restore', false],
     ['settings', 'Settings', false],
   ]
 
@@ -403,6 +405,7 @@ export function App() {
               onError={onError}
             />
           )}
+          {view === 'restore' && <Restore os={info.os} onDone={setToast} onError={onError} />}
           {view === 'duplicates' && scanId !== null && (
             <Duplicates
               scanId={scanId}

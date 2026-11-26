@@ -185,6 +185,15 @@ export interface DupReport {
   cancelled: boolean
 }
 
+export interface MovedItem {
+  index: number
+  path: string
+  name: string
+  bytes: number
+  movedAt: number
+  state: 'inBin' | 'restored' | 'gone' | 'finder'
+}
+
 export interface Entitlement {
   pro: boolean
   summary: string
@@ -215,6 +224,9 @@ export const api = {
   smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
   findDuplicates: (scanId: number) => invoke<DupReport>('find_duplicates', { scanId }),
   cancelDuplicates: () => invoke<void>('cancel_duplicates'),
+  recentlyMoved: () => invoke<MovedItem[]>('recently_moved'),
+  putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),
+  clearMovedHistory: () => invoke<void>('clear_moved_history'),
   onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>
     listen<number>('dupes-progress', (e) => cb(e.payload)),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),

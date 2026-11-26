@@ -521,6 +521,109 @@ fn cancel_duplicates(state: State<'_, AppState>) {
     }
 }
 
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn history_file(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_local_data_dir()
+        .ok()
+        .map(|d| d.join("recently-moved.json"))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MovedDto {
+    index: usize,
+    path: String,
+    name: String,
+    bytes: u64,
+    moved_at: i64,
+    /// "inBin", "restored", "gone" (no longer in the bin) or "finder" (macOS).
+    state: &'static str,
+}
+
+fn moved_list(app: &AppHandle) -> Vec<MovedDto> {
+    let Some(file) = history_file(app) else {
+        return Vec::new();
+    };
+    let items = tessera_cleanup::history::prune(tessera_cleanup::history::load(&file), unix_now());
+    items
+        .iter()
+        .enumerate()
+        .map(|(index, m)| MovedDto {
+            index,
+            path: m.original.to_string_lossy().into_owned(),
+            name: m
+                .original
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            bytes: m.bytes,
+            moved_at: m.moved_at,
+            state: if m.restored {
+                "restored"
+            } else {
+                match &m.recycled {
+                    Some(r) if std::fs::symlink_metadata(r).is_ok() => "inBin",
+                    Some(_) => "gone",
+                    None => "finder",
+                }
+            },
+        })
+        .collect()
+}
+
+/// Items Tessera moved in the last 30 days. Available without Pro: a person
+/// must always be able to get their files back.
+#[tauri::command]
+fn recently_moved(app: AppHandle) -> Vec<MovedDto> {
+    moved_list(&app)
+}
+
+#[tauri::command]
+async fn put_back_item(app: AppHandle, index: usize) -> CmdResult<Vec<MovedDto>> {
+    let file = history_file(&app).ok_or("Tessera couldn't find its list of moved items.")?;
+    let mut items =
+        tessera_cleanup::history::prune(tessera_cleanup::history::load(&file), unix_now());
+    let item = items
+        .get(index)
+        .cloned()
+        .ok_or("That item is no longer in the list.")?;
+    let recycled = item
+        .recycled
+        .clone()
+        .ok_or("Open the Trash in the Finder and choose Put Back.")?;
+    let original = item.original.clone();
+    tauri::async_runtime::spawn_blocking(move || tessera_cleanup::put_back(&recycled, &original))
+        .await
+        .map_err(|_| "Putting it back stopped unexpectedly.".to_string())?
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::AlreadyExists => "Something with that name is already in its old place, so nothing was changed. Move or rename it, then try again.".to_string(),
+            std::io::ErrorKind::NotFound => "It is no longer in the Recycle Bin (it may have been emptied or restored already).".to_string(),
+            _ => format!("It couldn't be put back: {e}"),
+        })?;
+    if std::fs::symlink_metadata(&item.original).is_err() {
+        return Err(
+            "Windows reported success, but the item is not back in place. Check the Recycle Bin."
+                .into(),
+        );
+    }
+    items[index].restored = true;
+    let _ = tessera_cleanup::history::save(&file, &items);
+    Ok(moved_list(&app))
+}
+
+#[tauri::command]
+fn clear_moved_history(app: AppHandle) -> CmdResult<()> {
+    let file = history_file(&app).ok_or("Tessera couldn't find its list of moved items.")?;
+    tessera_cleanup::history::save(&file, &[]).map_err(|e| e.to_string())
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -561,6 +664,7 @@ fn review_cleanup(
 
 #[tauri::command]
 async fn confirm_cleanup(
+    app: AppHandle,
     state: State<'_, AppState>,
     review_id: u64,
 ) -> CmdResult<CleanupReportDto> {
@@ -593,6 +697,25 @@ async fn confirm_cleanup(
     })
     .await
     .map_err(|_| "The cleanup stopped unexpectedly. Check the Recycle Bin before trying again.")?;
+    // Remember what was moved so it can be put back from the Restore page.
+    if let Some(file) = history_file(&app) {
+        let now = unix_now();
+        let _ = tessera_cleanup::history::append(
+            &file,
+            report
+                .outcomes
+                .iter()
+                .filter(|o| o.result.is_ok())
+                .map(|o| tessera_cleanup::history::Moved {
+                    original: o.path.clone(),
+                    recycled: o.recycled.clone(),
+                    bytes: o.allocated,
+                    moved_at: now,
+                    restored: false,
+                }),
+            now,
+        );
+    }
 
     let moved: Vec<NodeId> = report
         .outcomes
@@ -708,6 +831,9 @@ pub fn run() {
             smart_scan,
             find_duplicates,
             cancel_duplicates,
+            recently_moved,
+            put_back_item,
+            clear_moved_history,
             review_cleanup,
             confirm_cleanup,
             license_status,
