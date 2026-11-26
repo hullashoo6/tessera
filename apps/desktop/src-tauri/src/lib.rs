@@ -1198,6 +1198,22 @@ fn open_item(
         .map_err(|_| "No app is set up to open this item.".to_string())
 }
 
+/// Opens the system's print dialog for the report shown in the window. The
+/// person can print it, or make a PDF ("Microsoft Print to PDF" on Windows,
+/// "Save as PDF" on macOS). Pro, like the CSV reports.
+#[tauri::command(async)]
+fn print_report(window: tauri::WebviewWindow) -> CmdResult<()> {
+    if !is_pro() {
+        return Err(
+            "Reports are part of Tessera Pro. Enter your licence key in Settings to use them."
+                .into(),
+        );
+    }
+    window
+        .print()
+        .map_err(|_| "The print dialog could not be opened.".to_string())
+}
+
 /// The window opens at 1280 x 820 points; on a small or highly scaled screen
 /// (for example 1920 x 1080 at 200%, which leaves 960 x 540 points) that would
 /// spill off the edges, so it is shrunk to fit the screen's free area.
@@ -1313,6 +1329,7 @@ pub fn run() {
             diagnostics::show_log_file,
             background::background_settings,
             background::set_background_settings,
+            print_report,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting Tessera");

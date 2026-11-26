@@ -23,6 +23,10 @@ const api = vi.hoisted(() => ({
   logError: vi.fn(() => Promise.resolve()),
   backgroundSettings: vi.fn(),
   setBackgroundSettings: vi.fn(),
+  nodeDetails: vi.fn(),
+  children: vi.fn(),
+  largestFiles: vi.fn(),
+  printReport: vi.fn(() => Promise.resolve()),
 }))
 vi.mock('../api', () => ({ api, errorText: (e: unknown) => String(e) }))
 
@@ -33,6 +37,7 @@ import { Duplicates } from '../components/Duplicates'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { History } from '../components/History'
 import { ProLicence } from '../components/ProLicence'
+import { Report } from '../components/Report'
 import { Restore } from '../components/Restore'
 import { Suggestions } from '../components/Suggestions'
 import { Welcome } from '../components/Welcome'
@@ -243,5 +248,45 @@ describe('Background setting', () => {
     api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
     render(<BackgroundSetting os="macos" />)
     expect(await screen.findByLabelText(/Keep Tessera in the menu bar/)).toBeTruthy()
+  })
+})
+
+describe('Report', () => {
+  const node = (id: number, name: string, kind: 'dir' | 'file', allocated: number) => ({
+    id,
+    name,
+    kind,
+    logical: allocated,
+    allocated,
+    files: 1,
+    dirs: 0,
+    childCount: 0,
+    modified: 1_700_000_000,
+    flags: [],
+  })
+
+  it('is locked without Pro', () => {
+    render(<Report scanId={1} viewRoot={0} metric="allocated" scanFinished pro={false} appVersion="0.1.0" onOpenSettings={noop} onBack={noop} onError={noop} />)
+    expect(screen.getByText('Printable reports are part of Tessera Pro')).toBeTruthy()
+    expect(api.nodeDetails).not.toHaveBeenCalled()
+  })
+
+  it('summarises the folder and counts only suggestions inside it', async () => {
+    api.nodeDetails.mockResolvedValue({ node: { ...node(5, 'Projects', 'dir', 8e9), files: 1200, dirs: 40 }, path: 'C:\\Users\\a\\Projects', crumbs: [] })
+    api.children.mockResolvedValue({ total: 2, items: [node(6, 'web', 'dir', 6e9), node(7, 'notes.txt', 'file', 2e9)] })
+    api.largestFiles.mockResolvedValue([{ node: node(8, 'big.iso', 'file', 3e9), path: 'C:\\Users\\a\\Projects\\web\\big.iso' }])
+    api.smartScan.mockResolvedValue([
+      { ...sug(1, 'regenerable'), bytes: 2e9, path: 'C:\\Users\\a\\Projects\\web\\node_modules' },
+      { ...sug(2, 'regenerable'), bytes: 9e9, path: 'C:\\Users\\a\\Elsewhere\\node_modules' },
+    ])
+    render(<Report scanId={1} viewRoot={5} metric="allocated" scanFinished pro appVersion="0.1.0" onOpenSettings={noop} onBack={noop} onError={noop} />)
+    expect(await screen.findByText('Storage report: Projects')).toBeTruthy()
+    expect(screen.getByText('big.iso')).toBeTruthy()
+    expect(screen.getByText('Developer files')).toBeTruthy()
+    // Only the suggestion inside Projects (2 GB) counts, not the one elsewhere (9 GB).
+    const row = screen.getByText('Developer files').closest('tr')!
+    expect(row.textContent).toMatch(/1\.86 GB|2\.00 GB/)
+    fireEvent.click(screen.getByText('Print or save as PDF'))
+    expect(api.printReport).toHaveBeenCalled()
   })
 })

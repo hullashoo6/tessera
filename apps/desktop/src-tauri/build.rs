@@ -38,6 +38,7 @@ const COMMANDS: &[&str] = &[
     "show_log_file",
     "background_settings",
     "set_background_settings",
+    "print_report",
 ];
 
 fn main() {

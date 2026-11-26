@@ -270,6 +270,8 @@ export const api = {
   moveLeftovers: (bundleId: string) => invoke<[number, number]>('move_leftovers', { bundleId }),
   exportReport: (scanId: number, kind: 'largest' | 'folder', under: number | null, metric: Metric) =>
     invoke<string | null>('export_report', { scanId, kind, under, metric }),
+  /** Opens the system print dialog for the report on screen (Pro). */
+  printReport: () => invoke<void>('print_report'),
   putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),
   clearMovedHistory: () => invoke<void>('clear_moved_history'),
   onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>

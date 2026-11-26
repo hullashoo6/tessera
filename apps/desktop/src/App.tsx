@@ -10,6 +10,7 @@ import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
 import { SettingsView } from './components/SettingsView'
+import { Report } from './components/Report'
 import { Restore } from './components/Restore'
 import { Search } from './components/Search'
 import { Suggestions } from './components/Suggestions'
@@ -19,7 +20,19 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import { setHighContrast, type Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'history' | 'apps' | 'settings'
+type View =
+  | 'overview'
+  | 'suggestions'
+  | 'duplicates'
+  | 'map'
+  | 'largest'
+  | 'search'
+  | 'cleanup'
+  | 'restore'
+  | 'history'
+  | 'apps'
+  | 'settings'
+  | 'report'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 const CONTRAST_QUERY = '(prefers-contrast: more), (forced-colors: active)'
@@ -363,6 +376,9 @@ export function App() {
               >
                 Export CSV
               </button>
+              <button className="btn" onClick={() => setView('report')} title="A printable summary of this folder; save it as a PDF from the print dialog">
+                Report
+              </button>
               <button className="btn" onClick={() => setView('overview')}>
                 New scan
               </button>
@@ -515,6 +531,19 @@ export function App() {
               onOpenCleanup={() => setView('cleanup')}
               onError={onError}
               onDone={setToast}
+            />
+          )}
+          {view === 'report' && scanId !== null && (
+            <Report
+              scanId={scanId}
+              viewRoot={viewRoot}
+              metric={settings.metric}
+              scanFinished={status?.phase === 'complete'}
+              pro={entitlement?.pro ?? false}
+              appVersion={info.version}
+              onOpenSettings={() => setView('settings')}
+              onBack={() => setView('map')}
+              onError={onError}
             />
           )}
           {view === 'restore' && <Restore os={info.os} onDone={setToast} onError={onError} />}

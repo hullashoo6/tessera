@@ -41,6 +41,7 @@
     "allow-log-error",
     "allow-show-log-file",
     "allow-background-settings",
-    "allow-set-background-settings"
+    "allow-set-background-settings",
+    "allow-print-report"
   ]
 }

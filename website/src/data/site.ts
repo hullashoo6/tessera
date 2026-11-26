@@ -45,6 +45,7 @@ export const proFeatures: Feature[] = [
   { name: 'Free up space from OneDrive and iCloud files, keeping them in the cloud', status: 'available' },
   { name: 'Storage history and growth between scans', status: 'in development' },
   { name: 'Exportable reports (CSV)', status: 'available' },
+  { name: 'Printable reports you can save as PDF', status: 'available' },
 ]
 
 export type PlatformId = 'windows-x64' | 'mac-arm64' | 'mac-x64'

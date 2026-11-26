@@ -29,6 +29,11 @@ How far each item has been verified is recorded in STATUS.md.
   folder names, that can be attached to a support email (Settings >
   Diagnostics). Nothing is sent automatically.
 - History chart shows its scale and dates.
+- Printable report (Pro): a one-page summary of any folder from the storage
+  map, which can be printed or saved as a PDF from the system print dialog.
+- Smaller windows: Tessera now fits small or highly scaled screens (down to
+  800 x 480 points) and opens at a size that fits the screen.
+- Microsoft Store copies leave updates to the Store.
 - High contrast: Windows contrast themes and the Mac's "Increase contrast"
   setting give stronger text and lines, outlines for states otherwise shown
   only by colour, and a high-contrast storage map (labels at least 7:1).
