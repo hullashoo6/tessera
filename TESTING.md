@@ -50,8 +50,55 @@ Unit test: `platform::windows::tests::verbatim_forms` (long-path prefixes).
 * The permission test uses `icacls` on Windows and `chmod 000` on macOS; it
   skips (with a note) when running as root.
 
+`scan_target_disappearing_mid_scan_finishes_cleanly`: the scanned folder is
+deleted while the scan runs; the scan ends normally with a consistent tree.
+
+## Other automated checks
+
+| Where | What |
+|---|---|
+| `crates/insights/tests/rules.rs` | Every Smart Scan rule fires only with its evidence; Windows and Mac locations are both checked on every system; large old files skip app data, hidden folders and app libraries |
+| `apps/desktop/src-tauri` unit tests | Launch arguments (drive quoting, trailing backslash, relative paths); diagnostics log never contains paths; background-mode thresholds and settings; update version comparison |
+| `apps/desktop/src/__tests__` (Vitest) | Screen behaviour with test data: Cleanup, Smart Scan, Duplicates, Restore, Apps, licence, History, error safety net, Welcome, Background setting, Report; storage-map label contrast for every colour |
+| `tessera-cli soak --max-peak-growth-mib 8` | Memory does not accumulate over 10 scans (CI and `tools/check.ps1`) |
+| `tessera-cli ui-bench --check` | Every request the screens make answers within its time budget |
+| `tools/release.ps1` | Installed build: right-click entries, window appears and stays responsive, local log, closing behaviour |
+
+Run all of them on the laptop with `powershell -File tools\check.ps1`.
+
+## Manual checks per installer (cannot be automated)
+
+Use disposable files only (a folder under `.fixtures\` with a
+`.tessera-fixture` marker), never personal files.
+
+Both systems:
+1. Install; open Tessera; the welcome screen appears on a fresh account.
+2. Right-click a disposable folder: File Explorer > Show more options > Scan
+   with Tessera (Windows), or Finder > Open With > Tessera (Mac). Repeat with
+   Tessera already open.
+3. Drag a disposable folder onto the window; then drag a single file (it
+   should say to drop a folder).
+4. Smart Scan, Duplicates, Largest files, Search on the disposable folder.
+5. Cleanup (Pro, test licence key): move two disposable files to the Recycle
+   Bin / Trash, Put back one from Restore, check contents are identical.
+6. Storage map > Report > Print or save as PDF: save a PDF and open it.
+7. Export CSV through the save dialog and open the file.
+8. Settings > Background: turn on keep-running; close the window; the icon
+   is in the notification area / menu bar with free space; Open, Scan main
+   drive and Quit work. The first close shows a one-time notification. Turn it
+   off again.
+9. Settings > Diagnostics > Show log file: the log opens; it contains no file
+   or folder names.
+10. Uninstall; on Windows the right-click entries are gone.
+
+Mac only: the one-time Privacy & Security "Open Anyway" step from the DMG
+window; Dock-icon drop of a folder; iCloud Drive free-up; app uninstall with
+leftovers.
+
 ## Not yet covered (tracked in STATUS.md)
 
-External-drive disconnection mid-scan, mount-boundary behaviour on macOS,
-APFS clones, cloud placeholder files (needs a real OneDrive/iCloud account on
-a test machine), and directories with millions of entries in a single folder.
+External-drive disconnection mid-scan (the folder-disappears test covers the
+scanner side), mount-boundary behaviour on macOS, APFS clones, cloud
+placeholder files end to end (needs OneDrive or iCloud syncing on a test
+machine), directories with millions of entries in a single folder, and
+everything on real Mac hardware.
