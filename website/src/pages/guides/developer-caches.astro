@@ -1,0 +1,41 @@
+---
+import Base from '../../layouts/Base.astro'
+import Prose from '../../components/Prose.astro'
+---
+
+<Base title="Clearing node_modules and developer caches safely | Tessera guides" description="Which developer folders can be removed safely (node_modules, build output, package caches, Xcode and Android data) and how each one comes back.">
+  <Prose title="Clearing node_modules and other developer caches safely" intro="Developer tools are some of the biggest space users on a computer. Most of what they store can be rebuilt or downloaded again; the trick is knowing which is which.">
+    <h2>Rebuilt from your project</h2>
+    <ul>
+      <li><strong>node_modules</strong> next to a <em>package.json</em>: <code>npm install</code> (or <code>npm ci</code>, <code>pnpm install</code>, <code>yarn</code>) recreates it from the lock file. Old projects you rarely open are the best candidates.</li>
+      <li><strong>Rust's target folder</strong> next to a <em>Cargo.toml</em>: <code>cargo clean</code> removes it and <code>cargo build</code> recreates it.</li>
+      <li><strong>Web build caches</strong> such as .next, .nuxt, .turbo, .parcel-cache and .svelte-kit: rebuilt on the next build.</li>
+      <li><strong>Python caches</strong> (__pycache__, .pytest_cache, .mypy_cache): recreated automatically.</li>
+      <li><strong>Unity's Library folder</strong> and <strong>Unreal Engine's DerivedDataCache and Intermediate folders</strong>: the editor rebuilds them, which can take a while the next time you open the project.</li>
+    </ul>
+    <p>A <strong>Python virtual environment</strong> (.venv) can be recreated too, but only if the project lists its requirements. Check for a requirements or lock file first.</p>
+
+    <h2>Downloaded again when needed</h2>
+    <ul>
+      <li>Package caches for npm, pip, Yarn, Gradle, Maven, NuGet and Cargo.</li>
+      <li>Xcode's <strong>DerivedData</strong> and <strong>iOS DeviceSupport</strong> folders.</li>
+      <li>Android emulator <strong>system images</strong>, which Android Studio's SDK Manager can download again.</li>
+    </ul>
+
+    <h2>Use the tool's own clean-up</h2>
+    <ul>
+      <li><strong>Docker</strong>: its data lives in one large disk image. Moving files will not help; use <code>docker system prune</code> or Docker Desktop's own settings.</li>
+      <li><strong>iOS simulators</strong>: remove unused ones in Xcode (Window &gt; Devices and Simulators) or with <code>xcrun simctl delete unavailable</code>.</li>
+      <li><strong>Android virtual devices</strong>: remove them in Android Studio's Device Manager so its list stays correct.</li>
+    </ul>
+
+    <h2>Keep unless you are sure</h2>
+    <ul>
+      <li><strong>Xcode archives</strong>: needed to investigate crash reports from app versions you have shipped.</li>
+      <li><strong>Downloaded AI models</strong> (Ollama, LM Studio, Hugging Face): large and re-downloadable, but only remove the ones you no longer use.</li>
+    </ul>
+
+    <h2>How Tessera helps</h2>
+    <p>Tessera's Smart Scan only suggests a folder when there is evidence for it: node_modules counts only with a package.json beside it, a target folder only with a Cargo.toml, a Unity cache only inside a real Unity project. Each suggestion says why it was flagged and how it comes back, and app-managed data such as Docker's points you to the right tool instead.</p>
+  </Prose>
+</Base>

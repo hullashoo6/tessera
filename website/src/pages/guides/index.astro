@@ -1,0 +1,25 @@
+---
+import Base from '../../layouts/Base.astro'
+import Prose from '../../components/Prose.astro'
+
+const guides = [
+  ['/guides/free-up-space-windows', 'What is using space on my Windows PC?', 'Where the space goes on Windows 11, what Windows can clean for you, and what never to delete by hand.'],
+  ['/guides/free-up-space-mac', 'What is using space on my Mac?', 'Where the space goes on macOS, what macOS can clean for you, and what to leave alone.'],
+  ['/guides/developer-caches', 'Clearing node_modules and developer caches safely', 'Which developer folders come back on their own, and which need the tool’s own clean-up.'],
+  ['/guides/cloud-files', 'Free up OneDrive and iCloud Drive space without deleting files', 'Remove the copy on your computer and keep the file in the cloud.'],
+]
+---
+
+<Base title="Guides | Tessera" description="Practical guides to finding what fills your storage and freeing space safely on Windows and Mac.">
+  <Prose title="Guides" intro="Practical, tool-neutral advice for finding what fills your storage and getting space back safely, on Windows and Mac.">
+    <ul>
+      {guides.map(([href, title, blurb]) => (
+        <li>
+          <a href={href}><strong>{title}</strong></a>
+          <br />
+          {blurb}
+        </li>
+      ))}
+    </ul>
+  </Prose>
+</Base>

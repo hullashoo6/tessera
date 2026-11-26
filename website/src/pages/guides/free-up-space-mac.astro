@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro'
+import Prose from '../../components/Prose.astro'
+---
+
+<Base title="What is using space on my Mac? | Tessera guides" description="Find out what fills your Mac's storage and free space safely, using macOS's own tools first and knowing what to leave alone.">
+  <Prose title="What is using space on my Mac?" intro="A practical guide for macOS: where the space usually goes, what macOS can clean up for you, and what to leave alone.">
+    <h2>1. Let macOS help first</h2>
+    <p>Open the Apple menu, then <strong>System Settings &gt; General &gt; Storage</strong>. macOS shows your storage by category and offers recommendations such as storing files in iCloud, optimising storage for films and TV, and emptying the Trash automatically after 30 days. Each category has an information button that lists its largest items.</p>
+    <p>"System Data" is a catch-all for caches, logs, local Time Machine snapshots and other files macOS manages. It shrinks on its own as macOS needs space, so there is usually no need to chase it.</p>
+
+    <h2>2. Find the big folders</h2>
+    <p>For the exact folders and files, use a disk space analyser. Tessera draws every folder to scale on a map and ranks your largest files. On a Mac, the usual suspects are:</p>
+    <ul>
+      <li><strong>Downloads</strong>: disk images (.dmg), installers (.pkg), videos and archives.</li>
+      <li><strong>Screen recordings</strong>, which macOS saves to the Desktop by default.</li>
+      <li><strong>iPhone and iPad backups</strong>. Manage them in Finder: select your device in the sidebar, then <em>Manage Backups</em>.</li>
+      <li><strong>macOS installers</strong> such as "Install macOS ..." in Applications, left after an upgrade. They can be downloaded again from the App Store.</li>
+      <li><strong>Developer data</strong>: Xcode's DerivedData, simulators and archives, and project folders such as node_modules (see the <a href="/guides/developer-caches">developer guide</a>).</li>
+    </ul>
+
+    <h2>3. Remove things in a way you can undo</h2>
+    <p>Move items to the <strong>Trash</strong> rather than deleting them immediately, so a mistake can be put back. Space is only freed once the Trash is emptied. Tessera never deletes anything itself: you review what you chose, it moves those items to the Trash, and its Restore page can put them back.</p>
+
+    <h2>Leave these alone</h2>
+    <ul>
+      <li><strong>The System folder and /Library</strong>. macOS protects them, and they are not where your space went.</li>
+      <li><strong>The contents of your Photos and Music libraries</strong>. They look like folders but belong to their apps; remove photos or songs from inside the app instead.</li>
+      <li><strong>Apps</strong>: drag an app to the Trash, or use its own uninstaller if it has one. Tessera can do this for you and also finds the app's leftover files in your Library folder.</li>
+    </ul>
+
+    <h2>Why the numbers may not add up</h2>
+    <p>Local Time Machine snapshots and purgeable space are counted differently by different tools, and some folders need Full Disk Access to be read. Tessera shows how much space it could not attribute to the files it scanned instead of hiding the difference.</p>
+  </Prose>
+</Base>

@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro'
+import Prose from '../../components/Prose.astro'
+---
+
+<Base title="Free up OneDrive and iCloud Drive space without deleting files | Tessera guides" description="How to remove the copy of a cloud file from your computer while keeping it in OneDrive or iCloud Drive, and how to tell which files are taking space.">
+  <Prose title="Free up OneDrive and iCloud Drive space without deleting your files" intro="Files in OneDrive and iCloud Drive can live in the cloud only, or also take space on your computer. You can remove the local copy and keep the file.">
+    <h2>OneDrive on Windows</h2>
+    <p>With Files On-Demand (on by default), each file shows its state in File Explorer: a cloud icon means online-only, a green tick means a copy is on this computer.</p>
+    <ul>
+      <li>Right-click a file or folder in your OneDrive folder and choose <strong>Free up space</strong>. The file stays in OneDrive and downloads again when you open it.</li>
+      <li>Files marked <strong>Always keep on this device</strong> are pinned on purpose; freeing space leaves them alone until you change that.</li>
+      <li>Storage Sense (Settings &gt; System &gt; Storage) can make files online-only automatically when you have not opened them for a while.</li>
+    </ul>
+
+    <h2>iCloud Drive on a Mac</h2>
+    <ul>
+      <li>In Finder, right-click a file or folder in iCloud Drive and choose <strong>Remove Download</strong>. It stays in iCloud and downloads again when you open it.</li>
+      <li>Turning on <strong>Optimize Mac Storage</strong> in iCloud's settings lets macOS remove downloads of files you have not used recently when space runs low.</li>
+    </ul>
+
+    <h2>Never delete to free space</h2>
+    <p>Deleting a file from a synced folder deletes it from the cloud and from your other devices too. To get the space back while keeping the file, always use Free up space or Remove Download.</p>
+
+    <h2>How Tessera helps</h2>
+    <p>Tessera reads cloud folders without downloading anything: online-only files are never opened. Its Smart Scan lists the cloud files that do take space on this computer, largest first, and Tessera Pro can free up space for them using the same mechanism as File Explorer and Finder, so they stay in the cloud.</p>
+  </Prose>
+</Base>

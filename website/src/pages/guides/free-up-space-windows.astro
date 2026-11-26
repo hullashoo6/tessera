@@ -1,0 +1,37 @@
+---
+import Base from '../../layouts/Base.astro'
+import Prose from '../../components/Prose.astro'
+---
+
+<Base title="What is using space on my Windows PC? | Tessera guides" description="Find out what fills your C: drive and free space safely on Windows 11, using Windows' own tools first and knowing what never to delete by hand.">
+  <Prose title="What is using space on my Windows PC?" intro="A practical guide for Windows 11: where the space usually goes, what Windows can clean up for you, and what you should never delete by hand.">
+    <h2>1. Let Windows clean what it manages</h2>
+    <p>Open <strong>Settings &gt; System &gt; Storage</strong>. Windows lists your largest categories and offers <strong>Cleanup recommendations</strong>. Under <strong>Temporary files</strong> you can remove things Windows itself manages, such as <em>Windows Update Cleanup</em> and, after an upgrade, <em>Previous Windows installation(s)</em>, which can be tens of gigabytes. Only remove the previous installation if you are happy with the current version of Windows: it is what lets you go back.</p>
+    <p><strong>Storage Sense</strong>, on the same page, can empty the Recycle Bin and delete temporary files on a schedule. It can also clear your Downloads folder, which is off by default; leave it off unless you never keep anything there.</p>
+
+    <h2>2. Find the big folders</h2>
+    <p>Windows' categories are broad. To see exactly which folders and files are large, use a disk space analyser. Tessera draws every folder to scale on a map, so the biggest space users stand out at a glance, and its <strong>Largest files</strong> list ranks individual files. The usual suspects are:</p>
+    <ul>
+      <li><strong>Downloads</strong>: installers, videos and archives you no longer need.</li>
+      <li><strong>Videos and screen recordings</strong>: the Xbox Game Bar saves to <em>Videos\Captures</em> and the Snipping Tool to <em>Videos\Screen Recordings</em>.</li>
+      <li><strong>Old iPhone or iPad backups</strong> made by iTunes or Apple Devices.</li>
+      <li><strong>Developer folders</strong> such as node_modules and build output (see the <a href="/guides/developer-caches">developer guide</a>).</li>
+      <li><strong>Browser caches</strong>, which browsers rebuild as you browse.</li>
+    </ul>
+
+    <h2>3. Remove things in a way you can undo</h2>
+    <p>Move files to the <strong>Recycle Bin</strong> rather than deleting them permanently, so a mistake can be put back. Remember that space is only freed when the Recycle Bin is emptied. Tessera never deletes anything itself: you review what you chose, it moves those items to the Recycle Bin, and its Restore page can put them back.</p>
+
+    <h2>Never delete these by hand</h2>
+    <ul>
+      <li><strong>pagefile.sys, hiberfil.sys and swapfile.sys</strong> in the root of C:. Windows manages them; to shrink the hibernation file, turn hibernation off in Windows instead.</li>
+      <li><strong>C:\Windows\WinSxS</strong> and anything else under C:\Windows. Use Windows' own clean-up above.</li>
+      <li><strong>Program Files</strong>. Uninstall apps from Settings &gt; Apps instead of deleting their folders.</li>
+      <li><strong>System Volume Information</strong> and <strong>$Recycle.Bin</strong>.</li>
+    </ul>
+    <p>Tessera protects all of these: it will not move them even if you ask.</p>
+
+    <h2>Why the numbers may not add up</h2>
+    <p>A drive also holds things no folder scan can see, such as restore points, other users' files and space the system reserves. Tessera shows that difference as space "not attributed to scanned files" instead of hiding it.</p>
+  </Prose>
+</Base>
