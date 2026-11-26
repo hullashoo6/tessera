@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["crates/scan", "crates/testkit", "crates/cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "LicenseRef-Proprietary"
+publish = false
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+debug = "line-tables-only"
+
+# Benchmarks use the release profile; tests stay fast to compile.
+[profile.test]
+opt-level = 1
