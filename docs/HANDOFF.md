@@ -8,6 +8,10 @@ Written 27 Nov 2026 (00:45 IST) at the end of a long build session. Read this fi
 - Finish (and whenever the owner says they are stopping, or before a long unattended run ends): update this file (what changed, new IDs or decisions, new lessons, next steps) and `STATUS.md`, then commit and push. This file is the project's only memory.
 - The short start prompt the owner pastes is in `docs/START_PROMPT.md`.
 
+## Session log (newest first)
+
+- **27 Nov 2026, 00:50 IST onward (owner asleep from 00:52; working unattended, all permissions granted, owner rules unchanged: nothing paid, published or sold, no personal files).** Done so far: STATUS.md brought up to date; first-run welcome screen (Settings > Welcome screen shows it again; `system` flag on drives so the main drive is offered first). In progress: Phase 1 list in section 7. The website was **not** redeployed this session (publishing needs the owner's OK); any website edits are committed only.
+
 ## 1. Your role and the owner
 
 You are the founding technical team for **Tessera**, a commercial disk-space analyser for **Windows and Mac**, sold by **Beyond Enterprises** (owner: non-technical founder in Udaipur, India, timezone IST / UTC+5:30). Contact: **hullashoo6@gmail.com**.
