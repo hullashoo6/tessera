@@ -21,6 +21,8 @@ pub enum Group {
     Downloads,
     /// Files kept in a cloud service that also take space on this computer.
     Cloud,
+    /// The person's own backups and recordings: worth a look, never automatic.
+    Backups,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,16 +58,26 @@ pub struct Places {
     pub local_app_data: Option<PathBuf>,
     /// Cloud sync folders (OneDrive, iCloud Drive).
     pub cloud_roots: Vec<PathBuf>,
+    /// The drive the system runs from: `C:\` (or wherever Windows is) or `/`.
+    pub system_root: Option<PathBuf>,
 }
 
 impl Places {
     pub fn for_this_user() -> Self {
         let env = |k: &str| std::env::var_os(k).map(PathBuf::from);
+        let system_root = if cfg!(windows) {
+            std::env::var("SystemDrive")
+                .ok()
+                .map(|d| PathBuf::from(format!("{}\\", d.trim_end_matches('\\'))))
+        } else {
+            Some(PathBuf::from("/"))
+        };
         Places {
             home: env("USERPROFILE").or_else(|| env("HOME")),
             temp: Some(std::env::temp_dir()),
             local_app_data: env("LOCALAPPDATA"),
             cloud_roots: Vec::new(),
+            system_root,
         }
     }
 }
@@ -86,6 +98,37 @@ fn sibling(tree: &Tree, id: NodeId, file: &str) -> bool {
     let p = tree.node(id).parent;
     p != tessera_scan::NO_NODE && has_child(tree, p, file)
 }
+
+/// A file beside `id` whose name ends with `suffix` (lower case).
+fn sibling_ending(tree: &Tree, id: NodeId, suffix: &str) -> bool {
+    let p = tree.node(id).parent;
+    p != tessera_scan::NO_NODE
+        && tree
+            .children(p)
+            .any(|c| tree.node(c).kind == NodeKind::File && name(tree, c).ends_with(suffix))
+}
+
+/// Folders beside `id` with all of these names (lower case).
+fn sibling_dirs(tree: &Tree, id: NodeId, dirs: &[&str]) -> bool {
+    let p = tree.node(id).parent;
+    p != tessera_scan::NO_NODE
+        && dirs.iter().all(|d| {
+            tree.children(p)
+                .any(|c| tree.node(c).kind == NodeKind::Dir && name(tree, c) == *d)
+        })
+}
+
+/// Installers people download and rarely need again once the app is in.
+const INSTALLER_EXTENSIONS: [&str; 8] = [
+    ".exe",
+    ".msi",
+    ".msix",
+    ".msixbundle",
+    ".appx",
+    ".appxbundle",
+    ".dmg",
+    ".pkg",
+];
 
 struct Builder<'a> {
     tree: &'a Tree,
@@ -136,6 +179,66 @@ impl Builder<'_> {
             && self.tree.node(id).kind == NodeKind::Dir
         {
             self.add(id, group, label, safety, reason.to_string());
+        }
+    }
+
+    fn children_at(&self, path: Option<PathBuf>) -> Vec<NodeId> {
+        path.and_then(|p| find_by_path(self.tree, &p))
+            .filter(|&d| self.tree.node(d).kind == NodeKind::Dir)
+            .map(|d| self.tree.children(d).collect())
+            .unwrap_or_default()
+    }
+
+    /// A browser's cache folders inside each of its profiles under `base`.
+    fn profile_caches(&mut self, base: Option<PathBuf>, browser: &str, caches: &[&str]) {
+        for profile in self.children_at(base) {
+            let found: Vec<NodeId> = self
+                .tree
+                .children(profile)
+                .filter(|&c| {
+                    caches
+                        .iter()
+                        .any(|n| self.tree.name(c).to_string_lossy() == *n)
+                })
+                .collect();
+            for c in found {
+                self.add(c, Group::Junk, "Browser cache", Safety::Regenerable,
+                    format!("{browser} keeps copies of websites here to load them faster; it rebuilds them. Close {browser} first."));
+            }
+        }
+    }
+
+    /// Each folder directly inside `dir`, as its own suggestion.
+    fn each_folder_in(
+        &mut self,
+        dir: Option<PathBuf>,
+        group: Group,
+        label: &'static str,
+        safety: Safety,
+        reason: &str,
+    ) {
+        for c in self.children_at(dir) {
+            if self.tree.node(c).kind == NodeKind::Dir {
+                self.add(c, group, label, safety, reason.to_string());
+            }
+        }
+    }
+
+    /// Files directly inside `dir` that `keep` accepts, as separate suggestions.
+    fn files_in(
+        &mut self,
+        dir: Option<PathBuf>,
+        keep: impl Fn(&str, i64) -> bool,
+        group: Group,
+        label: &'static str,
+        safety: Safety,
+        reason: &str,
+    ) {
+        for c in self.children_at(dir) {
+            let n = self.tree.node(c);
+            if n.kind == NodeKind::File && keep(&name(self.tree, c), n.modified) {
+                self.add(c, group, label, safety, reason.to_string());
+            }
         }
     }
 
@@ -209,6 +312,41 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
             "Downloaded Python packages; pip fetches them again when needed.",
         ),
         (
+            "Library/Caches/pip",
+            "pip package cache",
+            "Downloaded Python packages; pip fetches them again when needed.",
+        ),
+        (
+            "Library/Caches/Yarn",
+            "Yarn package cache",
+            "Downloaded JavaScript packages; Yarn fetches them again when needed.",
+        ),
+        (
+            "AppData/Local/Unity/cache",
+            "Unity package cache",
+            "Packages Unity downloaded; it downloads them again when a project needs them.",
+        ),
+        (
+            "Library/Unity/cache",
+            "Unity package cache",
+            "Packages Unity downloaded; it downloads them again when a project needs them.",
+        ),
+        (
+            "AppData/Local/Android/Sdk/system-images",
+            "Android emulator images",
+            "System images for Android emulators; Android Studio's SDK Manager downloads them again if needed.",
+        ),
+        (
+            "Library/Android/sdk/system-images",
+            "Android emulator images",
+            "System images for Android emulators; Android Studio's SDK Manager downloads them again if needed.",
+        ),
+        (
+            "Library/Developer/Xcode/iOS DeviceSupport",
+            "Xcode device support files",
+            "Debug files copied from iPhones and iPads; Xcode copies them again when a device is connected.",
+        ),
+        (
             ".cache/pip",
             "pip package cache",
             "Downloaded Python packages; pip fetches them again when needed.",
@@ -260,34 +398,128 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
         b.at(join(home, rel), Group::Downloads, label, Safety::Review,
             "Downloaded AI models are large and can be downloaded again, but only remove models you no longer use.");
     }
-    b.at(
+    for dumps in [
         join(lad, "CrashDumps"),
-        Group::Junk,
-        "Crash reports",
-        Safety::Regenerable,
-        "Memory dumps saved when apps crashed. Only useful when reporting a crash to a developer.",
-    );
+        join(home, "Library/Logs/DiagnosticReports"),
+    ] {
+        b.at(
+            dumps,
+            Group::Junk,
+            "Crash reports",
+            Safety::Regenerable,
+            "Reports saved when apps crashed. Only useful when reporting a crash to a developer.",
+        );
+    }
 
-    // Browser caches (each browser profile).
+    // Browser caches, in each browser profile. Windows keeps them in one
+    // folder per browser; macOS splits them between Caches and Application
+    // Support.
+    let chromium = ["Cache", "Code Cache", "GPUCache"];
     for (browser, rel) in [
         ("Chrome", "Google/Chrome/User Data"),
         ("Edge", "Microsoft/Edge/User Data"),
         ("Brave", "BraveSoftware/Brave-Browser/User Data"),
     ] {
-        if let Some(ud) = join(lad, rel).and_then(|p| find_by_path(tree, &p)) {
-            let profiles: Vec<NodeId> = tree.children(ud).collect();
-            for p in profiles {
-                for cache in ["Cache", "Code Cache", "GPUCache"] {
-                    if let Some(c) = tree
-                        .children(p)
-                        .find(|&c| tree.name(c).to_string_lossy() == cache)
-                    {
-                        b.add(c, Group::Junk, "Browser cache", Safety::Regenerable,
-                            format!("{browser} keeps copies of websites here to load them faster; it rebuilds them. Close {browser} first."));
-                    }
-                }
-            }
+        b.profile_caches(join(lad, rel), browser, &chromium);
+    }
+    for (browser, rel) in [
+        ("Chrome", "Google/Chrome"),
+        ("Edge", "Microsoft Edge"),
+        ("Brave", "BraveSoftware/Brave-Browser"),
+    ] {
+        b.profile_caches(
+            join(home, &format!("Library/Caches/{rel}")),
+            browser,
+            &chromium,
+        );
+        b.profile_caches(
+            join(home, &format!("Library/Application Support/{rel}")),
+            browser,
+            &chromium,
+        );
+    }
+    b.profile_caches(
+        join(lad, "Mozilla/Firefox/Profiles"),
+        "Firefox",
+        &["cache2"],
+    );
+    b.profile_caches(
+        join(home, "Library/Caches/Firefox/Profiles"),
+        "Firefox",
+        &["cache2"],
+    );
+
+    // Developer tools that manage their own data.
+    b.each_folder_in(join(home, ".android/avd"), Group::Developer, "Android virtual device", Safety::UseAppTool,
+        "An Android emulator with its saved data. Remove devices you no longer use in Android Studio's Device Manager, so its list stays correct.");
+    b.at(join(home, "Library/Developer/CoreSimulator/Devices"), Group::Developer, "iOS simulators", Safety::UseAppTool,
+        "Simulated iPhones and iPads with their data. Remove unused ones in Xcode (Window > Devices and Simulators) or with `xcrun simctl delete unavailable`.");
+    b.at(join(home, "Library/Developer/Xcode/Archives"), Group::Developer, "Xcode archives", Safety::Review,
+        "Builds made with Xcode's Archive command. Keep the ones for app versions you may still need to investigate.");
+
+    // Leftovers from installing or upgrading the operating system.
+    let sys = &places.system_root;
+    b.at(join(sys, "Windows.old"), Group::Junk, "Previous Windows installation", Safety::UseAppTool,
+        "Your previous version of Windows, kept after an upgrade so you can go back. Remove it with Settings > System > Storage > Temporary files > Previous Windows installation(s).");
+    b.at(join(sys, "Windows/SoftwareDistribution/Download"), Group::Junk, "Windows Update downloads", Safety::UseAppTool,
+        "Update files Windows downloaded. Windows clears them itself; to do it now, use Settings > System > Storage > Temporary files > Windows Update Cleanup.");
+    for app in b.children_at(join(sys, "Applications")) {
+        let n = name(tree, app);
+        if tree.node(app).kind == NodeKind::Dir
+            && n.starts_with("install macos")
+            && n.ends_with(".app")
+        {
+            b.add(app, Group::Downloads, "macOS installer", Safety::Redownloadable,
+                "An installer for macOS from the App Store. After upgrading it is no longer needed, and it can be downloaded again.".into());
         }
+    }
+
+    // Installers left in Downloads for over a month.
+    b.files_in(
+        join(home, "Downloads"),
+        |n, modified| {
+            INSTALLER_EXTENSIONS.iter().any(|e| n.ends_with(e))
+                && modified != i64::MIN
+                && now - modified >= 30 * DAY
+        },
+        Group::Downloads,
+        "Old installer",
+        Safety::Review,
+        "An installer downloaded over a month ago. Once an app is installed its installer is usually not needed, and it can be downloaded again from the publisher.",
+    );
+
+    // The person's own backups and recordings.
+    for backups in [
+        join(home, "AppData/Roaming/Apple Computer/MobileSync/Backup"),
+        join(home, "Apple/MobileSync/Backup"),
+        join(home, "Library/Application Support/MobileSync/Backup"),
+    ] {
+        b.each_folder_in(backups, Group::Backups, "iPhone or iPad backup", Safety::Review,
+            "A backup of an iPhone or iPad. If it is for a device you no longer use, it can usually go. You can also manage backups in Finder on a Mac, or in Apple Devices or iTunes on Windows.");
+    }
+    let recording = "A screen recording. Keep it if you still need it; recordings are often large.";
+    for dir in [
+        join(home, "Videos/Captures"),
+        join(home, "Videos/Screen Recordings"),
+    ] {
+        b.files_in(
+            dir,
+            |_, _| true,
+            Group::Backups,
+            "Screen recording",
+            Safety::Review,
+            recording,
+        );
+    }
+    for dir in [join(home, "Desktop"), join(home, "Movies")] {
+        b.files_in(
+            dir,
+            |n, _| n.starts_with("screen recording") && n.ends_with(".mov"),
+            Group::Backups,
+            "Screen recording",
+            Safety::Review,
+            recording,
+        );
     }
 
     // Temporary files untouched for a week.
@@ -312,6 +544,10 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
                 "Build output of a JavaScript project; rebuilt on the next build.".into()),
             "__pycache__" | ".pytest_cache" | ".mypy_cache" => b.add(i, Group::Developer, "Python cache", Safety::Regenerable,
                 "Python's compiled-file and tool caches; recreated automatically.".into()),
+            "library" if sibling_dirs(tree, i, &["assets", "projectsettings"]) => b.add(i, Group::Developer, "Unity project cache", Safety::Regenerable,
+                "Unity's imported-asset cache for the project beside it (it has Assets and ProjectSettings); Unity rebuilds it when the project is next opened, which can take a while.".into()),
+            "deriveddatacache" | "intermediate" if sibling_ending(tree, i, ".uproject") => b.add(i, Group::Developer, "Unreal Engine build cache", Safety::Regenerable,
+                "Build and shader cache of the Unreal Engine project beside it; the editor rebuilds it.".into()),
             _ => {}
         }
     }

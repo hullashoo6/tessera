@@ -163,7 +163,7 @@ export interface CleanupReport {
 
 export interface Suggestion {
   id: number
-  group: 'junk' | 'developer' | 'downloads' | 'cloud'
+  group: 'junk' | 'developer' | 'downloads' | 'backups' | 'cloud'
   label: string
   reason: string
   safety: 'regenerable' | 'redownloadable' | 'review' | 'useAppTool' | 'staysInCloud'

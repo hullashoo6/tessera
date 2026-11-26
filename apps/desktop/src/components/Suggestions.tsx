@@ -17,7 +17,12 @@ interface Props {
 const GROUPS: { key: Suggestion['group']; title: string; blurb: string }[] = [
   { key: 'junk', title: 'Junk', blurb: 'Temporary files, caches and crash reports that apps recreate when needed.' },
   { key: 'developer', title: 'Developer files', blurb: 'Installed packages, build output and package caches that tools can rebuild or download again.' },
-  { key: 'downloads', title: 'Large downloads', blurb: 'Big downloaded data you may no longer use. Look before removing.' },
+  { key: 'downloads', title: 'Large downloads', blurb: 'Big downloaded data and old installers you may no longer use. Look before removing.' },
+  {
+    key: 'backups',
+    title: 'Backups and recordings',
+    blurb: 'Phone backups and screen recordings that are yours to keep or remove. Nothing here is added to cleanup automatically.',
+  },
   {
     key: 'cloud',
     title: 'Cloud files on this computer',
