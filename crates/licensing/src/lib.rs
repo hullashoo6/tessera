@@ -23,7 +23,11 @@ pub const REVALIDATE_AFTER_SECONDS: i64 = 3 * 86_400;
 pub const PRO_PRODUCT_ID: Option<&str> = None;
 
 pub fn base_url() -> &'static str {
-    if LIVE_MODE_APPROVED { "https://live.dodopayments.com" } else { "https://test.dodopayments.com" }
+    if LIVE_MODE_APPROVED {
+        "https://live.dodopayments.com"
+    } else {
+        "https://test.dodopayments.com"
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -37,7 +41,10 @@ pub enum Feature {
 
 /// Which features need Pro. Kept in one place so tiers stay configurable.
 pub fn requires_pro(f: Feature) -> bool {
-    matches!(f, Feature::Cleanup | Feature::DeveloperStorage | Feature::History | Feature::Reports)
+    matches!(
+        f,
+        Feature::Cleanup | Feature::DeveloperStorage | Feature::History | Feature::Reports
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,7 +83,14 @@ pub trait Store {
 }
 
 fn mask(key: &str) -> String {
-    let tail: String = key.chars().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect();
+    let tail: String = key
+        .chars()
+        .rev()
+        .take(4)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
     format!("•••• {tail}")
 }
 
@@ -84,22 +98,39 @@ fn mask(key: &str) -> String {
 pub fn entitlement(a: Option<&Activation>, now: i64) -> Entitlement {
     let test_mode = !LIVE_MODE_APPROVED;
     match a {
-        None => Entitlement { pro: false, summary: "Free".into(), customer_email: None, masked_key: None, test_mode },
+        None => Entitlement {
+            pro: false,
+            summary: "Free".into(),
+            customer_email: None,
+            masked_key: None,
+            test_mode,
+        },
         Some(a) => {
             let age = now - a.last_validated;
             let pro = (0..=GRACE_SECONDS).contains(&age);
             let summary = if pro {
                 "Pro".to_string()
             } else {
-                "Pro licence needs to be confirmed. Connect to the internet and open Tessera again.".to_string()
+                "Pro licence needs to be confirmed. Connect to the internet and open Tessera again."
+                    .to_string()
             };
-            Entitlement { pro, summary, customer_email: a.customer_email.clone(), masked_key: Some(mask(&a.key)), test_mode }
+            Entitlement {
+                pro,
+                summary,
+                customer_email: a.customer_email.clone(),
+                masked_key: Some(mask(&a.key)),
+                test_mode,
+            }
         }
     }
 }
 
 fn valid_key(key: &str) -> bool {
-    !key.is_empty() && key.len() <= 128 && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    !key.is_empty()
+        && key.len() <= 128
+        && key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 pub struct Licensing<T: Transport, S: Store> {
@@ -116,7 +147,10 @@ impl<T: Transport, S: Store> Licensing<T, S> {
     pub fn activate(&self, raw_key: &str, now: i64) -> Result<Entitlement, String> {
         let key = raw_key.trim();
         if !valid_key(key) {
-            return Err("That doesn't look like a licence key. Copy it exactly from your purchase email.".into());
+            return Err(
+                "That doesn't look like a licence key. Copy it exactly from your purchase email."
+                    .into(),
+            );
         }
         let url = format!("{}/licenses/activate", base_url());
         let (status, body) = self
@@ -130,8 +164,14 @@ impl<T: Transport, S: Store> Licensing<T, S> {
             422 => return Err("This key has reached its activation limit. Deactivate it on another computer first.".into()),
             _ => return Err("The licence server had a problem. Please try again later.".into()),
         }
-        let instance_id = body.get("id").and_then(Value::as_str).ok_or("The licence server sent an unexpected reply.")?;
-        let product_id = body.pointer("/product/product_id").and_then(Value::as_str).map(str::to_string);
+        let instance_id = body
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or("The licence server sent an unexpected reply.")?;
+        let product_id = body
+            .pointer("/product/product_id")
+            .and_then(Value::as_str)
+            .map(str::to_string);
         if let Some(expected) = PRO_PRODUCT_ID
             && product_id.as_deref() != Some(expected)
         {
@@ -141,8 +181,15 @@ impl<T: Transport, S: Store> Licensing<T, S> {
             key: key.to_string(),
             instance_id: instance_id.to_string(),
             product_id,
-            customer_email: body.pointer("/customer/email").and_then(Value::as_str).map(str::to_string),
-            mode: if LIVE_MODE_APPROVED { "live".into() } else { "test".into() },
+            customer_email: body
+                .pointer("/customer/email")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            mode: if LIVE_MODE_APPROVED {
+                "live".into()
+            } else {
+                "test".into()
+            },
             activated_at: now,
             last_validated: now,
         };
@@ -153,12 +200,17 @@ impl<T: Transport, S: Store> Licensing<T, S> {
     /// Re-confirms a stored licence if it is due. Network failures keep the
     /// current state (offline grace); a definite "not valid" removes it.
     pub fn refresh(&self, now: i64, force: bool) -> Entitlement {
-        let Some(mut a) = self.store.load() else { return entitlement(None, now) };
+        let Some(mut a) = self.store.load() else {
+            return entitlement(None, now);
+        };
         if !force && now - a.last_validated < REVALIDATE_AFTER_SECONDS {
             return entitlement(Some(&a), now);
         }
         let url = format!("{}/licenses/validate", base_url());
-        match self.transport.post(&url, &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id })) {
+        match self.transport.post(
+            &url,
+            &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id }),
+        ) {
             Ok((200, body)) if body.get("valid").and_then(Value::as_bool) == Some(true) => {
                 a.last_validated = now;
                 let _ = self.store.save(&a);
@@ -167,7 +219,8 @@ impl<T: Transport, S: Store> Licensing<T, S> {
             Ok((200, _)) | Ok((403, _)) | Ok((404, _)) => {
                 let _ = self.store.clear();
                 let mut e = entitlement(None, now);
-                e.summary = "Your Pro licence is no longer valid, so Tessera is back to Free.".into();
+                e.summary =
+                    "Your Pro licence is no longer valid, so Tessera is back to Free.".into();
                 e
             }
             _ => entitlement(Some(&a), now),
@@ -175,12 +228,23 @@ impl<T: Transport, S: Store> Licensing<T, S> {
     }
 
     pub fn deactivate(&self) -> Result<(), String> {
-        let Some(a) = self.store.load() else { return Ok(()) };
+        let Some(a) = self.store.load() else {
+            return Ok(());
+        };
         let url = format!("{}/licenses/deactivate", base_url());
-        match self.transport.post(&url, &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id })) {
+        match self.transport.post(
+            &url,
+            &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id }),
+        ) {
             Ok((200..=299, _)) | Ok((404, _)) => self.store.clear(),
-            Ok(_) => Err("The licence server refused to deactivate this computer. Please try again later.".into()),
-            Err(_) => Err("Tessera couldn't reach the licence server, so this computer is still activated.".into()),
+            Ok(_) => Err(
+                "The licence server refused to deactivate this computer. Please try again later."
+                    .into(),
+            ),
+            Err(_) => Err(
+                "Tessera couldn't reach the licence server, so this computer is still activated."
+                    .into(),
+            ),
         }
     }
 }
@@ -205,7 +269,11 @@ impl Default for HttpsTransport {
 
 impl Transport for HttpsTransport {
     fn post(&self, url: &str, body: &Value) -> Result<(u16, Value), String> {
-        let mut resp = self.agent.post(url).send_json(body).map_err(|e| e.to_string())?;
+        let mut resp = self
+            .agent
+            .post(url)
+            .send_json(body)
+            .map_err(|e| e.to_string())?;
         let status = resp.status().as_u16();
         let value = resp.body_mut().read_json::<Value>().unwrap_or(Value::Null);
         Ok((status, value))
@@ -219,7 +287,9 @@ pub struct KeyringStore {
 
 impl KeyringStore {
     pub fn new(service: &str) -> Self {
-        KeyringStore { service: service.to_string() }
+        KeyringStore {
+            service: service.to_string(),
+        }
     }
     fn entry(&self) -> Result<keyring::Entry, String> {
         keyring::Entry::new(&self.service, "pro-licence").map_err(|e| e.to_string())
@@ -233,7 +303,9 @@ impl Store for KeyringStore {
     }
     fn save(&self, a: &Activation) -> Result<(), String> {
         let text = serde_json::to_string(a).map_err(|e| e.to_string())?;
-        self.entry()?.set_password(&text).map_err(|_| "Tessera couldn't save the licence securely on this computer.".to_string())
+        self.entry()?
+            .set_password(&text)
+            .map_err(|_| "Tessera couldn't save the licence securely on this computer.".to_string())
     }
     fn clear(&self) -> Result<(), String> {
         match self.entry()?.delete_credential() {
@@ -256,28 +328,48 @@ mod tests {
     }
     impl FakeDodo {
         fn new(replies: Vec<Result<(u16, Value), String>>) -> Self {
-            FakeDodo { replies: RefCell::new(replies), calls: RefCell::new(Vec::new()) }
+            FakeDodo {
+                replies: RefCell::new(replies),
+                calls: RefCell::new(Vec::new()),
+            }
         }
     }
     impl Transport for FakeDodo {
         fn post(&self, url: &str, body: &Value) -> Result<(u16, Value), String> {
-            self.calls.borrow_mut().push((url.to_string(), body.clone()));
+            self.calls
+                .borrow_mut()
+                .push((url.to_string(), body.clone()));
             self.replies.borrow_mut().remove(0)
         }
     }
     #[derive(Default)]
     struct MemStore(RefCell<Option<Activation>>);
     impl Store for MemStore {
-        fn load(&self) -> Option<Activation> { self.0.borrow().clone() }
-        fn save(&self, a: &Activation) -> Result<(), String> { *self.0.borrow_mut() = Some(a.clone()); Ok(()) }
-        fn clear(&self) -> Result<(), String> { *self.0.borrow_mut() = None; Ok(()) }
+        fn load(&self) -> Option<Activation> {
+            self.0.borrow().clone()
+        }
+        fn save(&self, a: &Activation) -> Result<(), String> {
+            *self.0.borrow_mut() = Some(a.clone());
+            Ok(())
+        }
+        fn clear(&self) -> Result<(), String> {
+            *self.0.borrow_mut() = None;
+            Ok(())
+        }
     }
 
     fn lic(replies: Vec<Result<(u16, Value), String>>) -> Licensing<FakeDodo, MemStore> {
-        Licensing { transport: FakeDodo::new(replies), store: MemStore::default(), device_label: "Tessera on Windows".into() }
+        Licensing {
+            transport: FakeDodo::new(replies),
+            store: MemStore::default(),
+            device_label: "Tessera on Windows".into(),
+        }
     }
     fn ok_activation() -> Result<(u16, Value), String> {
-        Ok((201, json!({ "id": "lki_1", "product": { "product_id": "pdt_1" }, "customer": { "email": "a@example.com" } })))
+        Ok((
+            201,
+            json!({ "id": "lki_1", "product": { "product_id": "pdt_1" }, "customer": { "email": "a@example.com" } }),
+        ))
     }
     const DAY: i64 = 86_400;
 
@@ -288,8 +380,15 @@ mod tests {
         assert!(e.pro);
         assert_eq!(e.masked_key.as_deref(), Some("•••• -123"));
         let calls = l.transport.calls.borrow();
-        assert!(calls[0].0.starts_with("https://test.dodopayments.com/licenses/activate"));
-        assert_eq!(calls[0].1, json!({ "license_key": "ABC-123", "name": "Tessera on Windows" }));
+        assert!(
+            calls[0]
+                .0
+                .starts_with("https://test.dodopayments.com/licenses/activate")
+        );
+        assert_eq!(
+            calls[0].1,
+            json!({ "license_key": "ABC-123", "name": "Tessera on Windows" })
+        );
     }
 
     #[test]
@@ -301,22 +400,36 @@ mod tests {
         }
         let l = lic(vec![Err("offline".into())]);
         assert!(l.activate("KEY", 0).unwrap_err().contains("internet"));
-        assert!(lic(vec![]).activate("bad key with spaces", 0).is_err(), "rejected before any request");
+        assert!(
+            lic(vec![]).activate("bad key with spaces", 0).is_err(),
+            "rejected before any request"
+        );
     }
 
     #[test]
     fn offline_grace_then_free_without_touching_anything_else() {
-        let l = lic(vec![ok_activation(), Err("offline".into()), Err("offline".into())]);
+        let l = lic(vec![
+            ok_activation(),
+            Err("offline".into()),
+            Err("offline".into()),
+        ]);
         l.activate("KEY", 0).unwrap();
         assert!(l.refresh(10 * DAY, false).pro, "within grace while offline");
         let e = l.refresh(31 * DAY, false);
         assert!(!e.pro, "grace over");
-        assert!(l.store.load().is_some(), "activation kept for when the computer is online again");
+        assert!(
+            l.store.load().is_some(),
+            "activation kept for when the computer is online again"
+        );
     }
 
     #[test]
     fn validation_renews_and_revocation_returns_to_free() {
-        let l = lic(vec![ok_activation(), Ok((200, json!({ "valid": true }))), Ok((200, json!({ "valid": false })))]);
+        let l = lic(vec![
+            ok_activation(),
+            Ok((200, json!({ "valid": true }))),
+            Ok((200, json!({ "valid": false }))),
+        ]);
         l.activate("KEY", 0).unwrap();
         assert!(l.refresh(5 * DAY, false).pro);
         assert_eq!(l.store.load().unwrap().last_validated, 5 * DAY);
@@ -330,12 +443,20 @@ mod tests {
         let l = lic(vec![ok_activation()]);
         l.activate("KEY", 0).unwrap();
         assert!(l.refresh(DAY, false).pro);
-        assert_eq!(l.transport.calls.borrow().len(), 1, "no network call within the revalidation window");
+        assert_eq!(
+            l.transport.calls.borrow().len(),
+            1,
+            "no network call within the revalidation window"
+        );
     }
 
     #[test]
     fn deactivation_clears_only_after_the_server_agrees() {
-        let l = lic(vec![ok_activation(), Err("offline".into()), Ok((200, Value::Null))]);
+        let l = lic(vec![
+            ok_activation(),
+            Err("offline".into()),
+            Ok((200, Value::Null)),
+        ]);
         l.activate("KEY", 0).unwrap();
         assert!(l.deactivate().is_err());
         assert!(l.store.load().is_some());
@@ -346,6 +467,9 @@ mod tests {
     #[test]
     fn tiers_are_configurable_in_one_place() {
         assert!(requires_pro(Feature::Cleanup));
-        assert!(!LIVE_MODE_APPROVED, "live payments must stay off until approved");
+        assert!(
+            !LIVE_MODE_APPROVED,
+            "live payments must stay off until approved"
+        );
     }
 }
