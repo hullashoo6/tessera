@@ -20,6 +20,16 @@ fn run(root: &Path, opts: &ScanOptions) -> (Tree, ScanSummary) {
     (tree, summary)
 }
 
+/// Skipping is allowed on developer machines (e.g. Windows without Developer
+/// Mode), but not in CI, whose runners provide these capabilities: a skipped
+/// check must never look like a pass.
+fn skip(reason: &str) {
+    if std::env::var_os("CI").is_some() {
+        panic!("required test capability unavailable in CI: {reason}");
+    }
+    eprintln!("note: {reason}");
+}
+
 fn tmp() -> kit::tempfile::TempDir {
     kit::tempfile::Builder::new()
         .prefix("tessera-test-")
@@ -175,7 +185,7 @@ fn links_and_junctions_are_not_followed() {
     if kit::symlink_dir(&t.path().join("symlink"), outside.path()).is_ok() {
         made += 1;
     } else {
-        eprintln!("note: directory symlinks need Developer Mode on Windows; symlink case skipped");
+        skip("directory symlinks need Developer Mode on Windows; symlink case skipped");
     }
     assert!(made > 0, "at least one kind of link must be testable");
 
@@ -298,7 +308,7 @@ fn permission_denied_directories_are_reported_not_fatal() {
     let guard = match kit::DenyListing::new(&locked) {
         Ok(g) => g,
         Err(e) => {
-            eprintln!("skipping: cannot restrict permissions here ({e})");
+            skip(&format!("cannot restrict permissions here ({e})"));
             return;
         }
     };
