@@ -5,7 +5,7 @@ interface Props {
   os: string
 }
 
-/** Settings > Background: keep running after the window closes; low-space warning. */
+/** Settings > Background: keep running after the window closes; low-space warning; start at sign-in. */
 export function BackgroundSetting({ os }: Props) {
   const [s, setS] = useState<BackgroundSettings | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -18,10 +18,12 @@ export function BackgroundSetting({ os }: Props) {
       .catch((e) => setError(errorText(e)))
   }, [])
 
-  const change = (keepRunning: boolean, lowSpaceAlerts: boolean) => {
+  const change = (next: BackgroundSettings) => {
     setError(null)
+    // Starting at sign-in only makes sense while Tessera keeps running.
+    const startAtLogin = next.keepRunning && next.startAtLogin
     api
-      .setBackgroundSettings(keepRunning, lowSpaceAlerts)
+      .setBackgroundSettings(next.keepRunning, next.lowSpaceAlerts, startAtLogin)
       .then(setS)
       .catch((e) => setError(errorText(e)))
   }
@@ -36,11 +38,20 @@ export function BackgroundSetting({ os }: Props) {
       {s && (
         <div className="checks">
           <label>
-            <input type="checkbox" checked={s.keepRunning} onChange={(e) => change(e.target.checked, s.lowSpaceAlerts)} />
+            <input type="checkbox" checked={s.keepRunning} onChange={(e) => change({ ...s, keepRunning: e.target.checked })} />
             Keep Tessera in {place} when its window is closed
           </label>
+          <label className={s.keepRunning ? undefined : 'disabled'}>
+            <input
+              type="checkbox"
+              checked={s.keepRunning && s.startAtLogin}
+              disabled={!s.keepRunning}
+              onChange={(e) => change({ ...s, startAtLogin: e.target.checked })}
+            />
+            Start Tessera there when I sign in
+          </label>
           <label>
-            <input type="checkbox" checked={s.lowSpaceAlerts} onChange={(e) => change(s.keepRunning, e.target.checked)} />
+            <input type="checkbox" checked={s.lowSpaceAlerts} onChange={(e) => change({ ...s, lowSpaceAlerts: e.target.checked })} />
             Warn me when my main drive is almost full (while Tessera is running)
           </label>
         </div>

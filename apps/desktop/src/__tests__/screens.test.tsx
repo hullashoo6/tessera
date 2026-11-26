@@ -235,17 +235,26 @@ describe('Welcome', () => {
 
 describe('Background setting', () => {
   it('is off by default and turns on keep-running only', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
-    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false })
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false, startAtLogin: false })
+    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false, startAtLogin: false })
     render(<BackgroundSetting os="windows" />)
     const keep = await screen.findByLabelText(/notification area of the taskbar when its window is closed/)
     expect((keep as HTMLInputElement).checked).toBe(false)
+    expect((screen.getByLabelText(/Start Tessera there when I sign in/) as HTMLInputElement).disabled).toBe(true)
     fireEvent.click(keep)
-    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false)
+    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false, false)
+  })
+
+  it('turning keep-running off also stops starting at sign-in', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: true, startAtLogin: true })
+    api.setBackgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: true, startAtLogin: false })
+    render(<BackgroundSetting os="windows" />)
+    fireEvent.click(await screen.findByLabelText(/when its window is closed/))
+    expect(api.setBackgroundSettings).toHaveBeenCalledWith(false, true, false)
   })
 
   it('says menu bar on a Mac', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false, startAtLogin: false })
     render(<BackgroundSetting os="macos" />)
     expect(await screen.findByLabelText(/Keep Tessera in the menu bar/)).toBeTruthy()
   })

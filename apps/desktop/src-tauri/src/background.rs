@@ -5,6 +5,10 @@
 //!   with Open, Scan main drive and Quit.
 //! * Low-space warning: while Tessera is running, a system notification when
 //!   the main drive is almost full, at most once a day.
+//! * Start at sign-in (needs keep running): Tessera starts hidden in the
+//!   notification area or menu bar when the person signs in, through the
+//!   official autostart plugin (a Run entry on Windows, a Launch Agent on
+//!   macOS). The flag `--background` marks such a start.
 //!
 //! Nothing is scanned in the background: only the drive's free space is read,
 //! which the system reports instantly. Settings are kept on this computer.
@@ -27,8 +31,31 @@ const ALERT_GAP_SECS: i64 = 24 * 3_600;
 pub struct BackgroundSettings {
     pub keep_running: bool,
     pub low_space_alerts: bool,
+    /// Registered to start at sign-in. The system's own registration is the
+    /// truth; this mirrors it for the interface.
+    pub start_at_login: bool,
     /// The one-time "Tessera is still running" notice has been shown.
     pub told_about_tray: bool,
+}
+
+/// Command-line flag of a start at sign-in.
+pub const BACKGROUND_FLAG: &str = "--background";
+
+/// True when Tessera was started at sign-in and should stay out of the way
+/// (only if keep-running is still on; otherwise the window opens as usual).
+pub fn starts_hidden(app: &AppHandle) -> bool {
+    std::env::args().any(|a| a == BACKGROUND_FLAG)
+        && app
+            .state::<Background>()
+            .settings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .keep_running
+}
+
+fn login_registered(app: &AppHandle) -> bool {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().unwrap_or(false)
 }
 
 #[derive(Default)]
@@ -255,12 +282,13 @@ pub fn keep_running_on_close(app: &AppHandle) -> bool {
     true
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn background_settings(app: AppHandle) -> BackgroundSettings {
-    *app.state::<Background>()
-        .settings
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
+    let registered = login_registered(&app);
+    let state = app.state::<Background>();
+    let mut s = state.settings.lock().unwrap_or_else(|e| e.into_inner());
+    s.start_at_login = registered;
+    *s
 }
 
 #[tauri::command(async)]
@@ -268,12 +296,28 @@ pub fn set_background_settings(
     app: AppHandle,
     keep_running: bool,
     low_space_alerts: bool,
-) -> BackgroundSettings {
+    start_at_login: bool,
+) -> Result<BackgroundSettings, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    // Starting at sign-in only makes sense when Tessera keeps running.
+    let want_login = start_at_login && keep_running;
+    if want_login != login_registered(&app) {
+        let result = if want_login {
+            app.autolaunch().enable()
+        } else {
+            app.autolaunch().disable()
+        };
+        if let Err(e) = result {
+            super::diagnostics::record("autostart", &e.to_string());
+            return Err("Tessera could not change whether it starts when you sign in.".into());
+        }
+    }
     let updated = {
         let state = app.state::<Background>();
         let mut s = state.settings.lock().unwrap_or_else(|e| e.into_inner());
         s.keep_running = keep_running;
         s.low_space_alerts = low_space_alerts;
+        s.start_at_login = login_registered(&app);
         save(&app, &s);
         *s
     };
@@ -286,7 +330,7 @@ pub fn set_background_settings(
         let a = app.clone();
         std::thread::spawn(move || check(&a));
     }
-    updated
+    Ok(updated)
 }
 
 #[cfg(test)]

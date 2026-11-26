@@ -24,4 +24,10 @@
   DeleteRegKey HKCU "Software\Classes\Directory\shell\Tessera"
   DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\Tessera"
   DeleteRegKey HKCU "Software\Classes\Drive\shell\Tessera"
+  ; Settings > Background > "Start at sign-in" (tauri-plugin-autostart) adds a
+  ; Run entry named Tessera. Remove it on a real uninstall, not during an update.
+  ${If} $UpdateMode <> 1
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Tessera"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Tessera"
+  ${EndIf}
 !macroend

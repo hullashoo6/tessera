@@ -165,6 +165,8 @@ export interface CleanupReport {
 export interface BackgroundSettings {
   keepRunning: boolean
   lowSpaceAlerts: boolean
+  /** Starts hidden at sign-in (only together with keepRunning). */
+  startAtLogin: boolean
 }
 
 export interface Suggestion {
@@ -288,8 +290,8 @@ export const api = {
   logError: (message: string) => invoke<void>('log_error', { message }),
   showLogFile: () => invoke<void>('show_log_file'),
   backgroundSettings: () => invoke<BackgroundSettings>('background_settings'),
-  setBackgroundSettings: (keepRunning: boolean, lowSpaceAlerts: boolean) =>
-    invoke<BackgroundSettings>('set_background_settings', { keepRunning, lowSpaceAlerts }),
+  setBackgroundSettings: (keepRunning: boolean, lowSpaceAlerts: boolean, startAtLogin: boolean) =>
+    invoke<BackgroundSettings>('set_background_settings', { keepRunning, lowSpaceAlerts, startAtLogin }),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>
     listen<Progress>('scan-progress', (e) => cb(e.payload)),
   onFinished: (cb: (scanId: number) => void): Promise<UnlistenFn> =>

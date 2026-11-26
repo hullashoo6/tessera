@@ -69,23 +69,41 @@ $log = Join-Path $env:LOCALAPPDATA 'app.tessera.desktop\logs\tessera.log'
 $logBefore = if (Test-Path $log) { (Get-Item $log).Length } else { 0 }
 
 Add-Type @'
-using System; using System.Runtime.InteropServices;
+using System; using System.Text; using System.Runtime.InteropServices;
 public static class ReleaseProbe {
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, IntPtr l, uint f, uint t, out IntPtr r);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  // Tessera's own window (class "Tauri Window"). The process also owns small
+  // helper windows (single instance, event loop, tray) that must not count.
+  public static IntPtr MainWindow(uint pid) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, l) => {
+      uint p; GetWindowThreadProcessId(h, out p);
+      var c = new StringBuilder(64); GetClassName(h, c, 64);
+      if (p == pid && c.ToString() == "Tauri Window") { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 }
 '@
 $psi = New-Object Diagnostics.ProcessStartInfo $exe, "`"$fx`""
 $psi.UseShellExecute = $true
 $app = [Diagnostics.Process]::Start($psi)
-$win = $null
-for ($i = 0; $i -lt 30 -and -not $win; $i++) {
+$h = [IntPtr]::Zero
+for ($i = 0; $i -lt 30; $i++) {
   Start-Sleep 1
-  $win = Get-Process -Id $app.Id -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
+  $h = [ReleaseProbe]::MainWindow([uint32]$app.Id)
+  if ($h -ne [IntPtr]::Zero -and [ReleaseProbe]::IsWindowVisible($h)) { break }
 }
-if (-not $win) { Fail 'the window did not appear within 30 s' }
+if ($h -eq [IntPtr]::Zero -or -not [ReleaseProbe]::IsWindowVisible($h)) { Fail 'the Tessera window did not appear within 30 s' }
 Ok 'window appeared'
-$h = $win.MainWindowHandle
+$win = Get-Process -Id $app.Id
 $worst = 0.0
 $r = [IntPtr]::Zero
 $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -102,7 +120,7 @@ $fresh = [IO.File]::ReadAllText($log).Substring([int]$logBefore)
 if ($fresh -notmatch "start: Tessera $([regex]::Escape($version))") { Fail 'the log has no start line for this version' }
 if ($fresh -match 'crash:') { Fail 'the log recorded a crash' }
 Ok 'log records the start, no crash'
-[void]$win.CloseMainWindow()
+[void][ReleaseProbe]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) # WM_CLOSE, like the close button
 Start-Sleep 4
 if (Get-Process -Id $app.Id -ErrorAction SilentlyContinue) {
   if ([ReleaseProbe]::IsWindowVisible($h)) { Fail 'closing the window did nothing' }
