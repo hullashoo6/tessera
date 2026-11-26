@@ -251,3 +251,6 @@ button, input, select { font: inherit; color: inherit; }
 .crumb-item:first-child .crumb { max-width: 420px; }
 .list-head > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-head > :last-child { flex: none; padding-left: 12px; white-space: nowrap; }
+
+.info-strip { display: flex; align-items: center; gap: 14px; padding: 9px 20px; background: var(--notice-soft); border-bottom: 1px solid var(--line); font-size: var(--t-meta); }
+.info-strip .btn { height: 26px; flex: none; }

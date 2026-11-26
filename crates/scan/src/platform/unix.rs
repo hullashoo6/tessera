@@ -70,10 +70,11 @@ pub(super) fn describe(
     };
     if is_dir {
         info.identity = Some((md.dev(), md.ino()));
-        if let Some(root_dev) = ctx.root_device {
-            if md.dev() != root_dev && !ctx.cross_filesystems {
-                info.other_fs = true;
-            }
+        if let Some(root_dev) = ctx.root_device
+            && md.dev() != root_dev
+            && !ctx.cross_filesystems
+        {
+            info.other_fs = true;
         }
     } else if kind == NodeKind::File && ctx.identity_min_size.is_some() {
         info.identity = Some((md.dev(), md.ino()));

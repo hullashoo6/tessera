@@ -248,6 +248,18 @@ export function App() {
           )}
         </div>
 
+        {view !== 'overview' && view !== 'settings' && settings.metric === 'logical' && p && p.logical > p.allocated * 1.25 + 1024 ** 3 && (
+          <div className="info-strip" role="note">
+            <span className="spacer">
+              File size counts each file's full length. These files add up to {formatBytes(p.logical)} but occupy only{' '}
+              {formatBytes(p.allocated)} on disk, because some are sparse, compressed or online-only, so this total can be
+              larger than your drive.
+            </span>
+            <button className="btn" onClick={() => updateSettings({ ...settings, metric: 'allocated' })}>
+              Show size on disk
+            </button>
+          </div>
+        )}
         <div className={view === 'map' || view === 'largest' ? 'content fill' : 'content'}>
           {view === 'overview' && (
             <Overview
