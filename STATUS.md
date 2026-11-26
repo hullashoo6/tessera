@@ -109,3 +109,10 @@ Live at https://tessera-96w.pages.dev (Cloudflare Pages, 26 Nov 2026): contact (
 12 automated screen tests (Vitest + Testing Library, simulated browser, backend replaced by test data): Cleanup Pro lock; Smart Scan bulk-add safety and paging; Duplicates keep-oldest and every-copy warning; Restore states; Apps confirmation, Store removal, Mac leftovers; licence entry and test-mode notice; History Pro lock and growth comparison; error safety net. Run in CI on Windows and macOS.
 
 Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and History (from a disposable C:\Demo folder; no personal paths), FAQ rewritten, latest.json for the update check, stretched-screenshot bug fixed. Lighthouse on the live site: mobile 98/100/100/100, desktop 100/100/100/100 (performance/accessibility/best practices/SEO).
+
+## Release candidate, 27 Nov 2026 (built by the release workflow from commit 3802247)
+
+| Installer | Size | SHA-256 | Verified |
+|---|---|---|---|
+| Tessera_0.1.0_x64-setup.exe | 3.3 MB | 34df36201b4c9ba3bc13acaae4782e7e199f8911275a7553e102c40b214a50d3 | Installed on Windows 11 (owner laptop): silent install over the previous build, licence notices shipped, folder argument scan, Smart Scan, Duplicates (exact copies), cleanup of 2 copies to the Recycle Bin then Put back with identical contents and nothing left in the bin, Pro licence active, no false update banner, single instance, window responding. Unsigned |
+| Tessera_0.1.0_universal.dmg | 10 MB | 4f5cdd636c02f2814d0b0ddcaa745fbc08f87b1dcafb5a368ce59e6217e3e5d4 | Built on GitHub's macOS runner; ad-hoc signed, not notarised; not run on a real Mac |
