@@ -3,7 +3,8 @@
 //!   tessera-cli volumes
 //!   tessera-cli scan <path> [--threads N] [--hard-links auto|thorough|off] [--top N]
 //!   tessera-cli gen <new-empty-dir> --files N [--seed S]
-//!   tessera-cli soak <dir> [--runs N]   (repeated scans in one process; memory held after each)
+//!   tessera-cli soak <dir> [--runs N] [--max-peak-growth-mib X]
+//!                                        (repeated scans in one process; memory held after each)
 //!   tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]
 //!
 //! `scan` and `bench` never modify anything. `gen` only writes into a new or
@@ -53,7 +54,8 @@ const USAGE: &str = "usage:
   tessera-cli volumes
   tessera-cli scan <path> [--threads N] [--hard-links auto|thorough|off] [--top N]
   tessera-cli gen <new-empty-dir> --files N [--seed S]
-  tessera-cli soak <dir> [--runs N]   (repeated scans in one process; memory held after each)
+  tessera-cli soak <dir> [--runs N] [--max-peak-growth-mib X]
+                                       (repeated scans in one process; memory held after each)
   tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]";
 
 struct Args {
@@ -492,14 +494,27 @@ fn current_memory_bytes() -> Option<u64> {
 /// Scans `dir` repeatedly in one process, replacing the previous result as
 /// the app does, and reports memory held after each scan. A steady figure
 /// means nothing accumulates over a long session.
+///
+/// `--max-peak-growth-mib X` turns it into a pass/fail check (used in CI on
+/// both systems): the peak memory after the last run may exceed the peak
+/// after run 2 by at most X MiB. Run 1 is excluded because it includes
+/// one-time start-up allocations.
 fn cmd_soak(raw: &[String]) -> Result<(), String> {
     let dir = raw.first().ok_or("soak needs a folder")?;
-    let runs: usize = raw
-        .windows(2)
-        .find(|w| w[0] == "--runs")
-        .and_then(|w| w[1].parse().ok())
-        .unwrap_or(5);
+    let flag = |name: &str| raw.windows(2).find(|w| w[0] == name).map(|w| w[1].clone());
+    let runs: usize = flag("--runs").and_then(|v| v.parse().ok()).unwrap_or(5);
+    let max_growth: Option<f64> = match flag("--max-peak-growth-mib") {
+        Some(v) => Some(
+            v.parse()
+                .map_err(|_| "--max-peak-growth-mib needs a number")?,
+        ),
+        None => None,
+    };
+    if max_growth.is_some() && runs < 3 {
+        return Err("--max-peak-growth-mib needs --runs 3 or more".into());
+    }
     let mut held = None;
+    let mut baseline = None;
     let mib = |b: u64| b as f64 / (1024.0 * 1024.0);
     for i in 1..=runs {
         let t = Instant::now();
@@ -518,7 +533,22 @@ fn cmd_soak(raw: &[String]) -> Result<(), String> {
             current_memory_bytes().map(mib).unwrap_or(f64::NAN),
             peak_memory_bytes().map(mib).unwrap_or(f64::NAN)
         );
+        if i == 2 {
+            baseline = peak_memory_bytes();
+        }
     }
     drop(held);
+    if let Some(limit) = max_growth {
+        let (Some(start), Some(end)) = (baseline, peak_memory_bytes()) else {
+            return Err("peak memory is not available on this system".into());
+        };
+        let growth = mib(end.saturating_sub(start));
+        println!("peak growth from run 2 to run {runs}: {growth:.1} MiB (limit {limit} MiB)");
+        if growth > limit {
+            return Err(format!(
+                "memory grew by {growth:.1} MiB over {runs} scans (limit {limit} MiB): something is accumulating"
+            ));
+        }
+    }
     Ok(())
 }

@@ -17,6 +17,10 @@ export const faqs: [string, string][] = [
     'Yes. Scans happen entirely on your computer, and file names, folders and scan results are never sent anywhere. Tessera has no analytics or tracking. It connects to the internet only to check a Pro licence with our payment provider and, if you allow it, to see whether a new version is available.',
   ],
   [
+    'Can I scan a folder straight from File Explorer or Finder?',
+    'Yes. Right-click a folder or drive and choose Scan with Tessera in File Explorer (on Windows 11 it is under Show more options), or Open With > Tessera in Finder. You can also drop a folder onto the Tessera window. If Tessera is already open, it scans the new folder in the same window.',
+  ],
+  [
     'Can Tessera delete my files?',
     'Never by itself. You choose items and review them first, and Tessera then moves them to the Recycle Bin or Trash. It never deletes anything permanently, and system folders are protected.',
   ],

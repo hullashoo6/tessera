@@ -33,6 +33,7 @@ export const freeFeatures: Feature[] = [
   { name: 'Open, reveal and copy the path of any item', status: 'available' },
   { name: 'Search and filters', status: 'available' },
   { name: 'Smart Scan suggestions and duplicate finder', status: 'available' },
+  { name: 'Scan any folder from its right-click menu, or drop it on the window', status: 'available' },
 ]
 
 export const proFeatures: Feature[] = [
