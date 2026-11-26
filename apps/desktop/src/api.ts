@@ -161,6 +161,12 @@ export interface CleanupReport {
   freeAfter: number | null
 }
 
+/** Settings > Background (kept by the backend, which needs them before the window opens). */
+export interface BackgroundSettings {
+  keepRunning: boolean
+  lowSpaceAlerts: boolean
+}
+
 export interface Suggestion {
   id: number
   group: 'junk' | 'developer' | 'downloads' | 'backups' | 'old' | 'cloud'
@@ -278,6 +284,9 @@ export const api = {
   /** Adds a screen error to the local log (file and folder names are removed by the backend). */
   logError: (message: string) => invoke<void>('log_error', { message }),
   showLogFile: () => invoke<void>('show_log_file'),
+  backgroundSettings: () => invoke<BackgroundSettings>('background_settings'),
+  setBackgroundSettings: (keepRunning: boolean, lowSpaceAlerts: boolean) =>
+    invoke<BackgroundSettings>('set_background_settings', { keepRunning, lowSpaceAlerts }),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>
     listen<Progress>('scan-progress', (e) => cb(e.payload)),
   onFinished: (cb: (scanId: number) => void): Promise<UnlistenFn> =>

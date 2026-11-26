@@ -39,6 +39,8 @@
     "allow-reveal-item",
     "allow-open-item",
     "allow-log-error",
-    "allow-show-log-file"
+    "allow-show-log-file",
+    "allow-background-settings",
+    "allow-set-background-settings"
   ]
 }

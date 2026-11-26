@@ -36,6 +36,8 @@ const COMMANDS: &[&str] = &[
     "open_item",
     "log_error",
     "show_log_file",
+    "background_settings",
+    "set_background_settings",
 ];
 
 fn main() {

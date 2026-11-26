@@ -1,4 +1,5 @@
 import { api, type Entitlement, type HardLinks, type Metric } from '../api'
+import { BackgroundSetting } from './BackgroundSetting'
 import { ProLicence } from './ProLicence'
 import type { Settings, ThemeSetting } from '../settings'
 
@@ -94,6 +95,7 @@ export function SettingsView({ settings, os, version, onChange, onShowWelcome, e
           onChange={(v) => onChange({ ...settings, checkUpdates: v === 'on' })}
         />
       </div>
+      <BackgroundSetting os={os} />
       <div className="setting">
         <h3>Privacy</h3>
         <p>

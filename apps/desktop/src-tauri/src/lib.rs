@@ -6,6 +6,7 @@
 //! from outside the window (`launch.rs`), and every other request refers to
 //! items by id within the current scan. Nothing here modifies files.
 
+mod background;
 mod diagnostics;
 mod dto;
 mod history;
@@ -1210,9 +1211,12 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(AppState::default())
+        .manage(background::Background::default())
         .setup(|app| {
             diagnostics::init(app.handle());
+            background::init(app.handle());
             // A folder given on the command line (`tessera-desktop.exe "D:\Photos"`,
             // a shortcut, or the "Scan with Tessera" menu entry) is scanned at
             // launch. The interface picks the scan up when it loads.
@@ -1228,11 +1232,20 @@ pub fn run() {
             }
             Ok(())
         })
-        // A folder or drive dropped onto the window is scanned.
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+        .on_window_event(|window, event| match event {
+            // A folder or drive dropped onto the window is scanned.
+            tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) => {
                 launch::dropped(window.app_handle(), paths);
             }
+            // Background mode: closing the window keeps Tessera in the
+            // notification area or menu bar.
+            tauri::WindowEvent::CloseRequested { api, .. }
+                if background::keep_running_on_close(window.app_handle()) =>
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
@@ -1270,6 +1283,8 @@ pub fn run() {
             open_item,
             diagnostics::log_error,
             diagnostics::show_log_file,
+            background::background_settings,
+            background::set_background_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting Tessera");
@@ -1286,6 +1301,16 @@ pub fn run() {
         {
             launch::focus(_app);
             launch::scan_folder(_app, &folder);
+        }
+        // macOS: clicking the Dock icon while the window is hidden (background
+        // mode) brings it back.
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } = &_event
+        {
+            launch::focus(_app);
         }
     });
 }

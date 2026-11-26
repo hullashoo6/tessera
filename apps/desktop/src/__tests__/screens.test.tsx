@@ -21,10 +21,13 @@ const api = vi.hoisted(() => ({
   clearStorageHistory: vi.fn(),
   freeUpCloud: vi.fn(),
   logError: vi.fn(() => Promise.resolve()),
+  backgroundSettings: vi.fn(),
+  setBackgroundSettings: vi.fn(),
 }))
 vi.mock('../api', () => ({ api, errorText: (e: unknown) => String(e) }))
 
 import { Apps } from '../components/Apps'
+import { BackgroundSetting } from '../components/BackgroundSetting'
 import { Cleanup } from '../components/Cleanup'
 import { Duplicates } from '../components/Duplicates'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -222,5 +225,23 @@ describe('Welcome', () => {
     expect(scan).toHaveBeenCalledWith({ kind: 'home' })
     fireEvent.click(screen.getByText('Choose another drive or folder'))
     expect(skip).toHaveBeenCalled()
+  })
+})
+
+describe('Background setting', () => {
+  it('is off by default and turns on keep-running only', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
+    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false })
+    render(<BackgroundSetting os="windows" />)
+    const keep = await screen.findByLabelText(/notification area of the taskbar when its window is closed/)
+    expect((keep as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(keep)
+    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false)
+  })
+
+  it('says menu bar on a Mac', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
+    render(<BackgroundSetting os="macos" />)
+    expect(await screen.findByLabelText(/Keep Tessera in the menu bar/)).toBeTruthy()
   })
 })
