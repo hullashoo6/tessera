@@ -32,7 +32,7 @@ Status: **draft threat model**, updated as each component is built.
   input is validated in Rust.
 * Strict Content Security Policy; no remote content in privileged windows.
 
-### Cleanup (planned)
+### Cleanup (engine implemented, crates/cleanup; not yet exposed in the app)
 
 * Native Trash/Recycle Bin only; permanent deletion disabled in v1.
 * Time-of-check/time-of-use: immediately before each move, re-resolve the path
@@ -40,6 +40,11 @@ Status: **draft threat model**, updated as each component is built.
   re-check protected-location rules, and refuse on any mismatch.
 * Protected locations: OS directories, boot/recovery, application bundles in
   use, user-profile roots, the volume root.
+* Windows: moves use IFileOperation with a progress sink whose PreDeleteItem
+  aborts any item not flagged TSF_DELETE_RECYCLE_IF_POSSIBLE, so an item the
+  Recycle Bin cannot hold is left in place instead of being destroyed.
+* Residual risk: path-based APIs leave a small window between the final check
+  and the move; checks run immediately before each item to keep it minimal.
 
 ### Licensing, payments, downloads, updates (planned)
 
