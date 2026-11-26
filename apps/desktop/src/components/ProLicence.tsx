@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, errorText, type Entitlement } from '../api'
+import { formatDate } from '../format'
 
 interface Props {
   entitlement: Entitlement | null
@@ -38,9 +39,17 @@ export function ProLicence({ entitlement, onChange }: Props) {
             {entitlement?.customerEmail ? ` (${entitlement.customerEmail})` : ''}. Your licence covers one computer; to
             move it, deactivate it here first.
           </p>
-          <button className="btn" disabled={busy} onClick={() => run(api.deactivateLicense(), 'This computer is no longer activated.')}>
-            {busy ? 'Working…' : 'Deactivate on this computer'}
-          </button>
+          <p className="target-meta">
+            Last confirmed with Dodo Payments: {formatDate(entitlement?.lastValidated ?? null)}
+          </p>
+          <div className="actions">
+            <button className="btn" disabled={busy} onClick={() => run(api.refreshLicense(true), 'Checked with Dodo Payments just now.')}>
+              Check now
+            </button>
+            <button className="btn" disabled={busy} onClick={() => run(api.deactivateLicense(), 'This computer is no longer activated.')}>
+              {busy ? 'Working…' : 'Deactivate on this computer'}
+            </button>
+          </div>
         </>
       ) : (
         <>

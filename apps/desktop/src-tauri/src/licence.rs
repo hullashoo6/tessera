@@ -45,8 +45,9 @@ pub fn license_status() -> Entitlement {
 }
 
 #[tauri::command]
-pub async fn refresh_license() -> Entitlement {
-    tauri::async_runtime::spawn_blocking(|| licensing().refresh(now(), false))
+pub async fn refresh_license(force: Option<bool>) -> Entitlement {
+    let force = force.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || licensing().refresh(now(), force))
         .await
         .unwrap_or_else(|_| licensing().status(now()))
 }

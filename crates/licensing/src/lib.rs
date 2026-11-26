@@ -102,6 +102,8 @@ pub struct Entitlement {
     pub customer_email: Option<String>,
     pub masked_key: Option<String>,
     pub test_mode: bool,
+    /// When Dodo last confirmed this licence (Unix seconds).
+    pub last_validated: Option<i64>,
 }
 
 /// HTTP transport; real implementation uses HTTPS, tests use a fake.
@@ -126,9 +128,7 @@ fn mask(key: &str) -> String {
         .into_iter()
         .rev()
         .collect();
-    format!(
-        "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ {tail}"
-    )
+    format!("•••• {tail}")
 }
 
 /// Whether a stored activation belongs to this build's mode and product.
@@ -149,6 +149,7 @@ pub fn entitlement(config: &ModeConfig, a: Option<&Activation>, now: i64) -> Ent
             customer_email: None,
             masked_key: None,
             test_mode,
+            last_validated: None,
         },
         Some(a) => {
             let age = now - a.last_validated;
@@ -165,6 +166,7 @@ pub fn entitlement(config: &ModeConfig, a: Option<&Activation>, now: i64) -> Ent
                 customer_email: a.customer_email.clone(),
                 masked_key: Some(mask(&a.key)),
                 test_mode,
+                last_validated: Some(a.last_validated),
             }
         }
     }
@@ -442,12 +444,7 @@ mod tests {
         let l = lic(vec![ok_activation()]);
         let e = l.activate("  ABC-123  ", 1000).unwrap();
         assert!(e.pro);
-        assert_eq!(
-            e.masked_key.as_deref(),
-            Some(
-                "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ -123"
-            )
-        );
+        assert_eq!(e.masked_key.as_deref(), Some("•••• -123"));
         let calls = l.transport.calls.borrow();
         assert!(
             calls[0]

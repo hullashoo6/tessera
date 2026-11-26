@@ -164,6 +164,7 @@ export interface Entitlement {
   customerEmail: string | null
   maskedKey: string | null
   testMode: boolean
+  lastValidated: number | null
 }
 
 export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
@@ -187,7 +188,7 @@ export const api = {
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
   confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
   licenseStatus: () => invoke<Entitlement>('license_status'),
-  refreshLicense: () => invoke<Entitlement>('refresh_license'),
+  refreshLicense: (force = false) => invoke<Entitlement>('refresh_license', { force }),
   activateLicense: (key: string) => invoke<Entitlement>('activate_license', { key }),
   deactivateLicense: () => invoke<Entitlement>('deactivate_license'),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
