@@ -78,9 +78,26 @@ export function SettingsView({ settings, os, version, onChange, entitlement, onE
         />
       </div>
       <div className="setting">
+        <h3>Updates</h3>
+        <p>
+          When Tessera opens, it can check this app’s website for a newer version. Nothing about you or your files is
+          sent, and nothing is downloaded unless you choose to.
+        </p>
+        <Choice<'on' | 'off'>
+          label="Check for updates"
+          value={settings.checkUpdates ? 'on' : 'off'}
+          options={[
+            ['on', 'Check'],
+            ['off', 'Don’t check'],
+          ]}
+          onChange={(v) => onChange({ ...settings, checkUpdates: v === 'on' })}
+        />
+      </div>
+      <div className="setting">
         <h3>Privacy</h3>
         <p>
           Scanning happens entirely on this computer. File names, folders and scan results are never sent anywhere.
+          Tessera connects to the internet only to check a Pro licence and, if allowed above, to check for updates.
         </p>
       </div>
       <p className="target-meta">Tessera {version}</p>

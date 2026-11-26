@@ -70,3 +70,6 @@ export const contact = {
   email: 'hullashoo6@gmail.com',
   company: 'Beyond Enterprises',
 }
+
+/** Newest released app version, read by the app's update check. */
+export const latest = { version: '0.1.0' }

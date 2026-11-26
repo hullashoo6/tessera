@@ -235,6 +235,8 @@ export const api = {
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
+  checkUpdate: () => invoke<{ available: boolean; current: string; latest: string | null }>('check_update'),
+  openDownloadPage: () => invoke<void>('open_download_page'),
   freeUpCloud: (scanId: number, ids: number[]) =>
     invoke<{ freed: number; freedBytes: number; skipped: [string, string][] }>('free_up_cloud', { scanId, ids }),
   findDuplicates: (scanId: number) => invoke<DupReport>('find_duplicates', { scanId }),

@@ -6,9 +6,11 @@ export interface Settings {
   theme: ThemeSetting
   metric: Metric
   hardLinks: HardLinks
+  /** Fetch the website's public version file at start-up. */
+  checkUpdates: boolean
 }
 
-export const DEFAULTS: Settings = { theme: 'system', metric: 'allocated', hardLinks: 'auto' }
+export const DEFAULTS: Settings = { theme: 'system', metric: 'allocated', hardLinks: 'auto', checkUpdates: true }
 
 const KEY = 'tessera.settings.v1'
 
@@ -22,6 +24,7 @@ export function loadSettings(): Settings {
       theme: v.theme === 'light' || v.theme === 'dark' ? v.theme : 'system',
       metric: v.metric === 'logical' ? 'logical' : 'allocated',
       hardLinks: v.hardLinks === 'thorough' || v.hardLinks === 'off' ? v.hardLinks : 'auto',
+      checkUpdates: v.checkUpdates !== false,
     }
   } catch {
     return DEFAULTS

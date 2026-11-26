@@ -8,6 +8,7 @@
 mod dto;
 mod licence;
 mod safety;
+mod update;
 
 use licence::{activate_license, deactivate_license, is_pro, license_status, refresh_license};
 
@@ -1224,6 +1225,8 @@ pub fn run() {
             move_leftovers,
             export_report,
             free_up_cloud,
+            update::check_update,
+            update::open_download_page,
             review_cleanup,
             confirm_cleanup,
             license_status,

@@ -36,6 +36,7 @@ export function App() {
   const [version, setVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [update, setUpdate] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; tile: Tile } | null>(null)
   const [highlight, setHighlight] = useState<Highlight | null>(null)
   const [marked, setMarked] = useState<Set<number>>(() => new Set())
@@ -84,6 +85,13 @@ export function App() {
       .catch((e) => onError(errorText(e)))
     refreshDrives()
     api.licenseStatus().then(setEntitlement).catch(() => undefined)
+    // Optional update check (Settings > Updates); failures are silent.
+    if (loadSettings().checkUpdates) {
+      api
+        .checkUpdate()
+        .then((u) => u.available && u.latest && setUpdate(u.latest))
+        .catch(() => undefined)
+    }
     // Re-confirms the licence in the background when due; never blocks.
     api.refreshLicense().then(setEntitlement).catch(() => undefined)
     api
@@ -298,6 +306,17 @@ export function App() {
           )}
         </div>
 
+        {update && (
+          <div className="info-strip" role="status">
+            <span className="spacer">Tessera {update} is available.</span>
+            <button className="btn" onClick={() => void api.openDownloadPage().catch((e) => onError(errorText(e)))}>
+              Open download page
+            </button>
+            <button className="btn" onClick={() => setUpdate(null)}>
+              Not now
+            </button>
+          </div>
+        )}
         {view !== 'overview' && view !== 'settings' && settings.metric === 'logical' && p && p.logical > p.allocated * 1.25 + 1024 ** 3 && (
           <div className="info-strip" role="note">
             <span className="spacer">

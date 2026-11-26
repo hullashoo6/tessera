@@ -373,6 +373,28 @@ impl Store for KeyringStore {
     }
 }
 
+/// Fetches a small public JSON document over HTTPS (10 s limit, no
+/// redirects, no cookies). Used for the update check; sends nothing but the
+/// request itself.
+pub fn https_get_json(url: &str) -> Result<Value, String> {
+    if !url.starts_with("https://") {
+        return Err("Only HTTPS addresses are allowed.".into());
+    }
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .max_redirects(0)
+        .timeout_global(Some(std::time::Duration::from_secs(10)))
+        .build()
+        .into();
+    let mut resp = agent.get(url).call().map_err(|e| e.to_string())?;
+    let text = resp
+        .body_mut()
+        .with_config()
+        .limit(64 * 1024)
+        .read_to_string()
+        .map_err(|e| e.to_string())?;
+    serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

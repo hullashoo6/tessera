@@ -22,6 +22,8 @@ const COMMANDS: &[&str] = &[
     "move_leftovers",
     "export_report",
     "free_up_cloud",
+    "check_update",
+    "open_download_page",
     "review_cleanup",
     "confirm_cleanup",
     "license_status",
