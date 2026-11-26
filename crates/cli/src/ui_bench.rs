@@ -74,7 +74,9 @@ pub fn run(raw: &[String]) -> Result<(), String> {
     // The fixture stands in for the home folder so every Smart Scan rule,
     // including the whole-folder "large old files" walk, does its full work.
     let places = tessera_insights::Places {
-        home: Some(PathBuf::from(dir)),
+        home: Some(
+            tessera_scan::prepare_root(Path::new(dir)).unwrap_or_else(|_| PathBuf::from(dir)),
+        ),
         ..tessera_insights::Places::default()
     };
 
