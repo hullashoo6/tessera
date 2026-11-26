@@ -10,13 +10,13 @@ export const product = {
 }
 
 /**
- * Pricing is provisional. While `approved` is false the site shows the
- * figure only as a clearly marked draft, and no checkout link exists.
+ * Set by the owner: USD 9.78 one-time, tax included, one device, no expiry.
+ * While `onSale` is false there is no purchase link anywhere on the site.
  */
 export const pricing = {
-  approved: false,
+  onSale: false,
   currency: 'USD',
-  pro: 14.99,
+  pro: 9.78,
 }
 
 export type Status = 'available' | 'in development'

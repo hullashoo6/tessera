@@ -13,21 +13,56 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-/// Live mode stays off until the owner approves it.
-pub const LIVE_MODE_APPROVED: bool = false;
 pub const GRACE_SECONDS: i64 = 30 * 86_400;
 /// How often a still-valid licence is re-confirmed when online.
 pub const REVALIDATE_AFTER_SECONDS: i64 = 3 * 86_400;
-/// Dodo product id for Tessera Pro. Set once the product exists; while
-/// `None`, any key from the merchant's test-mode products is accepted.
-pub const PRO_PRODUCT_ID: Option<&str> = None;
+
+/// Dodo environment. Test and live are completely separate: different
+/// servers, different products, and activations from one are never
+/// accepted by the other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Mode {
+    Test,
+    Live,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ModeConfig {
+    pub mode: Mode,
+    pub base_url: &'static str,
+    /// The only Dodo product whose keys unlock Tessera Pro in this mode.
+    /// `None` means licensing is not configured: activation is refused.
+    pub pro_product_id: Option<&'static str>,
+}
+
+/// Test mode: the test product is still being prepared by the owner.
+pub const TEST: ModeConfig = ModeConfig {
+    mode: Mode::Test,
+    base_url: "https://test.dodopayments.com",
+    pro_product_id: None,
+};
+
+/// Live mode: Tessera Pro, USD 9.78 one-time (tax included), one device,
+/// no expiry. Licence entitlement `ent_0Nsmfr7CY18AXemTSmNxC` (dashboard
+/// reference only; the app does not need it).
+pub const LIVE: ModeConfig = ModeConfig {
+    mode: Mode::Live,
+    base_url: "https://live.dodopayments.com",
+    pro_product_id: Some("pdt_0Nsmg4vQiRrOCZ4yTeDEk"),
+};
+
+/// Live licensing stays off until the owner approves it, which requires a
+/// deliverable app and a passing real test-mode licence check first.
+pub const LIVE_MODE_APPROVED: bool = false;
+
+/// The configuration this build uses.
+pub const fn active() -> ModeConfig {
+    if LIVE_MODE_APPROVED { LIVE } else { TEST }
+}
 
 pub fn base_url() -> &'static str {
-    if LIVE_MODE_APPROVED {
-        "https://live.dodopayments.com"
-    } else {
-        "https://test.dodopayments.com"
-    }
+    active().base_url
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -53,7 +88,7 @@ pub struct Activation {
     pub instance_id: String,
     pub product_id: Option<String>,
     pub customer_email: Option<String>,
-    pub mode: String,
+    pub mode: Mode,
     pub activated_at: i64,
     pub last_validated: i64,
 }
@@ -91,13 +126,21 @@ fn mask(key: &str) -> String {
         .into_iter()
         .rev()
         .collect();
-    format!("•••• {tail}")
+    format!("Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢ {tail}")
 }
 
-/// Entitlement implied by a stored activation at time `now`.
-pub fn entitlement(a: Option<&Activation>, now: i64) -> Entitlement {
-    let test_mode = !LIVE_MODE_APPROVED;
-    match a {
+/// Whether a stored activation belongs to this build's mode and product.
+pub fn matches(config: &ModeConfig, a: &Activation) -> bool {
+    a.mode == config.mode
+        && config.pro_product_id.is_some()
+        && a.product_id.as_deref() == config.pro_product_id
+}
+
+/// Entitlement implied by a stored activation at time `now`. Activations
+/// from the other mode, or for another product, never grant Pro.
+pub fn entitlement(config: &ModeConfig, a: Option<&Activation>, now: i64) -> Entitlement {
+    let test_mode = config.mode == Mode::Test;
+    match a.filter(|a| matches(config, a)) {
         None => Entitlement {
             pro: false,
             summary: "Free".into(),
@@ -134,6 +177,7 @@ fn valid_key(key: &str) -> bool {
 }
 
 pub struct Licensing<T: Transport, S: Store> {
+    pub config: ModeConfig,
     pub transport: T,
     pub store: S,
     pub device_label: String,
@@ -141,7 +185,7 @@ pub struct Licensing<T: Transport, S: Store> {
 
 impl<T: Transport, S: Store> Licensing<T, S> {
     pub fn status(&self, now: i64) -> Entitlement {
-        entitlement(self.store.load().as_ref(), now)
+        entitlement(&self.config, self.store.load().as_ref(), now)
     }
 
     pub fn activate(&self, raw_key: &str, now: i64) -> Result<Entitlement, String> {
@@ -152,7 +196,10 @@ impl<T: Transport, S: Store> Licensing<T, S> {
                     .into(),
             );
         }
-        let url = format!("{}/licenses/activate", base_url());
+        let Some(expected) = self.config.pro_product_id else {
+            return Err("Pro licensing isn't set up in this version of Tessera yet.".into());
+        };
+        let url = format!("{}/licenses/activate", self.config.base_url);
         let (status, body) = self
             .transport
             .post(&url, &json!({ "license_key": key, "name": self.device_label }))
@@ -172,10 +219,14 @@ impl<T: Transport, S: Store> Licensing<T, S> {
             .pointer("/product/product_id")
             .and_then(Value::as_str)
             .map(str::to_string);
-        if let Some(expected) = PRO_PRODUCT_ID
-            && product_id.as_deref() != Some(expected)
-        {
-            return Err("This licence key is for a different product.".into());
+        if product_id.as_deref() != Some(expected) {
+            // The key is real but for another product. Release the
+            // activation so it does not use up the other product's seat.
+            let _ = self.transport.post(
+                &format!("{}/licenses/deactivate", self.config.base_url),
+                &json!({ "license_key": key, "license_key_instance_id": instance_id }),
+            );
+            return Err("This licence key is for a different product, not Tessera Pro.".into());
         }
         let activation = Activation {
             key: key.to_string(),
@@ -185,28 +236,28 @@ impl<T: Transport, S: Store> Licensing<T, S> {
                 .pointer("/customer/email")
                 .and_then(Value::as_str)
                 .map(str::to_string),
-            mode: if LIVE_MODE_APPROVED {
-                "live".into()
-            } else {
-                "test".into()
-            },
+            mode: self.config.mode,
             activated_at: now,
             last_validated: now,
         };
         self.store.save(&activation)?;
-        Ok(entitlement(Some(&activation), now))
+        Ok(entitlement(&self.config, Some(&activation), now))
     }
 
     /// Re-confirms a stored licence if it is due. Network failures keep the
     /// current state (offline grace); a definite "not valid" removes it.
     pub fn refresh(&self, now: i64, force: bool) -> Entitlement {
         let Some(mut a) = self.store.load() else {
-            return entitlement(None, now);
+            return entitlement(&self.config, None, now);
         };
-        if !force && now - a.last_validated < REVALIDATE_AFTER_SECONDS {
-            return entitlement(Some(&a), now);
+        if !matches(&self.config, &a) {
+            // Never send a key to the other environment.
+            return entitlement(&self.config, None, now);
         }
-        let url = format!("{}/licenses/validate", base_url());
+        if !force && now - a.last_validated < REVALIDATE_AFTER_SECONDS {
+            return entitlement(&self.config, Some(&a), now);
+        }
+        let url = format!("{}/licenses/validate", self.config.base_url);
         match self.transport.post(
             &url,
             &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id }),
@@ -214,16 +265,16 @@ impl<T: Transport, S: Store> Licensing<T, S> {
             Ok((200, body)) if body.get("valid").and_then(Value::as_bool) == Some(true) => {
                 a.last_validated = now;
                 let _ = self.store.save(&a);
-                entitlement(Some(&a), now)
+                entitlement(&self.config, Some(&a), now)
             }
             Ok((200, _)) | Ok((403, _)) | Ok((404, _)) => {
                 let _ = self.store.clear();
-                let mut e = entitlement(None, now);
+                let mut e = entitlement(&self.config, None, now);
                 e.summary =
                     "Your Pro licence is no longer valid, so Tessera is back to Free.".into();
                 e
             }
-            _ => entitlement(Some(&a), now),
+            _ => entitlement(&self.config, Some(&a), now),
         }
     }
 
@@ -231,7 +282,10 @@ impl<T: Transport, S: Store> Licensing<T, S> {
         let Some(a) = self.store.load() else {
             return Ok(());
         };
-        let url = format!("{}/licenses/deactivate", base_url());
+        if !matches(&self.config, &a) {
+            return Err("This activation belongs to a different version of Tessera.".into());
+        }
+        let url = format!("{}/licenses/deactivate", self.config.base_url);
         match self.transport.post(
             &url,
             &json!({ "license_key": a.key, "license_key_instance_id": a.instance_id }),
@@ -360,15 +414,23 @@ mod tests {
 
     fn lic(replies: Vec<Result<(u16, Value), String>>) -> Licensing<FakeDodo, MemStore> {
         Licensing {
+            config: FAKE_TEST,
             transport: FakeDodo::new(replies),
             store: MemStore::default(),
             device_label: "Tessera on Windows".into(),
         }
     }
+    /// Simulated test-mode config with an obviously fake product id.
+    const FAKE_TEST: ModeConfig = ModeConfig {
+        mode: Mode::Test,
+        base_url: TEST.base_url,
+        pro_product_id: Some("pdt_FAKE_TEST_ONLY"),
+    };
+
     fn ok_activation() -> Result<(u16, Value), String> {
         Ok((
             201,
-            json!({ "id": "lki_1", "product": { "product_id": "pdt_1" }, "customer": { "email": "a@example.com" } }),
+            json!({ "id": "lki_1", "product": { "product_id": "pdt_FAKE_TEST_ONLY" }, "customer": { "email": "a@example.com" } }),
         ))
     }
     const DAY: i64 = 86_400;
@@ -378,7 +440,10 @@ mod tests {
         let l = lic(vec![ok_activation()]);
         let e = l.activate("  ABC-123  ", 1000).unwrap();
         assert!(e.pro);
-        assert_eq!(e.masked_key.as_deref(), Some("•••• -123"));
+        assert_eq!(
+            e.masked_key.as_deref(),
+            Some("Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢ -123")
+        );
         let calls = l.transport.calls.borrow();
         assert!(
             calls[0]
@@ -467,5 +532,72 @@ mod tests {
     #[test]
     fn tiers_are_configurable_in_one_place() {
         assert!(requires_pro(Feature::Cleanup));
+    }
+
+    #[test]
+    fn unconfigured_mode_refuses_activation_without_any_request() {
+        let mut l = lic(vec![]);
+        l.config = TEST; // the real test config: product id not yet provided
+        assert!(l.activate("KEY", 0).unwrap_err().contains("isn't set up"));
+        assert!(l.transport.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn key_for_another_product_is_refused_and_released() {
+        let other = Ok((
+            201,
+            json!({ "id": "lki_9", "product": { "product_id": "pdt_SOMETHING_ELSE" } }),
+        ));
+        let l = lic(vec![other, Ok((200, Value::Null))]);
+        assert!(
+            l.activate("KEY", 0)
+                .unwrap_err()
+                .contains("different product")
+        );
+        assert!(l.store.load().is_none());
+        let calls = l.transport.calls.borrow();
+        assert!(
+            calls[1].0.ends_with("/licenses/deactivate"),
+            "seat released"
+        );
+    }
+
+    #[test]
+    fn activation_from_the_other_mode_is_ignored_and_never_sent() {
+        let l = lic(vec![]);
+        let live_activation = Activation {
+            key: "KEY".into(),
+            instance_id: "lki_live".into(),
+            product_id: LIVE.pro_product_id.map(str::to_string),
+            customer_email: None,
+            mode: Mode::Live,
+            activated_at: 0,
+            last_validated: 0,
+        };
+        l.store.save(&live_activation).unwrap();
+        assert!(!l.status(1).pro);
+        assert!(!l.refresh(10 * DAY, true).pro);
+        assert!(
+            l.transport.calls.borrow().is_empty(),
+            "live key never sent to the test server"
+        );
+    }
+
+    #[test]
+    fn live_product_is_bound_only_to_live_mode() {
+        assert_eq!(LIVE.pro_product_id, Some("pdt_0Nsmg4vQiRrOCZ4yTeDEk"));
+        assert_eq!(LIVE.base_url, "https://live.dodopayments.com");
+        assert_ne!(
+            TEST.pro_product_id, LIVE.pro_product_id,
+            "live product must not be used in test mode"
+        );
+        assert_eq!(
+            active().mode,
+            if LIVE_MODE_APPROVED {
+                Mode::Live
+            } else {
+                Mode::Test
+            }
+        );
     }
 }

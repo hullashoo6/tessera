@@ -130,8 +130,8 @@ const features = [
         </article>
         <article class="plan pro">
           <h3>Pro</h3>
-          <p class="price num">{formatPrice()}{!pricing.approved && <span class="tag">Draft price</span>}</p>
-          <p class="muted">One payment. No subscription.</p>
+          <p class="price num">{formatPrice()}{!pricing.onSale && <span class="tag">Not yet on sale</span>}</p>
+          <p class="muted">One payment, tax included. No subscription. For one computer, with no expiry.</p>
           <ul>{proFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
           <span class="btn btn-primary" aria-disabled="true">Available at launch</span>
         </article>
