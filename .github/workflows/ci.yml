@@ -55,6 +55,9 @@ jobs:
       - name: Long-session memory gate (fails if memory accumulates across scans)
         shell: bash
         run: cargo run --release --locked -p tessera-cli -- soak "$RUNNER_TEMP/fx" --runs 10 --max-peak-growth-mib 8
+      - name: Screen request time budgets (fails if any request is over budget)
+        shell: bash
+        run: cargo run --release --locked -p tessera-cli -- ui-bench "$RUNNER_TEMP/fx" --check
 
   website:
     name: Website build
