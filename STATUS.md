@@ -59,7 +59,7 @@ Last updated: 2026-11-26.
 | Search and filters (name, path, type groups, size, date, empty folders, scope, 4 sort orders) with map highlighting | Engine automatically tested (4 tests); UI checked on Windows with a 100k-file scan |
 | Sunburst, tree, table views | Not implemented |
 | UI with 1M-file scans | Not tested (scanner tested at 1M; UI at 100k) |
-| Categorisation, developer storage view | Not implemented |
+| Smart Scan (tessera-insights): evidence-based junk, developer and large-download suggestions; app screen with reasons, safety labels, add-to-cleanup | Rules automatically tested (positive and negative evidence); screen checked on Windows with a disposable project folder. Seeing suggestions is free; cleanup stays Pro |
 | Cleanup (review → Trash) | Not implemented |
 | Storage history, reports | Not implemented |
 | Licensing engine (Dodo public activate/validate/deactivate endpoints, test mode only, OS credential store, 30-day offline grace, configurable Pro features) | Automatically tested against a simulated Dodo server (7 tests). **Mock only**: no real Dodo test-mode key has been used yet |

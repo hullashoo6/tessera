@@ -376,6 +376,64 @@ fn search(
     })
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SuggestionDto {
+    id: NodeId,
+    group: &'static str,
+    label: &'static str,
+    reason: String,
+    safety: &'static str,
+    safety_text: &'static str,
+    bytes: u64,
+    name: String,
+    path: String,
+}
+
+/// Smart Scan suggestions for a finished scan. Seeing them is free;
+/// acting on them goes through the Pro-gated cleanup.
+#[tauri::command]
+fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<SuggestionDto>> {
+    use tessera_insights::{Group, Safety};
+    let scan = active(&state, scan_id)?;
+    if !matches!(
+        *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()),
+        Outcome::Finished(_)
+    ) {
+        return Err("Suggestions appear when the scan finishes.".into());
+    }
+    let tree = read(&scan);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let found = tessera_insights::analyse(&tree, &tessera_insights::Places::for_this_user(), now);
+    Ok(found
+        .into_iter()
+        .take(2000)
+        .map(|s| SuggestionDto {
+            id: s.id,
+            group: match s.group {
+                Group::Junk => "junk",
+                Group::Developer => "developer",
+                Group::Downloads => "downloads",
+            },
+            label: s.label,
+            safety: match s.safety {
+                Safety::Regenerable => "regenerable",
+                Safety::Redownloadable => "redownloadable",
+                Safety::Review => "review",
+                Safety::UseAppTool => "useAppTool",
+            },
+            safety_text: tessera_insights::safety_text(s.safety),
+            reason: s.reason,
+            bytes: s.bytes,
+            name: tree.node(s.id).display_name().into_owned(),
+            path: tree.path_of(s.id).to_string_lossy().into_owned(),
+        })
+        .collect())
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -560,6 +618,7 @@ pub fn run() {
             treemap,
             largest_files,
             search,
+            smart_scan,
             review_cleanup,
             confirm_cleanup,
             license_status,

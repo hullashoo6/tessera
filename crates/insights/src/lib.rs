@@ -299,7 +299,7 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
             "target" if sibling(tree, i, "cargo.toml") && (has_child(tree, i, "cachedir.tag") || has_child(tree, i, "debug") || has_child(tree, i, "release")) => {
                 b.add(i, Group::Developer, "Rust build output", Safety::Regenerable, "Compiled files next to a Cargo.toml; `cargo build` recreates them.".into())
             }
-            ".venv" | "venv" | "env" if has_child(tree, i, "pyvenv.cfg") => b.add(i, Group::Developer, "Python virtual environment", Safety::Regenerable,
+            ".venv" | "venv" | "env" if has_child(tree, i, "pyvenv.cfg") => b.add(i, Group::Developer, "Python virtual environment", Safety::Review,
                 "A Python environment (it contains pyvenv.cfg). It can be recreated from the project's requirements, so check those exist first.".into()),
             ".next" | ".nuxt" | ".turbo" | ".parcel-cache" | ".svelte-kit" if sibling(tree, i, "package.json") => b.add(i, Group::Developer, "Web build cache", Safety::Regenerable,
                 "Build output of a JavaScript project; rebuilt on the next build.".into()),

@@ -158,6 +158,18 @@ export interface CleanupReport {
   freeAfter: number | null
 }
 
+export interface Suggestion {
+  id: number
+  group: 'junk' | 'developer' | 'downloads'
+  label: string
+  reason: string
+  safety: 'regenerable' | 'redownloadable' | 'review' | 'useAppTool'
+  safetyText: string
+  bytes: number
+  name: string
+  path: string
+}
+
 export interface Entitlement {
   pro: boolean
   summary: string
@@ -185,6 +197,7 @@ export const api = {
     invoke<FileRow[]>('largest_files', { scanId, under, metric, limit }),
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
+  smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
   confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
   licenseStatus: () => invoke<Entitlement>('license_status'),

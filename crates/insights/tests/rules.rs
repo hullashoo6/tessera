@@ -109,6 +109,15 @@ fn rules_fire_only_with_evidence() {
         .find(|s| s.label == "Docker disk image")
         .unwrap();
     assert_eq!(docker.safety, Safety::UseAppTool);
+    let venv = found
+        .iter()
+        .find(|s| s.label == "Python virtual environment")
+        .unwrap();
+    assert_eq!(
+        venv.safety,
+        Safety::Review,
+        "recreating a venv needs the project's requirements"
+    );
     let hf = found.iter().find(|s| s.group == Group::Downloads).unwrap();
     assert_eq!(hf.safety, Safety::Review);
     assert!(

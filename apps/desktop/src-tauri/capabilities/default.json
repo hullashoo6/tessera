@@ -15,6 +15,7 @@
     "allow-treemap",
     "allow-largest-files",
     "allow-search",
+    "allow-smart-scan",
     "allow-review-cleanup",
     "allow-confirm-cleanup",
     "allow-license-status",

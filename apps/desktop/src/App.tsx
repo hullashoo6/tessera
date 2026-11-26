@@ -8,12 +8,13 @@ import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
 import { SettingsView } from './components/SettingsView'
 import { Search } from './components/Search'
+import { Suggestions } from './components/Suggestions'
 import { Treemap, type Highlight } from './components/Treemap'
 import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
+type View = 'overview' | 'suggestions' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -36,6 +37,12 @@ export function App() {
   const [highlight, setHighlight] = useState<Highlight | null>(null)
   const [marked, setMarked] = useState<Set<number>>(() => new Set())
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null)
+  const markMany = (ids: number[]) =>
+    setMarked((m) => {
+      const next = new Set(m)
+      for (const id of ids) next.add(id)
+      return next
+    })
   const toggleMark = (id: number) =>
     setMarked((m) => {
       const next = new Set(m)
@@ -206,6 +213,7 @@ export function App() {
 
   const nav: [View, string, boolean][] = [
     ['overview', 'Overview', false],
+    ['suggestions', 'Smart Scan', scanId === null],
     ['map', 'Storage map', scanId === null],
     ['largest', 'Largest files', scanId === null],
     ['search', 'Search', scanId === null],
@@ -378,6 +386,18 @@ export function App() {
               }}
               marked={marked}
               onToggleMark={toggleMark}
+              onError={onError}
+            />
+          )}
+          {view === 'suggestions' && scanId !== null && (
+            <Suggestions
+              scanId={scanId}
+              scanning={scanning}
+              version={version}
+              marked={marked}
+              onToggleMark={toggleMark}
+              onMarkMany={markMany}
+              onOpenCleanup={() => setView('cleanup')}
               onError={onError}
             />
           )}
