@@ -85,6 +85,9 @@ button, input, select { font: inherit; color: inherit; }
   .menu button:hover, .menu button:focus-visible { outline: 2px solid Highlight; }
   .capacity-bar { border: 1px solid CanvasText; }
   .capacity-used { background: Highlight; forced-color-adjust: none; }
+  /* The colour squares link list rows to the map, whose colours stay. */
+  .row-swatch { forced-color-adjust: none; outline: 1px solid CanvasText; }
+  .row-bar { background: CanvasText; forced-color-adjust: none; }
   .drop-hint { background: Canvas; outline-color: Highlight; }
   :focus-visible { outline-color: Highlight; }
 }

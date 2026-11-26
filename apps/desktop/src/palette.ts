@@ -84,6 +84,9 @@ export function hoverInk(theme: Theme): string {
   return theme === 'dark' ? '#86a9d1' : '#3e6a9e'
 }
 
+/** Small colour square beside a list row. It carries no text, so in dark mode
+ * it can be brighter than the map's tiles and still stand out from the page. */
 export function swatch(index: number, kind: string, theme: Theme): string {
+  if (theme === 'dark' && !contrast) return `hsl(${hue(index)} 30% ${kind === 'dir' ? 46 : 52}%)`
   return tileFill({ kind, depth: 0, branch: index }, theme)
 }
