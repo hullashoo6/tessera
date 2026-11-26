@@ -11,6 +11,8 @@ const COMMANDS: &[&str] = &[
     "treemap",
     "largest_files",
     "search",
+    "review_cleanup",
+    "confirm_cleanup",
     "reveal_item",
     "open_item",
 ];

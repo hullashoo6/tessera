@@ -16,6 +16,8 @@ interface Props {
   version: number
   onSelect: (id: number) => void
   onCommand: (command: ItemCommand, id: number) => void
+  marked: Set<number>
+  onToggleMark: (id: number) => void
   onError: (message: string) => void
 }
 
@@ -46,7 +48,7 @@ function kindText(n: NodeInfo, isRoot: boolean): string {
 const PAGE = 200
 
 export function Details(props: Props) {
-  const { scanId, viewRoot, selected, metric, theme, os, version, onSelect, onCommand, onError } = props
+  const { scanId, viewRoot, selected, metric, theme, os, version, onSelect, onCommand, marked, onToggleMark, onError } = props
   const focusId = selected ?? viewRoot
   const [details, setDetails] = useState<DetailsData | null>(null)
   const [rootSize, setRootSize] = useState(0)
@@ -156,6 +158,11 @@ export function Details(props: Props) {
               <button className="btn btn-quiet" onClick={() => onCommand('copy', n.id)}>
                 Copy path
               </button>
+              {!isRoot && (n.kind === 'file' || n.kind === 'dir') && (
+                <button className="btn btn-quiet" aria-pressed={marked.has(n.id)} onClick={() => onToggleMark(n.id)}>
+                  {marked.has(n.id) ? 'Remove from cleanup' : 'Add to cleanup'}
+                </button>
+              )}
             </div>
           </>
         ) : (

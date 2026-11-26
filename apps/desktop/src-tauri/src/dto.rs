@@ -401,3 +401,92 @@ impl TileDto {
         }
     }
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewItemDto {
+    pub id: NodeId,
+    pub name: String,
+    pub path: String,
+    pub kind: &'static str,
+    pub logical: u64,
+    pub allocated: u64,
+    pub warning: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct RejectedDto {
+    pub path: String,
+    pub reason: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewDto {
+    pub review_id: u64,
+    pub items: Vec<ReviewItemDto>,
+    pub rejected: Vec<RejectedDto>,
+    pub merged: u32,
+    pub total_logical: u64,
+    pub total_allocated: u64,
+}
+
+impl ReviewDto {
+    pub fn new(review_id: u64, plan: &tessera_cleanup::Plan) -> Self {
+        ReviewDto {
+            review_id,
+            items: plan
+                .items
+                .iter()
+                .map(|c| ReviewItemDto {
+                    id: c.id,
+                    name: c
+                        .path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    path: c.path.to_string_lossy().into_owned(),
+                    kind: kind_name(c.kind),
+                    logical: c.logical,
+                    allocated: c.allocated,
+                    warning: c.warning.clone(),
+                })
+                .collect(),
+            rejected: plan
+                .rejected
+                .iter()
+                .map(|r| RejectedDto {
+                    path: r.path.to_string_lossy().into_owned(),
+                    reason: r.reason.clone(),
+                })
+                .collect(),
+            merged: plan.merged as u32,
+            total_logical: plan.total_logical,
+            total_allocated: plan.total_allocated,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutcomeDto {
+    pub id: NodeId,
+    pub path: String,
+    pub logical: u64,
+    pub allocated: u64,
+    pub ok: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupReportDto {
+    pub moved: u32,
+    pub failed: u32,
+    pub moved_logical: u64,
+    pub moved_allocated: u64,
+    pub outcomes: Vec<OutcomeDto>,
+    /// Free space reported by the OS before and after the move.
+    pub free_before: Option<u64>,
+    pub free_after: Option<u64>,
+}

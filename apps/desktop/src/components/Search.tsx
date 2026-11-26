@@ -13,6 +13,8 @@ interface Props {
   version: number
   onCommand: (command: ItemCommand, id: number) => void
   onHighlight: (matches: number[], containing: number[], label: string) => void
+  marked: Set<number>
+  onToggleMark: (id: number) => void
   onError: (message: string) => void
 }
 
@@ -40,7 +42,7 @@ const sizes = (): [string, string, number | null][] => [
 ]
 
 export function Search(props: Props) {
-  const { scanId, viewRoot, viewRootName, metric, os, version, onCommand, onHighlight, onError } = props
+  const { scanId, viewRoot, viewRootName, metric, os, version, onCommand, onHighlight, marked, onToggleMark, onError } = props
   const [text, setText] = useState('')
   const [debounced, setDebounced] = useState('')
   const [matchPath, setMatchPath] = useState(false)
@@ -189,7 +191,7 @@ export function Search(props: Props) {
                     <button className="btn btn-quiet" onClick={() => onCommand('zoom', r.node.id)}>Map</button>
                   )}
                   <button className="btn btn-quiet" title={names.showIn} aria-label={`${names.showIn}: ${r.node.name}`} onClick={() => onCommand('reveal', r.node.id)}>Show</button>
-                  <button className="btn btn-quiet" onClick={() => onCommand('copy', r.node.id)}>Copy path</button>
+                  <button className="btn btn-quiet" aria-pressed={marked.has(r.node.id)} onClick={() => onToggleMark(r.node.id)}>{marked.has(r.node.id) ? 'Added' : 'Add to cleanup'}</button>
                 </span>
               </>
             )}

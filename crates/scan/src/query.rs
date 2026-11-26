@@ -27,7 +27,10 @@ impl Metric {
 
 /// Children of `id`, largest first; ties broken by name for stable output.
 pub fn sorted_children(tree: &Tree, id: NodeId, metric: Metric) -> Vec<NodeId> {
-    let mut v: Vec<NodeId> = tree.children(id).collect();
+    let mut v: Vec<NodeId> = tree
+        .children(id)
+        .filter(|&c| !tree.node(c).has(flags::REMOVED))
+        .collect();
     v.sort_by(|&a, &b| {
         metric
             .of(tree, b)
@@ -55,7 +58,7 @@ pub fn largest_files(
     let mut heap: BinaryHeap<Reverse<(u64, NodeId)>> = BinaryHeap::with_capacity(limit + 1);
     for id in range {
         let n = tree.node(id);
-        if n.kind != NodeKind::File || n.has(flags::COUNTED_ELSEWHERE) {
+        if n.kind != NodeKind::File || n.flags & (flags::COUNTED_ELSEWHERE | flags::REMOVED) != 0 {
             continue;
         }
         if under.is_some_and(|u| u != id && !is_descendant(tree, id, u)) {
@@ -167,7 +170,7 @@ pub fn search(
     let mut hits: Vec<NodeId> = Vec::new();
     for id in 1..tree.len() as NodeId {
         let n = tree.node(id);
-        if n.has(flags::COUNTED_ELSEWHERE) {
+        if n.flags & (flags::COUNTED_ELSEWHERE | flags::REMOVED) != 0 {
             continue;
         }
         let is_file = n.kind == NodeKind::File;

@@ -36,7 +36,7 @@ export const freeFeatures: Feature[] = [
 
 export const proFeatures: Feature[] = [
   { name: 'Everything in Free', status: 'available' },
-  { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'in development' },
+  { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'available' },
   { name: 'Developer storage: node_modules, build folders, caches', status: 'in development' },
   { name: 'Storage history and growth between scans', status: 'in development' },
   { name: 'Exportable reports', status: 'in development' },

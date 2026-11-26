@@ -61,6 +61,8 @@ pub mod flags {
     pub const SUBTREE_ESTIMATED: u16 = 1 << 13;
     /// Set by `Tree::finalize` on directories containing cloud placeholders.
     pub const SUBTREE_CLOUD: u16 = 1 << 14;
+    /// Moved to the Trash by Tessera after the scan; excluded everywhere.
+    pub const REMOVED: u16 = 1 << 15;
 
     pub(crate) const INCOMPLETE_MASK: u16 =
         PENDING | UNREADABLE | PARTIAL | METADATA_UNAVAILABLE | SUBTREE_INCOMPLETE;
@@ -214,6 +216,54 @@ impl Tree {
         self.ancestors(id).count()
     }
 
+    /// Removes a node's contribution from all ancestors after it has been
+    /// moved to the Trash, and marks it so views and queries skip it.
+    pub fn detach(&mut self, id: NodeId) {
+        self.detach_many(&[id]);
+    }
+
+    /// `detach` for several nodes, with one pass to mark their contents.
+    pub fn detach_many(&mut self, ids: &[NodeId]) {
+        let mut first = u32::MAX;
+        for &id in ids {
+            if self.detach_one(id) {
+                first = first.min(id);
+            }
+        }
+        // Parents precede children, so one forward pass marks every
+        // descendant of a removed folder.
+        for i in (first as usize).saturating_add(1)..self.nodes.len() {
+            let parent = self.nodes[i].parent;
+            if parent != NO_NODE && self.nodes[parent as usize].flags & flags::REMOVED != 0 {
+                self.nodes[i].flags |= flags::REMOVED;
+            }
+        }
+    }
+
+    fn detach_one(&mut self, id: NodeId) -> bool {
+        if id == ROOT || (id as usize) >= self.nodes.len() || self.node(id).has(flags::REMOVED) {
+            return false;
+        }
+        let n = self.node(id);
+        let (l, a) = n.counted();
+        let (f, d) = match n.kind {
+            NodeKind::File => (1, 0),
+            NodeKind::Dir => (n.files, n.dirs + 1),
+            _ => (0, 0),
+        };
+        let mut cur = n.parent;
+        while cur != NO_NODE {
+            let p = &mut self.nodes[cur as usize];
+            p.logical = p.logical.saturating_sub(l);
+            p.allocated = p.allocated.saturating_sub(a);
+            p.files = p.files.saturating_sub(f);
+            p.dirs = p.dirs.saturating_sub(d);
+            cur = p.parent;
+        }
+        self.nodes[id as usize].flags |= flags::REMOVED | flags::COUNTED_ELSEWHERE;
+        true
+    }
+
     /// Bottom-up pass that sets the SUBTREE_* summary flags.
     pub fn finalize(&mut self) {
         for i in (1..self.nodes.len()).rev() {
@@ -246,6 +296,9 @@ impl Tree {
     pub fn check_invariants(&self) -> Result<(), String> {
         for (i, n) in self.nodes.iter().enumerate() {
             let id = i as NodeId;
+            if n.has(flags::REMOVED) {
+                continue;
+            }
             if n.kind != NodeKind::Dir {
                 if n.first_child != NO_NODE {
                     return Err(format!("non-directory node {id} has children"));
@@ -260,6 +313,9 @@ impl Tree {
                 }
                 if c <= id {
                     return Err(format!("child {c} does not follow parent {id}"));
+                }
+                if cn.has(flags::REMOVED) {
+                    continue;
                 }
                 let (cl, ca) = cn.counted();
                 l += cl;

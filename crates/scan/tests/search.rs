@@ -141,3 +141,36 @@ fn date_filters_and_limit() {
     assert_eq!(hits.total, 6);
     assert_eq!(hits.ids.len(), 3);
 }
+
+#[test]
+fn detached_items_leave_consistent_totals_and_disappear_from_queries() {
+    let (_t, mut tree) = tree();
+    let root_before = tree.root().logical;
+    let files_before = tree.root().files;
+    let videos =
+        tessera_scan::query::find_by_path(&tree, &tree.root_path().join("Videos")).unwrap();
+    let v_size = tree.node(videos).logical;
+    let v_files = tree.node(videos).files;
+    tree.detach(videos);
+    tree.check_invariants().expect("invariants after detach");
+    assert_eq!(tree.root().logical, root_before - v_size);
+    assert_eq!(tree.root().files, files_before - v_files);
+    let kids = tessera_scan::query::sorted_children(&tree, tessera_scan::ROOT, Metric::Logical);
+    assert!(
+        kids.iter()
+            .all(|&k| tree.node(k).display_name() != "Videos")
+    );
+    let f = Filter {
+        name: Some("holiday".into()),
+        ..files()
+    };
+    assert_eq!(
+        names(
+            &tree,
+            &search(&tree, &f, Metric::Logical, SortKey::Size, 10).ids
+        ),
+        ["holiday-notes.txt"]
+    );
+    tree.detach(videos); // second call is a no-op
+    tree.check_invariants().unwrap();
+}

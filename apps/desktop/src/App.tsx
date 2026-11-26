@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, errorText, type Crumb, type ScanTarget, type Status, type Tile, type Volume } from './api'
+import { Cleanup } from './components/Cleanup'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
 import { LargestFiles } from './components/LargestFiles'
@@ -12,7 +13,7 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'map' | 'largest' | 'search' | 'settings'
+type View = 'overview' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -33,6 +34,14 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; tile: Tile } | null>(null)
   const [highlight, setHighlight] = useState<Highlight | null>(null)
+  const [marked, setMarked] = useState<Set<number>>(() => new Set())
+  const toggleMark = (id: number) =>
+    setMarked((m) => {
+      const next = new Set(m)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const lastRefresh = useRef(0)
 
   const scanId = status?.scanId ?? null
@@ -126,6 +135,7 @@ export function App() {
         setSelected(null)
         setCrumbs([])
         setHighlight(null)
+        setMarked(new Set())
         setView('map')
         return api.scanStatus().then(setStatus)
       })
@@ -178,6 +188,9 @@ export function App() {
       { label: 'Open', run: () => command('open', t.id), disabled: t.kind === 'link' || t.kind === 'other' },
       { label: 'Copy path', run: () => command('copy', t.id) },
     )
+    if (t.kind === 'file' || t.kind === 'dir') {
+      actions.push({ label: marked.has(t.id) ? 'Remove from cleanup' : 'Add to cleanup', run: () => toggleMark(t.id), separatorBefore: true })
+    }
     if (crumbs.length > 1) actions.push({ label: 'Up one level', run: up, separatorBefore: true })
     return actions
   }
@@ -192,6 +205,7 @@ export function App() {
     ['map', 'Storage map', scanId === null],
     ['largest', 'Largest files', scanId === null],
     ['search', 'Search', scanId === null],
+    ['cleanup', 'Cleanup', scanId === null],
     ['settings', 'Settings', false],
   ]
 
@@ -212,6 +226,7 @@ export function App() {
             onClick={() => setView(v)}
           >
             {label}
+            {v === 'cleanup' && marked.size > 0 && <span className="nav-count" aria-label={` chosen`}>{marked.size}</span>}
           </button>
         ))}
         <div className="sidebar-foot">Scans stay on this computer.</div>
@@ -324,6 +339,8 @@ export function App() {
                 version={version}
                 onSelect={setSelected}
                 onCommand={command}
+                marked={marked}
+                onToggleMark={toggleMark}
                 onError={onError}
               />
             </div>
@@ -337,6 +354,8 @@ export function App() {
               os={info.os}
               version={version}
               onCommand={command}
+              marked={marked}
+              onToggleMark={toggleMark}
               onError={onError}
             />
           )}
@@ -352,6 +371,29 @@ export function App() {
               onHighlight={(m, c, label) => {
                 setHighlight({ matches: new Set(m), containing: new Set(c), label })
                 setView('map')
+              }}
+              marked={marked}
+              onToggleMark={toggleMark}
+              onError={onError}
+            />
+          )}
+          {view === 'cleanup' && scanId !== null && (
+            <Cleanup
+              scanId={scanId}
+              marked={[...marked]}
+              metric={settings.metric}
+              os={info.os}
+              onUnmark={toggleMark}
+              onFinished={(r) => {
+                setMarked((m) => {
+                  const next = new Set(m)
+                  for (const o of r.outcomes) if (o.ok) next.delete(o.id)
+                  return next
+                })
+                setSelected(null)
+                setVersion((v) => v + 1)
+                refreshDrives()
+                api.scanStatus().then(setStatus).catch((e) => onError(errorText(e)))
               }}
               onError={onError}
             />

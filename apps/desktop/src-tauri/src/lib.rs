@@ -41,6 +41,7 @@ struct ActiveScan {
 #[derive(Default)]
 struct AppState {
     scan: Mutex<Option<Arc<ActiveScan>>>,
+    review: Mutex<Option<PendingReview>>,
     next_id: AtomicU64,
 }
 
@@ -186,12 +187,26 @@ fn scan_status(state: State<'_, AppState>) -> Option<StatusDto> {
     let outcome = scan.outcome.lock().unwrap_or_else(|e| e.into_inner());
     let (phase, progress, summary, error) = match &*outcome {
         Outcome::Running(p) => ("scanning", ProgressDto::new(scan.id, p), None, None),
-        Outcome::Finished(s) => (
-            if s.cancelled { "cancelled" } else { "complete" },
-            ProgressDto::new(scan.id, &s.progress),
-            Some(SummaryDto::from(s)),
-            None,
-        ),
+        Outcome::Finished(s) => {
+            // Totals come from the live tree, so they reflect any cleanup
+            // done since the scan finished.
+            let mut p = ProgressDto::new(scan.id, &s.progress);
+            let tree = read(&scan);
+            let root = tree.root();
+            (p.files, p.dirs, p.logical, p.allocated) = (
+                u64::from(root.files),
+                u64::from(root.dirs),
+                root.logical,
+                root.allocated,
+            );
+            drop(tree);
+            (
+                if s.cancelled { "cancelled" } else { "complete" },
+                p,
+                Some(SummaryDto::from(s)),
+                None,
+            )
+        }
         Outcome::Failed(e) => (
             "failed",
             ProgressDto::new(scan.id, &Progress::default()),
@@ -358,6 +373,101 @@ fn search(
     })
 }
 
+struct PendingReview {
+    id: u64,
+    scan_id: u64,
+    plan: tessera_cleanup::Plan,
+}
+
+#[tauri::command]
+fn review_cleanup(
+    state: State<'_, AppState>,
+    scan_id: u64,
+    ids: Vec<NodeId>,
+) -> CmdResult<ReviewDto> {
+    if ids.len() > 100_000 {
+        return Err("Too many items selected at once.".into());
+    }
+    let scan = active(&state, scan_id)?;
+    if !matches!(
+        *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()),
+        Outcome::Finished(_)
+    ) {
+        return Err("Wait for the scan to finish before cleaning up.".into());
+    }
+    let plan = {
+        let tree = read(&scan);
+        tessera_cleanup::build_plan(&tree, &ids, &tessera_cleanup::Protection::for_this_system())
+    };
+    let id = state.next_id.fetch_add(1, Ordering::Relaxed) + 1;
+    let dto = ReviewDto::new(id, &plan);
+    *state.review.lock().unwrap_or_else(|e| e.into_inner()) =
+        Some(PendingReview { id, scan_id, plan });
+    Ok(dto)
+}
+
+#[tauri::command]
+async fn confirm_cleanup(
+    state: State<'_, AppState>,
+    review_id: u64,
+) -> CmdResult<CleanupReportDto> {
+    // Taking the plan out of the state means a review can run only once.
+    let pending = state
+        .review
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    let pending = match pending {
+        Some(p) if p.id == review_id => p,
+        _ => return Err("This review has expired. Review the items again.".into()),
+    };
+    let scan = active(&state, pending.scan_id)?;
+    let root = scan.root.clone();
+    let plan = pending.plan;
+    let (report, before, after) = tauri::async_runtime::spawn_blocking(move || {
+        let before = volume_space(&root).ok().map(|s| s.available);
+        let protection = tessera_cleanup::Protection::for_this_system();
+        let report = tessera_cleanup::execute(&plan, &protection, &mut |p| {
+            tessera_cleanup::move_to_trash(p)
+        });
+        let after = volume_space(&root).ok().map(|s| s.available);
+        (report, before, after)
+    })
+    .await
+    .map_err(|_| "The cleanup stopped unexpectedly. Check the Recycle Bin before trying again.")?;
+
+    let moved: Vec<NodeId> = report
+        .outcomes
+        .iter()
+        .filter(|o| o.result.is_ok())
+        .map(|o| o.id)
+        .collect();
+    scan.tree
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .detach_many(&moved);
+    Ok(CleanupReportDto {
+        moved: report.moved as u32,
+        failed: report.failed as u32,
+        moved_logical: report.moved_logical,
+        moved_allocated: report.moved_allocated,
+        outcomes: report
+            .outcomes
+            .iter()
+            .map(|o| OutcomeDto {
+                id: o.id,
+                path: o.path.to_string_lossy().into_owned(),
+                logical: o.logical,
+                allocated: o.allocated,
+                ok: o.result.is_ok(),
+                reason: o.result.as_ref().err().cloned(),
+            })
+            .collect(),
+        free_before: before,
+        free_after: after,
+    })
+}
+
 fn existing_path(state: &AppState, scan_id: u64, id: NodeId) -> CmdResult<(PathBuf, NodeKind)> {
     let scan = active(state, scan_id)?;
     let tree = read(&scan);
@@ -429,6 +539,8 @@ pub fn run() {
             treemap,
             largest_files,
             search,
+            review_cleanup,
+            confirm_cleanup,
             reveal_item,
             open_item,
         ])

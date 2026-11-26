@@ -12,6 +12,8 @@ interface Props {
   os: string
   version: number
   onCommand: (command: ItemCommand, id: number) => void
+  marked: Set<number>
+  onToggleMark: (id: number) => void
   onError: (message: string) => void
 }
 
@@ -22,7 +24,7 @@ function location(row: FileRow): string {
   return cut > 0 ? row.path.slice(0, cut) : row.path
 }
 
-export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, onError }: Props) {
+export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, marked, onToggleMark, onError }: Props) {
   const [scope, setScope] = useState<'all' | 'folder'>('all')
   const [rows, setRows] = useState<FileRow[] | null>(null)
   const [selected, setSelected] = useState(-1)
@@ -102,8 +104,8 @@ export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, versi
                   >
                     Show
                   </button>
-                  <button className="btn btn-quiet" onClick={() => onCommand('open', r.node.id)}>
-                    Open
+                  <button className="btn btn-quiet" aria-pressed={marked.has(r.node.id)} onClick={() => onToggleMark(r.node.id)}>
+                    {marked.has(r.node.id) ? 'Added' : 'Add to cleanup'}
                   </button>
                   <button className="btn btn-quiet" onClick={() => onCommand('copy', r.node.id)}>
                     Copy path

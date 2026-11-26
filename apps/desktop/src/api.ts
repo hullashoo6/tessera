@@ -129,6 +129,35 @@ export interface SearchResult {
   containing: number[]
 }
 
+export interface ReviewItem {
+  id: number
+  name: string
+  path: string
+  kind: NodeKind
+  logical: number
+  allocated: number
+  warning: string | null
+}
+
+export interface Review {
+  reviewId: number
+  items: ReviewItem[]
+  rejected: { path: string; reason: string }[]
+  merged: number
+  totalLogical: number
+  totalAllocated: number
+}
+
+export interface CleanupReport {
+  moved: number
+  failed: number
+  movedLogical: number
+  movedAllocated: number
+  outcomes: { id: number; path: string; logical: number; allocated: number; ok: boolean; reason: string | null }[]
+  freeBefore: number | null
+  freeAfter: number | null
+}
+
 export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
 
 export const api = {
@@ -147,6 +176,8 @@ export const api = {
     invoke<FileRow[]>('largest_files', { scanId, under, metric, limit }),
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
+  reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
+  confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
   openItem: (scanId: number, id: number) => invoke<void>('open_item', { scanId, id }),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>

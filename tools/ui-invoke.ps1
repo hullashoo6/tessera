@@ -7,6 +7,12 @@ $p = Get-Process $Process -ErrorAction Stop | Where-Object { $_.MainWindowHandle
 $root = [System.Windows.Automation.AutomationElement]::FromHandle($p.MainWindowHandle)
 $cond = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $Name
 $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+if (-not $el) {
+  # Fall back to the first element whose name starts with $Name (e.g. a
+  # button whose name also includes a count badge).
+  $all = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+  foreach ($e in $all) { if ($e.Current.Name -like "$Name*") { $el = $e; break } }
+}
 if (-not $el) { throw "No element named '$Name'" }
 $pattern = $null
 if ($el.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
