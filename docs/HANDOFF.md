@@ -106,6 +106,12 @@ Not yet verified: cloud free-up end to end (OneDrive not syncing); CSV export th
 - PowerShell `Invoke-WebRequest` can't follow 308 redirects; Cloudflare Pages adds trailing slashes.
 - A debug build run without `npx tauri dev` shows a blank window (needs the Vite dev server).
 - Disposable fixtures go in `.fixtures\<name>` with a `.tessera-fixture` marker and are deleted afterwards. Website screenshots come from a made-up `C:\Demo` folder so no personal paths appear.
+- **GitHub Actions minutes are limited** (private repo; macOS minutes count 10x). Each push starts CI; pushing every few minutes used up the month on 27 Nov. Batch pushes, and docs-only pushes no longer trigger CI. `tools/check.ps1` runs the same checks locally.
+- Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'` stops the script when a native program's stderr is redirected (`*>`, `2>&1`): run such commands through `cmd /c "... > log 2>&1"`.
+- `SetWindowPos` called from (non-DPI-aware) PowerShell takes logical coordinates: on this 125% screen, 800 x 480 gives a true 800 x 480-point window.
+- Desktop Commander's `start_process` sometimes returns only the first lines of output; call `read_process_output` for the rest. Long jobs (> 4 min) must run with `Start-Process` in the background and be polled, or the tool call times out.
+- The dev app and the installed app share all state (same identifier `app.tessera.desktop`): WebView settings such as "welcomed", the background-mode file in `%APPDATA%\app.tessera.desktop`, and the log in `%LOCALAPPDATA%\app.tessera.desktop\logs`. Leave settings as you found them after testing.
+- macOS cross-checks from Windows: `cargo clippy --target aarch64-apple-darwin` works for scan, insights, cli and treemap; crates with C code (ring, blake3, objc2-exception-helper) need Apple's toolchain, so the desktop app itself can only be checked on GitHub's macOS runner.
 - The Restore list contains the owner's own entries (they cleaned Hugging Face models, crash dumps and a temp file on 26 Nov ~22:04 and emptied the bin). Do not clear it.
 
 ## 7. Roadmap to a great product
@@ -119,25 +125,16 @@ Not yet verified: cloud free-up end to end (OneDrive not syncing); CSV export th
 6. **Legal:** lawyer review of privacy and terms (add governing law), trademark search/registration for "Tessera" in class 9, a dedicated support email (e.g. support@ a custom domain) and optionally a custom domain on Cloudflare (paid; ask).
 
 ### Phase 1 — v1.0 polish (no approval needed)
-- First-run onboarding (what Tessera does, privacy promise, pick a drive), empty states, and a short in-app tour.
-- "Scan with Tessera" in File Explorer / Finder context menus (the folder-argument entry point already exists; make the single-instance callback start a scan when a folder is passed to an already-open window).
-- Version 1.0.0 bump, CHANGELOG, release checklist automation (build both installers, smoke test, manifest, website update).
-- Fix/verify: CSV export manual check; Store app sizes on more machines; History y-axis labels; keyboard focus order audit; NVDA (Windows) and VoiceOver (Mac) runs; high-contrast mode; 200% scaling.
-- Crash resilience: local-only log file (no upload) the user can choose to email; graceful handling when the scan target disappears mid-scan.
-- Performance targets per release: 1M files < 8 s on the owner laptop, held memory < 100 MB, UI frame budget under 16 ms during scans; keep `tessera-cli soak` in CI as a regression gate.
+- DONE 27 Nov: first-run welcome screen, storage-map tips (the "short tour"); "Scan with Tessera" (right-click on Windows, Open With/Dock on Mac, drop on window, second launch); CHANGELOG; release automation (`tools/check.ps1`, `tools/release.ps1`); History axis labels; keyboard audit (no mouse-only controls found); high contrast; small screens / high scaling layout; crash resilience (local log, scan faults, folder vanishing mid-scan); 1M-file screen performance measured; CI memory and time-budget gates.
+- Still open: version 1.0.0 bump (do it when the owner wants to release); CSV export and Print-to-PDF manual checks; Store app sizes on more machines; NVDA (Windows) and VoiceOver (Mac) runs; look at the app with a Windows contrast theme switched on and at real 200% scaling; JavaScript frame-time measurement during scans.
 
 ### Phase 2 — Features that beat DissectMac and others
-- Smart Scan rules: Windows Update cleanup and Delivery Optimization (via Windows' own Disk Cleanup/Storage Sense, not by deleting), iOS/iPadOS backups, Android SDK/emulator images, Xcode simulators and archives, Unity/Unreal caches, old Downloads installers (> 30 days), screen recordings, WhatsApp/Telegram media folders, language packs — each evidence-based with a safety level.
-- Large and old files view ("not opened in a year" where the OS records it reliably).
-- Compare two scans side by side; scheduled scans with a low-disk-space notification (opt-in, local).
-- Tray / menu-bar mini view of free space; drag a folder onto the window to scan.
-- Cloud: OneDrive "free up space" for whole folders; Dropbox/Google Drive (File Provider on Mac) where supported by official mechanisms.
-- Localisation (Hindi, Spanish, German, French, Portuguese, Japanese at least; DissectMac has 7 languages).
-- Optional PDF report export.
+- DONE 27 Nov: Smart Scan rules (Windows Update downloads and previous Windows installation via Windows' own clean-up, iPhone/iPad backups, Android images and AVDs, Xcode simulators/archives/device support, Unity/Unreal, old installers in Downloads, screen recordings, Firefox, macOS installers; Mac parity for browser caches, pip, Yarn, crash reports); "Large old files" (by modified date: access dates are unreliable); background mode with tray/menu-bar free space and low-space warning; drag a folder onto the window; printable report / save as PDF (Pro).
+- Still open: Delivery Optimization, WhatsApp/Telegram media and language packs (paths not verified; add only with evidence); compare two scans in depth (History compares the top-level folders; deeper needs more data per snapshot); scheduled scans; OneDrive free-up for whole folders; Dropbox/Google Drive; **localisation (plan in docs/LOCALISATION.md; owner to choose languages and reviewers)**; "Start at sign-in" for background mode (would need the autostart plugin).
 
 ### Phase 3 — Launch and growth
 - Landing page copy and comparison pages (vs WinDirStat, WizTree, TreeSize, DaisyDisk, DissectMac), honest benchmarks page.
-- Blog/guides that rank: "what is taking space on my C drive", "how to clear node_modules safely", "free up iCloud/OneDrive space without deleting".
+- DRAFTED 27 Nov (committed, not deployed): guides at `website/src/pages/guides/` (Windows, Mac, developer caches, cloud files). Deploy after the owner's OK.
 - Demo video (60-90 s), screenshots per platform, Product Hunt launch, Reddit (r/DataHoarder, r/windows, r/mac, r/webdev), Hacker News Show HN, YouTube reviewers, Microsoft Store listing optimisation.
 - Launch discount codes in Dodo; referral or bundle ideas later.
 - Support: FAQ, email templates for refunds/licence moves, a public changelog.
