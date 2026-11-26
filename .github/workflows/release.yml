@@ -18,12 +18,12 @@ jobs:
         include:
           - os: windows-latest
             label: Windows x64
-            bundles: nsis
-            dir: nsis
+            args: --bundles nsis
+            out: target/release/bundle/nsis
           - os: macos-latest
-            label: macOS Apple silicon
-            bundles: dmg
-            dir: dmg
+            label: macOS universal (Apple silicon + Intel)
+            args: --target universal-apple-darwin --bundles dmg
+            out: target/universal-apple-darwin/release/bundle/dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -34,21 +34,24 @@ jobs:
           cache-dependency-path: apps/desktop/package-lock.json
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
+      - name: Add both Mac architectures
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
       - name: Install interface dependencies
         working-directory: apps/desktop
         run: npm ci
       - name: Build installer
         working-directory: apps/desktop
-        run: npx tauri build --bundles ${{ matrix.bundles }}
+        run: npx tauri build ${{ matrix.args }}
       - name: Checksums
         shell: bash
-        working-directory: target/release/bundle/${{ matrix.dir }}
+        working-directory: ${{ matrix.out }}
         run: |
           if command -v sha256sum >/dev/null; then sha256sum * > SHA256SUMS.txt; else shasum -a 256 * > SHA256SUMS.txt; fi
           cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v5
         with:
-          name: tessera-${{ matrix.dir }}-${{ github.sha }}
-          path: target/release/bundle/${{ matrix.dir }}/*
+          name: tessera-${{ runner.os }}-${{ github.sha }}
+          path: ${{ matrix.out }}/*
           retention-days: 14
