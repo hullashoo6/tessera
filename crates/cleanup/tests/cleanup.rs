@@ -251,3 +251,34 @@ fn real_recycle_bin() {
     );
     assert!(!r.join("tessera-recycle-test.txt").exists());
 }
+
+#[test]
+fn links_above_the_scanned_folder_are_allowed() {
+    // Reproduces macOS /var -> /private/var and Windows short-name paths:
+    // the user scans a folder whose own path passes through a link.
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-cleanup-")
+        .tempdir()
+        .unwrap();
+    kit::dense_file(&t.path().join("real/root"), "junk.tmp", 500).unwrap();
+    let via = t.path().join("via");
+    #[cfg(windows)]
+    kit::junction(&via, &t.path().join("real")).unwrap();
+    #[cfg(unix)]
+    kit::symlink_dir(&via, &t.path().join("real")).unwrap();
+    let (tree, _) = scan(
+        &via.join("root"),
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let plan = build_plan(&tree, &[id(&tree, "junk.tmp")], &open());
+    let report = execute(&plan, &open(), &mut holding_mover(t.path().join("hold")));
+    assert_eq!(
+        (report.moved, report.failed),
+        (1, 0),
+        "{:?}",
+        report.outcomes
+    );
+}

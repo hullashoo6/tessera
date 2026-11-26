@@ -221,10 +221,14 @@ pub fn revalidate(c: &Candidate, root: &Path, protection: &Protection) -> Result
         }
         p = dir.parent();
     }
-    // The resolved location must be the same place.
-    let real = std::fs::canonicalize(&c.path)
-        .map_err(|_| "Its location could not be verified.".to_string())?;
-    if !same_path(&real, &c.path) {
+    // The resolved location must be the same place. Links *above* the scan
+    // root (e.g. macOS /var -> /private/var, Windows 8.3 short names) are
+    // part of the location the user chose, so compare below the root only.
+    let unverifiable = || "Its location could not be verified.".to_string();
+    let real = std::fs::canonicalize(&c.path).map_err(|_| unverifiable())?;
+    let real_root = std::fs::canonicalize(root).map_err(|_| unverifiable())?;
+    let rel = c.path.strip_prefix(root).map_err(|_| unverifiable())?;
+    if !same_path(&real, &real_root.join(rel)) {
         return Err("Its path now leads somewhere else.".into());
     }
     Ok(())
