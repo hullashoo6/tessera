@@ -276,7 +276,7 @@ fn print_report(tree: &Tree, s: &ScanSummary, top: usize) {
         println!(
             "  {:>12}  {}{}  {}",
             human(n.allocated),
-            n.display_name(),
+            tree.display_name(id),
             tag,
             notes.join(", ")
         );

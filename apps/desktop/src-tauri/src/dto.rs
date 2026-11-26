@@ -208,7 +208,7 @@ fn display_name(tree: &Tree, id: NodeId) -> String {
     if id == ROOT {
         tree.root_path().to_string_lossy().into_owned()
     } else {
-        tree.node(id).display_name().into_owned()
+        tree.display_name(id).into_owned()
     }
 }
 
@@ -379,7 +379,7 @@ impl TileDto {
                 let n = tree.node(t.id);
                 (
                     kind_name(n.kind),
-                    n.display_name().into_owned(),
+                    tree.display_name(t.id).into_owned(),
                     n.has(flags::PENDING),
                 )
             }

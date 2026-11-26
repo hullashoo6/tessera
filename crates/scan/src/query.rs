@@ -35,7 +35,7 @@ pub fn sorted_children(tree: &Tree, id: NodeId, metric: Metric) -> Vec<NodeId> {
         metric
             .of(tree, b)
             .cmp(&metric.of(tree, a))
-            .then_with(|| tree.node(a).name.cmp(&tree.node(b).name))
+            .then_with(|| tree.name(a).cmp(tree.name(b)))
     });
     v
 }
@@ -95,7 +95,7 @@ pub fn find_by_path(tree: &Tree, path: &std::path::Path) -> Option<NodeId> {
     let mut cur = crate::model::ROOT;
     for comp in rel.components() {
         let name = comp.as_os_str();
-        cur = tree.children(cur).find(|&c| &*tree.node(c).name == name)?;
+        cur = tree.children(cur).find(|&c| tree.name(c) == name)?;
     }
     Some(cur)
 }
@@ -198,7 +198,7 @@ pub fn search(
             continue;
         }
         if name_q.is_some() || !filter.extensions.is_empty() {
-            let name = n.name.to_string_lossy();
+            let name = tree.name(id).to_string_lossy();
             if !filter.extensions.is_empty() {
                 let ok =
                     is_file && extension(&name).is_some_and(|e| filter.extensions.contains(&e));
@@ -230,7 +230,7 @@ pub fn search(
     }
 
     let total = hits.len();
-    let lower = |id: NodeId| tree.node(id).name.to_string_lossy().to_lowercase();
+    let lower = |id: NodeId| tree.name(id).to_string_lossy().to_lowercase();
     match sort {
         SortKey::Size => {
             hits.sort_by(|&a, &b| metric.of(tree, b).cmp(&metric.of(tree, a)).then(a.cmp(&b)))
@@ -238,7 +238,7 @@ pub fn search(
         SortKey::Name => hits.sort_by_cached_key(|&id| (lower(id), id)),
         SortKey::Modified => hits.sort_by_key(|&id| (tree.node(id).modified, id)),
         SortKey::Type => hits.sort_by_cached_key(|&id| {
-            let ext = extension(&tree.node(id).name.to_string_lossy()).unwrap_or_default();
+            let ext = extension(&tree.name(id).to_string_lossy()).unwrap_or_default();
             (ext, std::cmp::Reverse(metric.of(tree, id)), id)
         }),
     }

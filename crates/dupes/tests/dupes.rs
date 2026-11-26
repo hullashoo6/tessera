@@ -66,7 +66,7 @@ fn only_identical_content_is_reported() {
     let names: Vec<String> = first
         .ids
         .iter()
-        .map(|&i| tree.node(i).display_name().into_owned())
+        .map(|&i| tree.display_name(i).into_owned())
         .collect();
     assert!(!names.iter().any(|n| n == "almost.mp4"));
     let second = &report.groups[1];

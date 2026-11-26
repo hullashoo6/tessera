@@ -70,7 +70,11 @@ pub mod flags {
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub name: Box<OsStr>,
+    /// Position and length of the name in the tree's shared name buffer.
+    /// One buffer per tree instead of one allocation per name keeps memory
+    /// low and avoids fragmentation over long sessions. Use `Tree::name`.
+    pub(crate) name_at: u32,
+    pub(crate) name_len: u32,
     pub parent: NodeId,
     pub first_child: NodeId,
     pub child_count: u32,
@@ -107,25 +111,24 @@ impl Node {
             (self.logical, self.allocated)
         }
     }
-
-    /// The name as UTF-8 for display. Invalid sequences become U+FFFD; use
-    /// `Tree::path_of` for an exact path.
-    pub fn display_name(&self) -> std::borrow::Cow<'_, str> {
-        self.name.to_string_lossy()
-    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Tree {
     pub(crate) nodes: Vec<Node>,
+    /// All names, back to back, in the platform's encoded form.
+    pub(crate) names: Vec<u8>,
     root_path: PathBuf,
 }
 
 impl Tree {
     /// Creates a tree containing only the (pending) root directory.
     pub fn new(root_path: PathBuf) -> Self {
+        let mut names = Vec::new();
+        names.extend_from_slice(root_path.as_os_str().as_encoded_bytes());
         let root = Node {
-            name: root_path.as_os_str().into(),
+            name_at: 0,
+            name_len: names.len() as u32,
             parent: NO_NODE,
             first_child: NO_NODE,
             child_count: 0,
@@ -139,8 +142,38 @@ impl Tree {
         };
         Tree {
             nodes: vec![root],
+            names,
             root_path,
         }
+    }
+
+    /// Stores a name and returns its position for a new node.
+    pub(crate) fn intern(&mut self, name: &OsStr) -> (u32, u32) {
+        let at = self.names.len() as u32;
+        self.names.extend_from_slice(name.as_encoded_bytes());
+        (at, self.names.len() as u32 - at)
+    }
+
+    /// The item's name (the full root path for the root).
+    #[inline]
+    pub fn name(&self, id: NodeId) -> &OsStr {
+        let n = &self.nodes[id as usize];
+        let bytes = &self.names[n.name_at as usize..(n.name_at + n.name_len) as usize];
+        // SAFETY: the bytes were produced by `as_encoded_bytes` on a whole
+        // `OsStr` in this process and are sliced at exactly those bounds.
+        unsafe { OsStr::from_encoded_bytes_unchecked(bytes) }
+    }
+
+    /// The name as UTF-8 for display. Invalid sequences become U+FFFD; use
+    /// `Tree::path_of` for an exact path.
+    pub fn display_name(&self, id: NodeId) -> std::borrow::Cow<'_, str> {
+        self.name(id).to_string_lossy()
+    }
+
+    /// Releases spare capacity once a scan has finished.
+    pub fn shrink_to_fit(&mut self) {
+        self.nodes.shrink_to_fit();
+        self.names.shrink_to_fit();
     }
 
     pub fn root_path(&self) -> &Path {
@@ -206,7 +239,7 @@ impl Tree {
         }
         let mut path = self.root_path.clone();
         for &n in chain.iter().rev() {
-            path.push(&*self.node(n).name);
+            path.push(self.name(n));
         }
         path
     }

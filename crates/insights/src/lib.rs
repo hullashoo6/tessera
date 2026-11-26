@@ -75,7 +75,7 @@ pub const MIN_BYTES: u64 = 1 << 20;
 const DAY: i64 = 86_400;
 
 fn name(tree: &Tree, id: NodeId) -> String {
-    tree.node(id).name.to_string_lossy().to_lowercase()
+    tree.name(id).to_string_lossy().to_lowercase()
 }
 
 fn has_child(tree: &Tree, dir: NodeId, child: &str) -> bool {
@@ -280,7 +280,7 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
                 for cache in ["Cache", "Code Cache", "GPUCache"] {
                     if let Some(c) = tree
                         .children(p)
-                        .find(|&c| tree.node(c).name.to_string_lossy() == cache)
+                        .find(|&c| tree.name(c).to_string_lossy() == cache)
                     {
                         b.add(c, Group::Junk, "Browser cache", Safety::Regenerable,
                             format!("{browser} keeps copies of websites here to load them faster; it rebuilds them. Close {browser} first."));

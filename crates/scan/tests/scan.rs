@@ -39,7 +39,7 @@ fn tmp() -> kit::tempfile::TempDir {
 
 fn child(tree: &Tree, parent: u32, name: &str) -> u32 {
     tree.children(parent)
-        .find(|&c| tree.node(c).name.to_str() == Some(name))
+        .find(|&c| tree.name(c).to_str() == Some(name))
         .unwrap_or_else(|| panic!("child {name} not found"))
 }
 
@@ -83,13 +83,13 @@ fn exact_sizes_and_aggregation() {
 
     let biggest: Vec<_> = largest_files(&tree, None, 10, Metric::Logical)
         .into_iter()
-        .map(|id| tree.node(id).display_name().into_owned())
+        .map(|id| tree.display_name(id).into_owned())
         .collect();
     assert_eq!(biggest, ["e.dat", "c.bin", "a.txt", "f"]);
 
     let order: Vec<_> = sorted_children(&tree, ROOT, Metric::Logical)
         .into_iter()
-        .map(|id| tree.node(id).display_name().into_owned())
+        .map(|id| tree.display_name(id).into_owned())
         .collect();
     assert_eq!(order, ["b", "a.txt", "g"]);
 
@@ -198,21 +198,17 @@ fn links_and_junctions_are_not_followed() {
     assert_eq!(tree.root().files, 1);
     for c in tree.children(ROOT) {
         let n = tree.node(c);
-        if n.name.to_str() != Some("real.txt") {
+        if tree.name(c).to_str() != Some("real.txt") {
             assert_eq!(
                 n.kind,
                 NodeKind::Link,
                 "{} should be a link",
-                n.display_name()
+                tree.display_name(c)
             );
             assert_eq!(n.child_count, 0);
         }
     }
-    assert!(
-        tree.nodes()
-            .iter()
-            .all(|n| n.name.to_str() != Some("big.bin"))
-    );
+    assert!((0..tree.len() as u32).all(|id| tree.name(id).to_str() != Some("big.bin")));
 }
 
 #[test]

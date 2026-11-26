@@ -261,37 +261,82 @@ pub fn scan_shared(
 
     let mut agg = Aggregator::new(opts, &ctx, started);
 
-    let internal_errors = std::thread::scope(|s| {
-        let mut handles = Vec::with_capacity(threads);
-        for i in 0..threads {
-            let jobs = job_rx.clone();
-            let results = res_tx.clone();
-            let ctx = &ctx;
-            let listed = &listed;
-            let handle = std::thread::Builder::new()
-                .name(format!("tessera-scan-{i}"))
-                .spawn_scoped(s, move || {
-                    crate::background_priority();
-                    worker(jobs, results, ctx, cancel, listed)
-                })
-                .expect("spawn scanner thread");
-            handles.push(handle);
-        }
-        drop(res_tx);
-        drop(job_rx);
+    let worker_ids = std::sync::Mutex::new(Vec::<u32>::new());
+    // Already cancelled: return at once without starting any threads.
+    let internal_errors = if cancel.is_cancelled() {
+        agg.cancelled = true;
+        0
+    } else {
+        std::thread::scope(|s| {
+            let mut handles = Vec::with_capacity(threads);
+            for i in 0..threads {
+                let jobs = job_rx.clone();
+                let results = res_tx.clone();
+                let ctx = &ctx;
+                let listed = &listed;
+                let worker_ids = &worker_ids;
+                let handle = std::thread::Builder::new()
+                    .name(format!("tessera-scan-{i}"))
+                    .spawn_scoped(s, move || {
+                        #[cfg(windows)]
+                        // SAFETY: plain query of the current thread's id.
+                        worker_ids
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .push(unsafe {
+                                windows_sys::Win32::System::Threading::GetCurrentThreadId()
+                            });
+                        #[cfg(not(windows))]
+                        let _ = worker_ids;
+                        crate::background_priority();
+                        // Cancelled before this thread could be raised: raise itself.
+                        if cancel.is_cancelled() {
+                            crate::normal_priority();
+                        }
+                        worker(jobs, results, ctx, cancel, listed)
+                    })
+                    .expect("spawn scanner thread");
+                handles.push(handle);
+            }
+            drop(res_tx);
+            drop(job_rx);
 
-        agg.run(tree, job_tx, &res_rx, cancel, &listed, on_progress);
-        drop(res_rx);
+            agg.run(tree, job_tx, &res_rx, cancel, &listed, on_progress);
+            drop(res_rx);
 
-        handles
-            .into_iter()
-            .map(|h| h.join())
-            .filter(Result::is_err)
-            .count() as u32
-    });
+            // Workers run at low priority so the interface stays smooth. When the
+            // person cancels while the computer is busy, raise them again so they
+            // notice and stop at once instead of waiting for spare CPU.
+            #[cfg(windows)]
+            if cancel.is_cancelled() {
+                use windows_sys::Win32::Foundation::CloseHandle;
+                use windows_sys::Win32::System::Threading::{
+                    OpenThread, SetThreadPriority, THREAD_PRIORITY_NORMAL, THREAD_SET_INFORMATION,
+                };
+                for &tid in worker_ids.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+                    // SAFETY: the threads are alive (joined below); the handle is
+                    // opened with only the right to set priority and closed here.
+                    unsafe {
+                        let h = OpenThread(THREAD_SET_INFORMATION, 0, tid);
+                        if !h.is_null() {
+                            SetThreadPriority(h, THREAD_PRIORITY_NORMAL);
+                            CloseHandle(h);
+                        }
+                    }
+                }
+            }
+
+            handles
+                .into_iter()
+                .map(|h| h.join())
+                .filter(Result::is_err)
+                .count() as u32
+        })
+    };
 
     let mut t = tree.write().unwrap_or_else(|e| e.into_inner());
     t.finalize();
+    t.shrink_to_fit();
     let progress = agg.snapshot(&t, &listed);
     drop(t);
     on_progress(&progress);
@@ -590,8 +635,10 @@ impl Aggregator {
                     add_a += info.allocated;
                 }
             }
+            let (name_at, name_len) = t.intern(&e.name);
             t.nodes.push(Node {
-                name: e.name.into_boxed_os_str(),
+                name_at,
+                name_len,
                 parent: dir,
                 first_child: NO_NODE,
                 child_count: 0,

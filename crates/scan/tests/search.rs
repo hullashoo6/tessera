@@ -23,7 +23,7 @@ fn tree() -> (kit::tempfile::TempDir, Tree) {
 
 fn names(tree: &Tree, ids: &[u32]) -> Vec<String> {
     ids.iter()
-        .map(|&i| tree.node(i).display_name().into_owned())
+        .map(|&i| tree.display_name(i).into_owned())
         .collect()
 }
 
@@ -156,10 +156,7 @@ fn detached_items_leave_consistent_totals_and_disappear_from_queries() {
     assert_eq!(tree.root().logical, root_before - v_size);
     assert_eq!(tree.root().files, files_before - v_files);
     let kids = tessera_scan::query::sorted_children(&tree, tessera_scan::ROOT, Metric::Logical);
-    assert!(
-        kids.iter()
-            .all(|&k| tree.node(k).display_name() != "Videos")
-    );
+    assert!(kids.iter().all(|&k| tree.display_name(k) != "Videos"));
     let f = Filter {
         name: Some("holiday".into()),
         ..files()

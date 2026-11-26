@@ -75,3 +75,16 @@ Findings:
 * UI responsiveness (no UI yet).
 * Comparisons with other analysers (to be done on identical hardware and data,
   same metric, before any claim is made).
+
+## Long-session memory (soak), 26 Nov 2026, owner laptop
+
+`tessera-cli soak` scans the same 107,236-item fixture 20 times in one process, replacing the previous result each time as the app does.
+
+| | Before | After shared name buffer + shrink |
+|---|---|---|
+| Held after first scan | 14.0 MiB | 8.5 MiB |
+| Held after 20 scans | 17.9 MiB (still rising) | 9.6 MiB (flat from scan 10) |
+| Peak (old + new tree during rescan) | 28.4 MiB | 22.3 MiB |
+| Scan time | 0.28-0.29 s | 0.26-0.33 s |
+
+Million-file figures not re-measured (fixture generation needs ~10 GB of the 23 GB free); about 70 MiB held is an estimate scaled from these numbers.

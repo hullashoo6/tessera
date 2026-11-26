@@ -438,7 +438,7 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
             safety_text: tessera_insights::safety_text(s.safety),
             reason: s.reason,
             bytes: s.bytes,
-            name: tree.node(s.id).display_name().into_owned(),
+            name: tree.display_name(s.id).into_owned(),
             path: tree.path_of(s.id).to_string_lossy().into_owned(),
         })
         .collect())
@@ -837,7 +837,7 @@ fn report_csv(tree: &tessera_scan::Tree, ids: &[NodeId]) -> String {
         out.push_str(&format!(
             "{},{},{},{},{},{}\r\n",
             csv_cell(&tree.path_of(id).to_string_lossy()),
-            csv_cell(&n.display_name()),
+            csv_cell(&tree.display_name(id)),
             kind,
             allocated,
             logical,
@@ -972,7 +972,7 @@ async fn free_up_cloud(
             .filter(|&&id| check_id(&tree, id).is_ok())
             .map(|&id| {
                 (
-                    tree.node(id).display_name().into_owned(),
+                    tree.display_name(id).into_owned(),
                     tree.path_of(id),
                     tree.node(id).counted().1,
                 )

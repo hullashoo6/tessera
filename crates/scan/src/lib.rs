@@ -38,3 +38,16 @@ pub fn background_priority() {
         libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_UTILITY, 0);
     }
 }
+
+/// Restores normal priority for the calling thread (used when a scan is
+/// cancelled so its workers stop promptly even on a busy computer).
+pub fn normal_priority() {
+    #[cfg(windows)]
+    // SAFETY: pseudo-handle for the current thread; no resources to release.
+    unsafe {
+        use windows_sys::Win32::System::Threading::{
+            GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_NORMAL,
+        };
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+    }
+}
