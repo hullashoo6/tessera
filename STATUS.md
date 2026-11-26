@@ -99,3 +99,7 @@ Last updated: 2026-11-26.
 | Leaked listeners / observers | Audited: every listener and observer is removed on unmount | Code audit |
 | Second copy of the app | Single-instance: a second launch focuses the open window | Verified: second launch left one process |
 | Unexpected screen error (blank window) | Error boundary with Reload; scans kept in the backend | Type-checked; not triggered deliberately |
+
+## Website
+
+Live at https://tessera-96w.pages.dev (Cloudflare Pages, 26 Nov 2026): contact (Beyond Enterprises, hullashoo6@gmail.com), privacy policy and terms with a 14-day refund policy published (not lawyer-reviewed), FAQ updated, price shown as not yet on sale, no download links. See docs/WEBSITE.md.
