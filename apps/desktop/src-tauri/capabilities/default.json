@@ -16,6 +16,8 @@
     "allow-largest-files",
     "allow-search",
     "allow-smart-scan",
+    "allow-find-duplicates",
+    "allow-cancel-duplicates",
     "allow-review-cleanup",
     "allow-confirm-cleanup",
     "allow-license-status",

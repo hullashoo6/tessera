@@ -45,6 +45,7 @@ struct ActiveScan {
 struct AppState {
     scan: Mutex<Option<Arc<ActiveScan>>>,
     review: Mutex<Option<PendingReview>>,
+    dupes_cancel: Mutex<Option<Arc<std::sync::atomic::AtomicBool>>>,
     next_id: AtomicU64,
 }
 
@@ -434,6 +435,92 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
         .collect())
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DupGroupDto {
+    size: u64,
+    reclaimable: u64,
+    hash: String,
+    copies: Vec<FileRowDto>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DupReportDto {
+    groups: Vec<DupGroupDto>,
+    files_compared: u64,
+    bytes_read: u64,
+    skipped: u64,
+    cancelled: bool,
+}
+
+/// Compares file contents to find identical files. Reads files locally;
+/// online-only files are never opened. Results only; nothing is removed.
+#[tauri::command]
+async fn find_duplicates(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan_id: u64,
+) -> CmdResult<DupReportDto> {
+    let scan = active(&state, scan_id)?;
+    if !matches!(
+        *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()),
+        Outcome::Finished(_)
+    ) {
+        return Err("Duplicates can be found when the scan finishes.".into());
+    }
+    let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    *state.dupes_cancel.lock().unwrap_or_else(|e| e.into_inner()) = Some(cancel.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        let tree = read(&scan);
+        let mut last = std::time::Instant::now();
+        let report = tessera_dupes::find(
+            &tree,
+            &tessera_dupes::Options::default(),
+            &cancel,
+            &mut |bytes| {
+                if last.elapsed() >= std::time::Duration::from_millis(250) {
+                    last = std::time::Instant::now();
+                    let _ = app.emit("dupes-progress", bytes);
+                }
+            },
+        );
+        DupReportDto {
+            groups: report
+                .groups
+                .iter()
+                .take(1000)
+                .map(|g| DupGroupDto {
+                    size: g.size,
+                    reclaimable: g.reclaimable(),
+                    hash: g.hash[..16].to_string(),
+                    copies: g
+                        .ids
+                        .iter()
+                        .map(|&id| FileRowDto {
+                            node: NodeDto::new(&tree, id),
+                            path: tree.path_of(id).to_string_lossy().into_owned(),
+                        })
+                        .collect(),
+                })
+                .collect(),
+            files_compared: report.files_compared,
+            bytes_read: report.bytes_read,
+            skipped: report.skipped,
+            cancelled: report.cancelled,
+        }
+    })
+    .await
+    .map_err(|_| "The duplicate search stopped unexpectedly.".to_string())
+}
+
+#[tauri::command]
+fn cancel_duplicates(state: State<'_, AppState>) {
+    if let Some(c) = &*state.dupes_cancel.lock().unwrap_or_else(|e| e.into_inner()) {
+        c.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -619,6 +706,8 @@ pub fn run() {
             largest_files,
             search,
             smart_scan,
+            find_duplicates,
+            cancel_duplicates,
             review_cleanup,
             confirm_cleanup,
             license_status,

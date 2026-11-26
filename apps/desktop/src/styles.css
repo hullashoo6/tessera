@@ -303,3 +303,6 @@ button, input, select { font: inherit; color: inherit; }
 .safety-regenerable, .safety-redownloadable { background: var(--accent-soft); color: var(--accent); }
 .safety-review { background: var(--notice-soft); color: var(--ink); }
 .safety-useAppTool { background: var(--line); color: var(--ink-2); }
+
+/* Keep the size column aligned whether a row says "Add to cleanup" or "Added". */
+.review-list .btn-quiet { min-width: 116px; }

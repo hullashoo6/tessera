@@ -12,6 +12,8 @@ const COMMANDS: &[&str] = &[
     "largest_files",
     "search",
     "smart_scan",
+    "find_duplicates",
+    "cancel_duplicates",
     "review_cleanup",
     "confirm_cleanup",
     "license_status",

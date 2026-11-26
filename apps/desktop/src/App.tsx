@@ -3,6 +3,7 @@ import { api, errorText, type Crumb, type Entitlement, type ScanTarget, type Sta
 import { Cleanup } from './components/Cleanup'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
+import { Duplicates } from './components/Duplicates'
 import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
@@ -14,7 +15,7 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'suggestions' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
+type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -214,6 +215,7 @@ export function App() {
   const nav: [View, string, boolean][] = [
     ['overview', 'Overview', false],
     ['suggestions', 'Smart Scan', scanId === null],
+    ['duplicates', 'Duplicates', scanId === null],
     ['map', 'Storage map', scanId === null],
     ['largest', 'Largest files', scanId === null],
     ['search', 'Search', scanId === null],
@@ -394,6 +396,17 @@ export function App() {
               scanId={scanId}
               scanning={scanning}
               version={version}
+              marked={marked}
+              onToggleMark={toggleMark}
+              onMarkMany={markMany}
+              onOpenCleanup={() => setView('cleanup')}
+              onError={onError}
+            />
+          )}
+          {view === 'duplicates' && scanId !== null && (
+            <Duplicates
+              scanId={scanId}
+              scanning={scanning}
               marked={marked}
               onToggleMark={toggleMark}
               onMarkMany={markMany}

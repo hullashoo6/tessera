@@ -32,12 +32,13 @@ export const freeFeatures: Feature[] = [
   { name: 'Largest files, ranked', status: 'available' },
   { name: 'Open, reveal and copy the path of any item', status: 'available' },
   { name: 'Search and filters', status: 'available' },
+  { name: 'Smart Scan suggestions and duplicate finder', status: 'available' },
 ]
 
 export const proFeatures: Feature[] = [
   { name: 'Everything in Free', status: 'available' },
   { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'available' },
-  { name: 'Developer storage: node_modules, build folders, caches', status: 'in development' },
+  { name: 'Clean up Smart Scan suggestions and duplicates in a few clicks', status: 'available' },
   { name: 'Storage history and growth between scans', status: 'in development' },
   { name: 'Exportable reports', status: 'in development' },
 ]

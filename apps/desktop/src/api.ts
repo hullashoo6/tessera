@@ -170,6 +170,21 @@ export interface Suggestion {
   path: string
 }
 
+export interface DupGroup {
+  size: number
+  reclaimable: number
+  hash: string
+  copies: FileRow[]
+}
+
+export interface DupReport {
+  groups: DupGroup[]
+  filesCompared: number
+  bytesRead: number
+  skipped: number
+  cancelled: boolean
+}
+
 export interface Entitlement {
   pro: boolean
   summary: string
@@ -198,6 +213,10 @@ export const api = {
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
+  findDuplicates: (scanId: number) => invoke<DupReport>('find_duplicates', { scanId }),
+  cancelDuplicates: () => invoke<void>('cancel_duplicates'),
+  onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>
+    listen<number>('dupes-progress', (e) => cb(e.payload)),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
   confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
   licenseStatus: () => invoke<Entitlement>('license_status'),
