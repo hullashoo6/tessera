@@ -283,9 +283,9 @@ fn links_above_the_scanned_folder_are_allowed() {
     );
 }
 
-/// Real Recycle Bin round trip with disposable files (Windows). Run with:
+/// Real Recycle Bin / Trash round trip with disposable files. Run with:
 /// cargo test -p tessera-cleanup -- --ignored put_back
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 #[test]
 #[ignore]
 fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
@@ -302,14 +302,17 @@ fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
     tessera_cleanup::put_back(&recycled, &original).unwrap();
     assert_eq!(fs::read(&original).unwrap(), b"restore me exactly");
     assert!(!recycled.exists(), "no longer in the Recycle Bin");
-    let index = recycled.with_file_name(
-        recycled
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .replacen("$R", "$I", 1),
-    );
-    assert!(!index.exists(), "Recycle Bin entry removed");
+    #[cfg(windows)]
+    {
+        let index = recycled.with_file_name(
+            recycled
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .replacen("$R", "$I", 1),
+        );
+        assert!(!index.exists(), "Recycle Bin entry removed");
+    }
 
     // Something new at the original path: never overwritten.
     let second = t.path().join("collision-trial.txt");

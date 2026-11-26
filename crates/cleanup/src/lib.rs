@@ -9,6 +9,7 @@ pub mod protect;
 mod trash;
 
 pub use protect::Protection;
+pub mod cloud;
 pub mod history;
 pub use trash::{move_to_trash, put_back};
 

@@ -15,9 +15,11 @@ tessera-scan = { path = "../scan" }
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }
 windows-core = "0.62"
+winreg = "0.56.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-trash = "5.4.0"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSFileManager", "NSURL", "NSString", "NSError", "NSPathUtilities"] }
+libc = "0.2"
 
 [dev-dependencies]
 tessera-testkit = { path = "../testkit" }

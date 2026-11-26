@@ -43,6 +43,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
+      - name: Real Trash round trip and Put back (macOS)
+        if: runner.os == 'macOS'
+        run: cargo test -p tessera-cleanup --locked -- --ignored put_back
       - name: Smoke-test CLI on a generated fixture
         shell: bash
         run: |

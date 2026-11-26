@@ -273,28 +273,59 @@ mod imp {
 
 #[cfg(target_os = "macos")]
 mod imp {
+    use objc2_foundation::{NSFileManager, NSString, NSURL};
+    use std::ffi::CString;
     use std::io;
-    use std::path::Path;
-    use trash::macos::{DeleteMethod, TrashContextExtMacos};
+    use std::os::unix::ffi::OsStrExt;
+    use std::path::{Path, PathBuf};
 
-    pub(super) fn put_back(_recycled: &Path, _original: &Path) -> io::Result<()> {
-        Err(io::Error::new(
-            io::ErrorKind::Unsupported,
-            "use Put Back in the Finder's Trash",
-        ))
+    pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<PathBuf>> {
+        // NSFileManager trashItemAtURL: moves to the Trash or fails; it never
+        // deletes permanently, and it reports where the item landed.
+        let url = NSURL::fileURLWithPath(&NSString::from_str(&path.to_string_lossy()));
+        let mut landed = None;
+        NSFileManager::defaultManager()
+            .trashItemAtURL_resultingItemURL_error(&url, Some(&mut landed))
+            .map_err(|e| io::Error::other(e.localizedDescription().to_string()))?;
+        Ok(landed
+            .and_then(|u| u.path())
+            .map(|s| PathBuf::from(s.to_string())))
     }
 
-    pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
-        // NSFileManager trashItemAtURL: moves to the Trash or fails; it
-        // never deletes permanently and does not script the Finder.
-        let mut ctx = trash::TrashContext::default();
-        ctx.set_delete_method(DeleteMethod::NsFileManager);
-        ctx.delete(path)
-            .map(|_| None)
-            .map_err(|e| io::Error::other(e.to_string()))
+    pub(super) fn put_back(recycled: &Path, original: &Path) -> io::Result<()> {
+        if std::fs::symlink_metadata(recycled).is_err() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "it is no longer in the Trash",
+            ));
+        }
+        if std::fs::symlink_metadata(original).is_ok() {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "something with that name is already there",
+            ));
+        }
+        if let Some(parent) = original.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let from = CString::new(recycled.as_os_str().as_bytes())?;
+        let to = CString::new(original.as_os_str().as_bytes())?;
+        // RENAME_EXCL: fail rather than replace anything at the destination.
+        // SAFETY: both are valid NUL-terminated C strings.
+        if unsafe { libc::renamex_np(from.as_ptr(), to.as_ptr(), libc::RENAME_EXCL) } != 0 {
+            let e = io::Error::last_os_error();
+            return Err(if e.raw_os_error() == Some(libc::EEXIST) {
+                io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "something with that name is already there",
+                )
+            } else {
+                e
+            });
+        }
+        Ok(())
     }
 }
-
 #[cfg(not(any(windows, target_os = "macos")))]
 mod imp {
     use std::io;
