@@ -210,8 +210,9 @@ fn show_tray(app: &AppHandle) {
         }
         Ok((builder.build(app)?, space))
     };
-    if let Ok(made) = build() {
-        *slot = Some(made);
+    match build() {
+        Ok(made) => *slot = Some(made),
+        Err(e) => super::diagnostics::record("tray", &format!("could not show the icon: {e}")),
     }
     drop(slot);
     let app = app.clone();
