@@ -1195,6 +1195,30 @@ fn open_item(
         .map_err(|_| "No app is set up to open this item.".to_string())
 }
 
+/// The window opens at 1280 x 820 points; on a small or highly scaled screen
+/// (for example 1920 x 1080 at 200%, which leaves 960 x 540 points) that would
+/// spill off the edges, so it is shrunk to fit the screen's free area.
+fn fit_window_to_screen(app: &AppHandle) {
+    let Some(w) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(Some(m)) = w.current_monitor() else {
+        return;
+    };
+    let scale = m.scale_factor();
+    let area = m.work_area().size;
+    let (free_w, free_h) = (area.width as f64 / scale, area.height as f64 / scale);
+    let (want_w, want_h) = (1280.0, 820.0);
+    if free_w < want_w || free_h < want_h {
+        let size = tauri::LogicalSize::new(
+            want_w.min(free_w * 0.96).max(800.0),
+            want_h.min(free_h * 0.96).max(480.0),
+        );
+        let _ = w.set_size(size);
+        let _ = w.center();
+    }
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         // A second launch brings the open window forward instead of starting
@@ -1217,6 +1241,7 @@ pub fn run() {
         .setup(|app| {
             diagnostics::init(app.handle());
             background::init(app.handle());
+            fit_window_to_screen(app.handle());
             // A folder given on the command line (`tessera-desktop.exe "D:\Photos"`,
             // a shortcut, or the "Scan with Tessera" menu entry) is scanned at
             // launch. The interface picks the scan up when it loads.
