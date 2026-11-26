@@ -9,8 +9,8 @@ licensing tests so far use a simulated server.
 | | Test mode | Live mode |
 |---|---|---|
 | Server | `https://test.dodopayments.com` | `https://live.dodopayments.com` |
-| Pro product id | *pending (owner preparing)* | `pdt_0Nsmg4vQiRrOCZ4yTeDEk` |
-| Licence entitlement | *pending* | `ent_0Nsmfr7CY18AXemTSmNxC` (dashboard reference) |
+| Pro product id | `pdt_0Nsmh1XPpX4NRvbkO8N7C` | `pdt_0Nsmg4vQiRrOCZ4yTeDEk` |
+| Licence entitlement | `ent_0NsmgeTrxozGfeC4KvhR9` (dashboard reference) | `ent_0Nsmfr7CY18AXemTSmNxC` (dashboard reference) |
 | Price | — | USD 9.78, one-time, tax included |
 | Licence terms | — | 1 device, no expiry |
 
@@ -52,8 +52,8 @@ provider's secret settings (never from git):
 
 ## Gates before live purchases
 
-1. Owner provides the **test** product id and a real test-mode licence key.
-2. Set `TEST.pro_product_id`; activate, validate and deactivate the real test
+1. Test product id set (done). Owner provides a real test-mode licence key.
+2. Activate, validate and deactivate the real test
    key from an installed build. Record evidence in STATUS.md.
 3. Signed installers exist and pass installed-build testing.
 4. Owner confirms live checkout verification is complete.

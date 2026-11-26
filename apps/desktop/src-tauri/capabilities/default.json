@@ -17,6 +17,10 @@
     "allow-search",
     "allow-review-cleanup",
     "allow-confirm-cleanup",
+    "allow-license-status",
+    "allow-refresh-license",
+    "allow-activate-license",
+    "allow-deactivate-license",
     "allow-reveal-item",
     "allow-open-item"
   ]

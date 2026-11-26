@@ -1,4 +1,5 @@
-import type { HardLinks, Metric } from '../api'
+import type { Entitlement, HardLinks, Metric } from '../api'
+import { ProLicence } from './ProLicence'
 import type { Settings, ThemeSetting } from '../settings'
 
 interface Props {
@@ -6,6 +7,8 @@ interface Props {
   os: string
   version: string
   onChange: (s: Settings) => void
+  entitlement: Entitlement | null
+  onEntitlement: (e: Entitlement) => void
 }
 
 function Choice<T extends string>(props: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
@@ -20,9 +23,10 @@ function Choice<T extends string>(props: { label: string; value: T; options: [T,
   )
 }
 
-export function SettingsView({ settings, os, version, onChange }: Props) {
+export function SettingsView({ settings, os, version, onChange, entitlement, onEntitlement }: Props) {
   return (
     <div className="settings">
+      <ProLicence entitlement={entitlement} onChange={onEntitlement} />
       <div className="setting">
         <h3>Appearance</h3>
         <p>Follow your system setting, or always use light or dark.</p>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, errorText, type Crumb, type ScanTarget, type Status, type Tile, type Volume } from './api'
+import { api, errorText, type Crumb, type Entitlement, type ScanTarget, type Status, type Tile, type Volume } from './api'
 import { Cleanup } from './components/Cleanup'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
@@ -35,6 +35,7 @@ export function App() {
   const [menu, setMenu] = useState<{ x: number; y: number; tile: Tile } | null>(null)
   const [highlight, setHighlight] = useState<Highlight | null>(null)
   const [marked, setMarked] = useState<Set<number>>(() => new Set())
+  const [entitlement, setEntitlement] = useState<Entitlement | null>(null)
   const toggleMark = (id: number) =>
     setMarked((m) => {
       const next = new Set(m)
@@ -72,6 +73,9 @@ export function App() {
       })
       .catch((e) => onError(errorText(e)))
     refreshDrives()
+    api.licenseStatus().then(setEntitlement).catch(() => undefined)
+    // Re-confirms the licence in the background when due; never blocks.
+    api.refreshLicense().then(setEntitlement).catch(() => undefined)
     api
       .scanStatus()
       .then((s) => {
@@ -383,6 +387,8 @@ export function App() {
               marked={[...marked]}
               metric={settings.metric}
               os={info.os}
+              pro={entitlement?.pro ?? false}
+              onOpenSettings={() => setView('settings')}
               onUnmark={toggleMark}
               onFinished={(r) => {
                 setMarked((m) => {
@@ -399,7 +405,14 @@ export function App() {
             />
           )}
           {view === 'settings' && (
-            <SettingsView settings={settings} os={info.os} version={info.version} onChange={updateSettings} />
+            <SettingsView
+              settings={settings}
+              os={info.os}
+              version={info.version}
+              onChange={updateSettings}
+              entitlement={entitlement}
+              onEntitlement={setEntitlement}
+            />
           )}
         </div>
 

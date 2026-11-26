@@ -6,7 +6,10 @@
 //! items by id within the current scan. Nothing here modifies files.
 
 mod dto;
+mod licence;
 mod safety;
+
+use licence::{activate_license, deactivate_license, is_pro, license_status, refresh_license};
 
 use dto::*;
 use std::path::PathBuf;
@@ -385,6 +388,11 @@ fn review_cleanup(
     scan_id: u64,
     ids: Vec<NodeId>,
 ) -> CmdResult<ReviewDto> {
+    if !is_pro() {
+        return Err(
+            "Cleanup is part of Tessera Pro. Enter your licence key in Settings to use it.".into(),
+        );
+    }
     if ids.len() > 100_000 {
         return Err("Too many items selected at once.".into());
     }
@@ -411,6 +419,11 @@ async fn confirm_cleanup(
     state: State<'_, AppState>,
     review_id: u64,
 ) -> CmdResult<CleanupReportDto> {
+    if !is_pro() {
+        return Err(
+            "Cleanup is part of Tessera Pro. Enter your licence key in Settings to use it.".into(),
+        );
+    }
     // Taking the plan out of the state means a review can run only once.
     let pending = state
         .review
@@ -541,6 +554,10 @@ pub fn run() {
             search,
             review_cleanup,
             confirm_cleanup,
+            license_status,
+            refresh_license,
+            activate_license,
+            deactivate_license,
             reveal_item,
             open_item,
         ])

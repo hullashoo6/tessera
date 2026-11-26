@@ -158,6 +158,14 @@ export interface CleanupReport {
   freeAfter: number | null
 }
 
+export interface Entitlement {
+  pro: boolean
+  summary: string
+  customerEmail: string | null
+  maskedKey: string | null
+  testMode: boolean
+}
+
 export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
 
 export const api = {
@@ -178,6 +186,10 @@ export const api = {
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
   confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
+  licenseStatus: () => invoke<Entitlement>('license_status'),
+  refreshLicense: () => invoke<Entitlement>('refresh_license'),
+  activateLicense: (key: string) => invoke<Entitlement>('activate_license', { key }),
+  deactivateLicense: () => invoke<Entitlement>('deactivate_license'),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
   openItem: (scanId: number, id: number) => invoke<void>('open_item', { scanId, id }),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>

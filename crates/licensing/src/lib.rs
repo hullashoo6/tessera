@@ -36,11 +36,11 @@ pub struct ModeConfig {
     pub pro_product_id: Option<&'static str>,
 }
 
-/// Test mode: the test product is still being prepared by the owner.
+/// Test mode: Tessera Pro test product. Licence entitlement`n/// `ent_0NsmgeTrxozGfeC4KvhR9` (dashboard reference only).
 pub const TEST: ModeConfig = ModeConfig {
     mode: Mode::Test,
     base_url: "https://test.dodopayments.com",
-    pro_product_id: None,
+    pro_product_id: Some("pdt_0Nsmh1XPpX4NRvbkO8N7C"),
 };
 
 /// Live mode: Tessera Pro, USD 9.78 one-time (tax included), one device,
@@ -126,7 +126,9 @@ fn mask(key: &str) -> String {
         .into_iter()
         .rev()
         .collect();
-    format!("Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢ {tail}")
+    format!(
+        "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ {tail}"
+    )
 }
 
 /// Whether a stored activation belongs to this build's mode and product.
@@ -442,7 +444,9 @@ mod tests {
         assert!(e.pro);
         assert_eq!(
             e.masked_key.as_deref(),
-            Some("Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢ -123")
+            Some(
+                "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ -123"
+            )
         );
         let calls = l.transport.calls.borrow();
         assert!(
@@ -537,7 +541,10 @@ mod tests {
     #[test]
     fn unconfigured_mode_refuses_activation_without_any_request() {
         let mut l = lic(vec![]);
-        l.config = TEST; // the real test config: product id not yet provided
+        l.config = ModeConfig {
+            pro_product_id: None,
+            ..TEST
+        }; // a mode with no product configured
         assert!(l.activate("KEY", 0).unwrap_err().contains("isn't set up"));
         assert!(l.transport.calls.borrow().is_empty());
     }
@@ -587,6 +594,8 @@ mod tests {
     fn live_product_is_bound_only_to_live_mode() {
         assert_eq!(LIVE.pro_product_id, Some("pdt_0Nsmg4vQiRrOCZ4yTeDEk"));
         assert_eq!(LIVE.base_url, "https://live.dodopayments.com");
+        assert_eq!(TEST.pro_product_id, Some("pdt_0Nsmh1XPpX4NRvbkO8N7C"));
+        assert_eq!(TEST.base_url, "https://test.dodopayments.com");
         assert_ne!(
             TEST.pro_product_id, LIVE.pro_product_id,
             "live product must not be used in test mode"
@@ -599,5 +608,27 @@ mod tests {
                 Mode::Test
             }
         );
+    }
+
+    /// Real network call to Dodo's test server with a key that does not
+    /// exist. Proves connectivity and error handling only; it is not a
+    /// licence activation. Run with: cargo test -p tessera-licensing -- --ignored
+    #[test]
+    #[ignore]
+    fn real_test_server_rejects_an_unknown_key() {
+        let l = Licensing {
+            config: TEST,
+            transport: HttpsTransport::default(),
+            store: MemStore::default(),
+            device_label: "Tessera connectivity check".into(),
+        };
+        let err = l
+            .activate("TESSERA-CONNECTIVITY-CHECK-NOT-A-REAL-KEY", 0)
+            .unwrap_err();
+        assert!(
+            err.contains("wasn't found") || err.contains("not active"),
+            "unexpected reply: {err}"
+        );
+        assert!(l.store.load().is_none());
     }
 }

@@ -7,12 +7,14 @@ interface Props {
   marked: number[]
   metric: Metric
   os: string
+  pro: boolean
+  onOpenSettings: () => void
   onUnmark: (id: number) => void
   onFinished: (report: CleanupReport) => void
   onError: (message: string) => void
 }
 
-export function Cleanup({ scanId, marked, metric, os, onUnmark, onFinished, onError }: Props) {
+export function Cleanup({ scanId, marked, metric, os, pro, onOpenSettings, onUnmark, onFinished, onError }: Props) {
   const bin = os === 'macos' ? 'Trash' : 'Recycle Bin'
   const [review, setReview] = useState<Review | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -22,7 +24,7 @@ export function Cleanup({ scanId, marked, metric, os, onUnmark, onFinished, onEr
   const key = marked.join(',')
 
   useEffect(() => {
-    if (marked.length === 0) return // the empty state is rendered directly
+    if (marked.length === 0 || !pro) return // these states are rendered directly
     let live = true
     api
       .reviewCleanup(scanId, marked)
@@ -33,7 +35,7 @@ export function Cleanup({ scanId, marked, metric, os, onUnmark, onFinished, onEr
     }
     // `key` captures the selection contents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanId, key, onError])
+  }, [scanId, key, pro, onError])
 
   useEffect(() => {
     if (confirming) confirmRef.current?.focus()
@@ -84,6 +86,21 @@ export function Cleanup({ scanId, marked, metric, os, onUnmark, onFinished, onEr
         )}
         <div className="actions">
           <button className="btn btn-primary" onClick={() => setReport(null)}>Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!pro) {
+    return (
+      <div className="empty">
+        <div>
+          <h2>Cleanup is part of Tessera Pro</h2>
+          <p>
+            {marked.length > 0 ? `You have chosen ${plural(marked.length, 'item', 'items')}. ` : ''}
+            Activate a licence key to review items and move them to the {bin}. Scanning, the map and search stay free.
+          </p>
+          <button className="btn btn-primary" onClick={onOpenSettings}>Enter licence key</button>
         </div>
       </div>
     )

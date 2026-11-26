@@ -13,6 +13,10 @@ const COMMANDS: &[&str] = &[
     "search",
     "review_cleanup",
     "confirm_cleanup",
+    "license_status",
+    "refresh_license",
+    "activate_license",
+    "deactivate_license",
     "reveal_item",
     "open_item",
 ];
