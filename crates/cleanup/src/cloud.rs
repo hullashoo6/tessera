@@ -32,6 +32,13 @@ pub fn state(path: &Path) -> CloudState {
     imp::state(path)
 }
 
+/// Attributes and reparse tag as seen by this process (diagnostics).
+#[cfg(windows)]
+#[doc(hidden)]
+pub fn find_data(path: &Path) -> Option<(u32, u32)> {
+    imp::find_data(path)
+}
+
 /// Frees the local copy of one cloud file. Files marked "always keep" are
 /// left alone; non-cloud files are refused.
 pub fn free_up(path: &Path) -> io::Result<()> {
@@ -69,8 +76,46 @@ mod imp {
             .collect()
     }
 
-    /// Cloud Files reparse tags are 0x9000?01A.
+    #[link(name = "ntdll")]
+    unsafe extern "system" {
+        fn RtlSetThreadPlaceholderCompatibilityMode(mode: i8) -> i8;
+    }
+    const PHCM_EXPOSE_PLACEHOLDERS: i8 = 2;
+
+    /// By default Windows shows cloud placeholders to apps as ordinary files.
+    /// While this guard lives, this thread sees them as they are.
+    struct Expose(i8);
+    impl Expose {
+        fn new() -> Self {
+            // SAFETY: documented ntdll call; affects only this thread.
+            Expose(unsafe { RtlSetThreadPlaceholderCompatibilityMode(PHCM_EXPOSE_PLACEHOLDERS) })
+        }
+    }
+    impl Drop for Expose {
+        fn drop(&mut self) {
+            if self.0 >= 0 {
+                // SAFETY: restores the previous mode for this thread.
+                unsafe { RtlSetThreadPlaceholderCompatibilityMode(self.0) };
+            }
+        }
+    }
+
+    fn under_sync_root(path: &Path) -> bool {
+        static ROOTS: std::sync::OnceLock<Vec<PathBuf>> = std::sync::OnceLock::new();
+        ROOTS
+            .get_or_init(sync_roots)
+            .iter()
+            .any(|r| path.starts_with(r))
+    }
+
+    /// A cloud placeholder: a reparse point inside a cloud sync folder whose
+    /// tag is a Cloud Files tag (0x9000?01A) or hidden by Windows (shown as
+    /// 0 to apps, which Windows does for cloud placeholders). Links and
+    /// junctions always show their own tags, so they are excluded.
     fn is_cloud_placeholder(path: &Path) -> bool {
+        if !under_sync_root(path) {
+            return false;
+        }
         let w = wide(path);
         let mut data = WIN32_FIND_DATAW::default();
         // SAFETY: valid NUL-terminated path and out-pointer; handle closed.
@@ -80,7 +125,20 @@ mod imp {
             };
             let _ = FindClose(h);
         }
-        data.dwFileAttributes & REPARSE_POINT != 0 && data.dwReserved0 & 0xFFFF_0FFF == 0x9000_001A
+        let tag = data.dwReserved0;
+        data.dwFileAttributes & REPARSE_POINT != 0 && (tag == 0 || tag & 0xFFFF_0FFF == 0x9000_001A)
+    }
+
+    pub fn find_data(path: &Path) -> Option<(u32, u32)> {
+        let _expose = Expose::new();
+        let w = wide(path);
+        let mut data = WIN32_FIND_DATAW::default();
+        // SAFETY: valid NUL-terminated path and out-pointer; handle closed.
+        unsafe {
+            let h = FindFirstFileW(PCWSTR(w.as_ptr()), &mut data).ok()?;
+            let _ = FindClose(h);
+        }
+        Some((data.dwFileAttributes, data.dwReserved0))
     }
 
     fn attrs(path: &Path) -> Option<u32> {
@@ -91,6 +149,7 @@ mod imp {
     }
 
     pub fn state(path: &Path) -> CloudState {
+        let _expose = Expose::new();
         let Some(a) = attrs(path) else {
             return CloudState::NotCloud;
         };
@@ -107,6 +166,7 @@ mod imp {
     }
 
     pub fn free_up(path: &Path) -> io::Result<()> {
+        let _expose = Expose::new();
         let a = attrs(path).ok_or_else(io::Error::last_os_error)?;
         let w = wide(path);
         // SAFETY: valid NUL-terminated path.

@@ -326,3 +326,51 @@ fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
     tessera_cleanup::put_back(&recycled2, &second).unwrap();
     assert_eq!(fs::read(&second).unwrap(), b"old");
 }
+
+/// Real cloud test: TESSERA_CLOUD_TEST_FILE must name a disposable file
+/// inside a OneDrive (or other Cloud Files) folder that has finished syncing.
+/// cargo test -p tessera-cleanup -- --ignored free_up_space
+#[cfg(windows)]
+#[test]
+#[ignore]
+fn free_up_space_with_a_real_cloud_file() {
+    use tessera_cleanup::cloud::{CloudState, free_up, state};
+    let file = std::path::PathBuf::from(
+        std::env::var("TESSERA_CLOUD_TEST_FILE").expect("set TESSERA_CLOUD_TEST_FILE"),
+    );
+    let roots = tessera_cleanup::cloud::sync_roots();
+    eprintln!(
+        "sync roots: {}; file under a root: {}",
+        roots.len(),
+        roots.iter().any(|r| file.starts_with(r))
+    );
+    eprintln!("find data: {:x?}", tessera_cleanup::cloud::find_data(&file));
+    assert_eq!(
+        state(&file),
+        CloudState::Downloaded,
+        "the test file should be synced and downloaded"
+    );
+    free_up(&file).unwrap();
+    let mut s = state(&file);
+    for _ in 0..60 {
+        if s == CloudState::OnlineOnly {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        s = state(&file);
+    }
+    assert_eq!(
+        s,
+        CloudState::OnlineOnly,
+        "the sync app should have removed the local copy"
+    );
+    assert!(
+        file.exists(),
+        "the file is still listed (kept in the cloud)"
+    );
+    // A normal local file is refused.
+    let local = std::env::temp_dir().join("tessera-not-cloud.txt");
+    fs::write(&local, b"x").unwrap();
+    assert!(free_up(&local).is_err());
+    fs::remove_file(&local).unwrap();
+}
