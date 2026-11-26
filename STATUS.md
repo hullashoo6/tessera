@@ -13,7 +13,8 @@ Last updated: 2026-11-26.
 | Item | Status | Evidence / notes |
 |---|---|---|
 | Dev environment (Rust 1.100.0 pinned, VS 2022 Build Tools, Node 24, Git, gh) | Done | Installed and used for every build below |
-| Repository structure, workspace, CI definition | Implemented | Private repo `hullash007/tessera`; CI runs on first push |
+| Repository structure, workspace | Done | Private repo `hullash007/tessera` |
+| CI (Windows + macOS runners) | **Blocked** | Workflow file is committed locally; GitHub needs the owner to grant hullash007's CLI login the `workflow` permission before it can be uploaded |
 | Filesystem data model | Automatically tested | Invariants checked in every test, including during live scans |
 | Test fixtures (exact trees, junctions, sparse, ACL denial, generator) | Automatically tested | `crates/testkit` |
 | Security requirements | Draft | SECURITY.md |
@@ -41,8 +42,8 @@ Last updated: 2026-11-26.
 | Single folder with millions of entries | Not tested | Whole listing held in memory per folder |
 | Deterministic owner for hard-linked bytes | Not implemented | First path seen gets the bytes; may vary between scans |
 | NTFS MFT fast path | Not implemented (deferred by design) | Only after the portable scanner is proven |
-| Benchmarks 10k / 100k | Measured (Windows) | BENCHMARKS.md |
-| Benchmark 1M | In progress | Fixture generation running |
+| Benchmarks 10k / 100k / 1M | Measured (Windows) | BENCHMARKS.md; 1M: 5.6 s warm, 183 MiB peak |
+| Memory efficiency at 1M+ entries | Below target | 183 MiB vs ~100 MiB estimate; chunked storage planned |
 
 ## Phases 3–8
 

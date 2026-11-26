@@ -8,11 +8,11 @@
   "dirs": 7234,
   "runs": 5,
   "warm_cache": true,
-  "scan_seconds_median": 0.2430,
-  "scan_seconds_min": 0.2344,
-  "scan_seconds_max": 0.3390,
-  "first_result_ms_median": 2.12,
-  "cancel_latency_ms_max": 4.92,
+  "scan_seconds_median": 0.3092,
+  "scan_seconds_min": 0.2787,
+  "scan_seconds_max": 0.4435,
+  "first_result_ms_median": 1.86,
+  "cancel_latency_ms_max": 4.18,
   "cancel_samples": 3,
-  "peak_memory_bytes": 18345984
+  "peak_memory_bytes": 17879040
 }

@@ -382,13 +382,22 @@ fn cmd_bench(raw: &[String]) -> Result<(), String> {
         f.sort_by(f64::total_cmp);
         f[f.len() / 2]
     };
-    let cancel_max = cancel_ms.iter().copied().fold(f64::NAN, f64::max);
+    // JSON has no NaN: missing measurements are written as null.
+    let num = |v: f64, places: usize| {
+        if v.is_finite() {
+            format!("{v:.places$}")
+        } else {
+            "null".to_string()
+        }
+    };
+    let first_med = num(first_med, 2);
+    let cancel_max = num(cancel_ms.iter().copied().fold(f64::NAN, f64::max), 2);
     let json = format!(
         "{{\n  \"tool_version\": \"{}\",\n  \"os\": \"{}\",\n  \"arch\": \"{}\",\n  \"threads\": {},\n  \
          \"hard_links\": \"{:?}\",\n  \"files\": {},\n  \"dirs\": {},\n  \"runs\": {},\n  \
          \"warm_cache\": true,\n  \"scan_seconds_median\": {:.4},\n  \"scan_seconds_min\": {:.4},\n  \
-         \"scan_seconds_max\": {:.4},\n  \"first_result_ms_median\": {:.2},\n  \
-         \"cancel_latency_ms_max\": {:.2},\n  \"cancel_samples\": {},\n  \"peak_memory_bytes\": {}\n}}\n",
+         \"scan_seconds_max\": {:.4},\n  \"first_result_ms_median\": {},\n  \
+         \"cancel_latency_ms_max\": {},\n  \"cancel_samples\": {},\n  \"peak_memory_bytes\": {}\n}}\n",
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH,

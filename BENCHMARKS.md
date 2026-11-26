@@ -29,15 +29,22 @@ Raw JSON: `bench-results/`.
 
 | Dataset | Files | Folders | Hard-link mode | Median scan | Min–max | First results | Cancel latency (max) | Peak memory |
 |---|---|---|---|---|---|---|---|---|
-| 10k | 10,001 | 755 | Auto (≥64 KiB) | 0.082 s | 0.045–0.286 s | 3.8 ms | 13 ms | 7.1 MiB |
-| 100k | 100,001 | 7,234 | Auto (≥64 KiB) | 0.243 s | 0.234–0.339 s | 2.1 ms | 4.9 ms | 17.5 MiB |
+| 10k | 10,001 | 755 | Auto (≥64 KiB) | 0.034 s | — | 2.2 ms | n/a¹ | 7.2 MiB |
+| 100k | 100,001 | 7,234 | Auto (≥64 KiB) | 0.309 s | 0.279–0.444 s | 1.9 ms | 4.2 ms | 17.1 MiB |
 | 100k | 100,001 | 7,234 | Thorough (all files) | 3.40 s | 3.40–3.54 s | 8.6 ms | 6.9 ms | 16.3 MiB |
-| 1M | pending | | | | | | | |
+| 1M | 1,000,001 | 73,746 | Auto (≥64 KiB), 3 runs | 5.64 s | 4.90–7.27 s | 1.9 ms | 8.7 ms | 182.8 MiB |
 
-Note: the two 100k "Auto" rows above were recorded before the 64 KiB
-threshold existed, when Auto meant "not checked" on Windows. Fixture files
-above 64 KiB are 0.5% of the total, so the difference is expected to be
-small; the rows will be re-measured with the current build.
+¹ The whole scan finished before the benchmark's 60 ms cancellation trigger.
+
+Fixture generation time (Defender on): 10k in 5.9 s, 100k in 96 s,
+1M in 757 s (3.7 GB logical).
+
+Observations and targets:
+* 1M is ~18× slower than 100k rather than ~10×. Likely causes, to be
+  investigated: Windows evicting part of the file-metadata cache at this
+  size, and reallocation of the node array as it grows.
+* Peak memory at 1M (183 MiB) exceeds the ~100 MiB design estimate. Planned
+  fix: chunked node storage (no doubling copies) and a shared name arena.
 
 ## Real data: `C:\Windows` (read-only)
 

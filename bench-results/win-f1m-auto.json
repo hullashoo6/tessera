@@ -1,0 +1,18 @@
+{
+  "tool_version": "0.1.0",
+  "os": "windows",
+  "arch": "x86_64",
+  "threads": 4,
+  "hard_links": "Auto",
+  "files": 1000001,
+  "dirs": 73746,
+  "runs": 3,
+  "warm_cache": true,
+  "scan_seconds_median": 5.6355,
+  "scan_seconds_min": 4.9046,
+  "scan_seconds_max": 7.2735,
+  "first_result_ms_median": 1.90,
+  "cancel_latency_ms_max": 8.73,
+  "cancel_samples": 3,
+  "peak_memory_bytes": 191668224
+}
