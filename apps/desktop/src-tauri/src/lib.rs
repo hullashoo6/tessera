@@ -687,6 +687,160 @@ fn uninstall_app(id: String) -> CmdResult<()> {
     tessera_apps::launch_uninstaller(&id)
 }
 
+/// One CSV cell: quoted, and protected against spreadsheet formulas.
+fn csv_cell(s: &str) -> String {
+    let s = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{s}")
+    } else {
+        s.to_string()
+    };
+    format!("\"{}\"", s.replace('"', "\"\""))
+}
+
+/// Unix seconds to "YYYY-MM-DD HH:MM" (UTC).
+fn utc_text(t: i64) -> String {
+    if t == i64::MIN {
+        return String::new();
+    }
+    let (days, secs) = (t.div_euclid(86_400), t.rem_euclid(86_400));
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!(
+        "{y:04}-{m:02}-{d:02} {:02}:{:02}",
+        secs / 3600,
+        secs % 3600 / 60
+    )
+}
+
+/// The report's contents: one row per item, sizes in bytes.
+fn report_csv(tree: &tessera_scan::Tree, ids: &[NodeId]) -> String {
+    let mut out = String::from(
+        "\u{feff}Path,Name,Type,Size on disk (bytes),File size (bytes),Modified (UTC)\r\n",
+    );
+    for &id in ids {
+        let n = tree.node(id);
+        let (logical, allocated) = n.counted();
+        let kind = match n.kind {
+            tessera_scan::NodeKind::Dir => "Folder",
+            tessera_scan::NodeKind::File => "File",
+            _ => "Other",
+        };
+        out.push_str(&format!(
+            "{},{},{},{},{},{}\r\n",
+            csv_cell(&tree.path_of(id).to_string_lossy()),
+            csv_cell(&n.display_name()),
+            kind,
+            allocated,
+            logical,
+            utc_text(n.modified)
+        ));
+    }
+    out
+}
+
+/// Saves a CSV report (largest files, or a folder's contents) where the
+/// person chooses. Pro. Returns the saved path, or None if cancelled.
+#[tauri::command]
+async fn export_report(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan_id: u64,
+    kind: String,
+    under: Option<NodeId>,
+    metric: MetricSetting,
+) -> CmdResult<Option<String>> {
+    if !is_pro() {
+        return Err(
+            "Reports are part of Tessera Pro. Enter your licence key in Settings to use them."
+                .into(),
+        );
+    }
+    let scan = active(&state, scan_id)?;
+    let ids: Vec<NodeId> = {
+        let tree = read(&scan);
+        if let Some(u) = under {
+            check_id(&tree, u)?;
+        }
+        match kind.as_str() {
+            "largest" => top_files(&tree, under, 1000, metric.into()),
+            "folder" => sorted_children(&tree, under.unwrap_or(0), metric.into()),
+            _ => return Err("Unknown report.".into()),
+        }
+    };
+    let name = if kind == "largest" {
+        "Tessera largest files.csv"
+    } else {
+        "Tessera folder report.csv"
+    };
+    let Some(dest) = app
+        .dialog()
+        .file()
+        .set_file_name(name)
+        .add_filter("CSV", &["csv"])
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let path = dest
+        .into_path()
+        .map_err(|_| "That location can't be used.".to_string())?;
+    let out = report_csv(&read(&scan), &ids);
+    std::fs::write(&path, out).map_err(|e| format!("The report couldn't be saved: {e}"))?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+#[cfg(test)]
+mod report_tests {
+    use super::*;
+
+    #[test]
+    fn csv_cells_are_quoted_and_formula_safe() {
+        assert_eq!(csv_cell(r#"a "b""#), r#""a ""b""""#);
+        assert_eq!(csv_cell("=HYPERLINK(1)"), "\"'=HYPERLINK(1)\"");
+        assert_eq!(csv_cell("plain.txt"), "\"plain.txt\"");
+    }
+
+    #[test]
+    fn report_rows_for_a_real_scan_are_formula_safe() {
+        let dir = std::env::temp_dir().join(format!("tessera-report-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("=HYPERLINK(evil).txt"), b"x").unwrap();
+        std::fs::write(dir.join("big.bin"), vec![1u8; 4096]).unwrap();
+        let opts = tessera_scan::ScanOptions::default();
+        let (tree, _) =
+            tessera_scan::scan(&dir, &opts, &tessera_scan::CancelToken::new(), &mut |_| {})
+                .unwrap();
+        let ids = top_files(&tree, None, 10, tessera_scan::Metric::Logical);
+        let csv = report_csv(&tree, &ids);
+        std::fs::remove_dir_all(&dir).unwrap();
+        let lines: Vec<&str> = csv.lines().collect();
+        assert_eq!(lines.len(), 3, "header plus two files: {csv}");
+        assert!(lines[0].starts_with('\u{feff}'));
+        assert!(
+            lines[1].contains("\"big.bin\",File,") && lines[1].contains(",4096,"),
+            "{csv}"
+        );
+        assert!(
+            csv.contains("\"'=HYPERLINK(evil).txt\""),
+            "formula neutralised: {csv}"
+        );
+    }
+
+    #[test]
+    fn dates_format_in_utc() {
+        assert_eq!(utc_text(0), "1970-01-01 00:00");
+        assert_eq!(utc_text(1_764_160_200), "2025-11-26 12:30");
+        assert_eq!(utc_text(i64::MIN), "");
+    }
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -899,6 +1053,7 @@ pub fn run() {
             clear_moved_history,
             list_apps,
             uninstall_app,
+            export_report,
             review_cleanup,
             confirm_cleanup,
             license_status,

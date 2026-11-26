@@ -240,6 +240,8 @@ export const api = {
   recentlyMoved: () => invoke<MovedItem[]>('recently_moved'),
   listApps: (scanId: number | null) => invoke<AppItem[]>('list_apps', { scanId }),
   uninstallApp: (id: string) => invoke<void>('uninstall_app', { id }),
+  exportReport: (scanId: number, kind: 'largest' | 'folder', under: number | null, metric: Metric) =>
+    invoke<string | null>('export_report', { scanId, kind, under, metric }),
   putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),
   clearMovedHistory: () => invoke<void>('clear_moved_history'),
   onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>

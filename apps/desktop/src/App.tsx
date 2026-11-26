@@ -278,6 +278,19 @@ export function App() {
                 </button>
               </div>
               <span className="spacer" />
+              <button
+                className="btn"
+                disabled={scanning || scanId === null}
+                onClick={() =>
+                  scanId !== null &&
+                  void api
+                    .exportReport(scanId, 'folder', viewRoot, settings.metric)
+                    .then((path) => path && setToast(`Report saved to ${path}`))
+                    .catch((e) => onError(errorText(e)))
+                }
+              >
+                Export CSV
+              </button>
               <button className="btn" onClick={() => setView('overview')}>
                 New scan
               </button>
@@ -375,6 +388,7 @@ export function App() {
               marked={marked}
               onToggleMark={toggleMark}
               onError={onError}
+              onDone={setToast}
             />
           )}
           {view === 'search' && scanId !== null && (

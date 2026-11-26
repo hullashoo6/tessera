@@ -42,7 +42,7 @@ export const proFeatures: Feature[] = [
   { name: 'Uninstall apps with their own uninstaller (Windows)', status: 'available' },
   { name: 'Put back moved items from inside Tessera (Windows; on Mac, use Put Back in the Trash)', status: 'available' },
   { name: 'Storage history and growth between scans', status: 'in development' },
-  { name: 'Exportable reports', status: 'in development' },
+  { name: 'Exportable reports (CSV)', status: 'available' },
 ]
 
 export type PlatformId = 'windows-x64' | 'mac-arm64' | 'mac-x64'

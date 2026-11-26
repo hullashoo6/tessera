@@ -15,6 +15,7 @@ interface Props {
   marked: Set<number>
   onToggleMark: (id: number) => void
   onError: (message: string) => void
+  onDone: (message: string) => void
 }
 
 const LIMIT = 1000
@@ -24,7 +25,7 @@ function location(row: FileRow): string {
   return cut > 0 ? row.path.slice(0, cut) : row.path
 }
 
-export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, marked, onToggleMark, onError }: Props) {
+export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, marked, onToggleMark, onError, onDone }: Props) {
   const [scope, setScope] = useState<'all' | 'folder'>('all')
   const [rows, setRows] = useState<FileRow[] | null>(null)
   const [selected, setSelected] = useState(-1)
@@ -60,6 +61,18 @@ export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, versi
         </div>
         <span className="spacer" />
         <span className="target-meta num">{rows ? `Top ${rows.length.toLocaleString()} by ${metric === 'allocated' ? 'size on disk' : 'file size'}` : ''}</span>
+        <button
+          className="btn"
+          disabled={!rows?.length}
+          onClick={() =>
+            void api
+              .exportReport(scanId, 'largest', under, metric)
+              .then((p) => p && onDone(`Report saved to ${p}`))
+              .catch((e) => onError(errorText(e)))
+          }
+        >
+          Export CSV
+        </button>
       </div>
       <div className="map-pane">
         <div className="table-head" role="presentation">
