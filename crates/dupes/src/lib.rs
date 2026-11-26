@@ -130,6 +130,7 @@ pub fn find(
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(u64),
 ) -> Report {
+    tessera_scan::background_priority();
     let mut report = Report::default();
     let mut by_size: HashMap<u64, Vec<NodeId>> = HashMap::new();
     for id in 1..tree.len() as NodeId {

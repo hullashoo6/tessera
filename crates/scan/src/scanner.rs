@@ -270,7 +270,10 @@ pub fn scan_shared(
             let listed = &listed;
             let handle = std::thread::Builder::new()
                 .name(format!("tessera-scan-{i}"))
-                .spawn_scoped(s, move || worker(jobs, results, ctx, cancel, listed))
+                .spawn_scoped(s, move || {
+                    crate::background_priority();
+                    worker(jobs, results, ctx, cancel, listed)
+                })
                 .expect("spawn scanner thread");
             handles.push(handle);
         }

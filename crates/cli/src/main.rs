@@ -3,6 +3,7 @@
 //!   tessera-cli volumes
 //!   tessera-cli scan <path> [--threads N] [--hard-links auto|thorough|off] [--top N]
 //!   tessera-cli gen <new-empty-dir> --files N [--seed S]
+//!   tessera-cli soak <dir> [--runs N]   (repeated scans in one process; memory held after each)
 //!   tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]
 //!
 //! `scan` and `bench` never modify anything. `gen` only writes into a new or
@@ -36,6 +37,7 @@ fn main() -> ExitCode {
             None => Err("demo needs a new, empty directory".into()),
         },
         Some("bench") => cmd_bench(&args[1..]),
+        Some("soak") => cmd_soak(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -51,6 +53,7 @@ const USAGE: &str = "usage:
   tessera-cli volumes
   tessera-cli scan <path> [--threads N] [--hard-links auto|thorough|off] [--top N]
   tessera-cli gen <new-empty-dir> --files N [--seed S]
+  tessera-cli soak <dir> [--runs N]   (repeated scans in one process; memory held after each)
   tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]";
 
 struct Args {
@@ -463,4 +466,59 @@ fn peak_memory_bytes() -> Option<u64> {
     } else {
         raw * 1024
     })
+}
+
+/// Memory the process holds now (Windows: private commit), for soak tests.
+#[cfg(windows)]
+fn current_memory_bytes() -> Option<u64> {
+    use windows_sys::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    // SAFETY: zeroed counters with correct cb; pseudo-handle needs no close.
+    unsafe {
+        let mut c: PROCESS_MEMORY_COUNTERS = std::mem::zeroed();
+        c.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+        (K32GetProcessMemoryInfo(GetCurrentProcess(), &mut c, c.cb) != 0)
+            .then_some(c.PagefileUsage as u64)
+    }
+}
+
+#[cfg(unix)]
+fn current_memory_bytes() -> Option<u64> {
+    None
+}
+
+/// Scans `dir` repeatedly in one process, replacing the previous result as
+/// the app does, and reports memory held after each scan. A steady figure
+/// means nothing accumulates over a long session.
+fn cmd_soak(raw: &[String]) -> Result<(), String> {
+    let dir = raw.first().ok_or("soak needs a folder")?;
+    let runs: usize = raw
+        .windows(2)
+        .find(|w| w[0] == "--runs")
+        .and_then(|w| w[1].parse().ok())
+        .unwrap_or(5);
+    let mut held = None;
+    let mib = |b: u64| b as f64 / (1024.0 * 1024.0);
+    for i in 1..=runs {
+        let t = Instant::now();
+        let (tree, _) = tessera_scan::scan(
+            Path::new(dir),
+            &ScanOptions::default(),
+            &tessera_scan::CancelToken::new(),
+            &mut |_| {},
+        )
+        .map_err(|e| e.to_string())?;
+        let nodes = tree.len();
+        held = Some(tree);
+        println!(
+            "run {i}: {nodes} items in {:.2}s, held {:.1} MiB, peak {:.1} MiB",
+            t.elapsed().as_secs_f64(),
+            current_memory_bytes().map(mib).unwrap_or(f64::NAN),
+            peak_memory_bytes().map(mib).unwrap_or(f64::NAN)
+        );
+    }
+    drop(held);
+    Ok(())
 }

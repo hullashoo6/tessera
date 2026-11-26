@@ -39,7 +39,7 @@ pub fn is_pro() -> bool {
     licensing().status(now()).pro
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_status() -> Entitlement {
     licensing().status(now())
 }

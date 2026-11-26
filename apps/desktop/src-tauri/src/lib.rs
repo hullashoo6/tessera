@@ -78,7 +78,7 @@ fn app_info() -> AppInfoDto {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn list_volumes() -> Vec<VolumeDto> {
     volumes().into_iter().map(VolumeDto::from).collect()
 }
@@ -181,7 +181,7 @@ fn cancel_scan(state: State<'_, AppState>) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn scan_status(state: State<'_, AppState>) -> Option<StatusDto> {
     let scan = state
         .scan
@@ -229,7 +229,7 @@ fn scan_status(state: State<'_, AppState>) -> Option<StatusDto> {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn node_details(state: State<'_, AppState>, scan_id: u64, id: NodeId) -> CmdResult<DetailsDto> {
     let scan = active(&state, scan_id)?;
     let tree = read(&scan);
@@ -247,7 +247,7 @@ fn node_details(state: State<'_, AppState>, scan_id: u64, id: NodeId) -> CmdResu
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn children(
     state: State<'_, AppState>,
     scan_id: u64,
@@ -272,7 +272,7 @@ fn children(
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn treemap(
     state: State<'_, AppState>,
     scan_id: u64,
@@ -307,7 +307,7 @@ fn treemap(
     Ok(tiles.iter().map(|t| TileDto::new(&tree, t)).collect())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn largest_files(
     state: State<'_, AppState>,
     scan_id: u64,
@@ -331,7 +331,7 @@ fn largest_files(
     )
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn search(
     state: State<'_, AppState>,
     scan_id: u64,
@@ -393,7 +393,7 @@ struct SuggestionDto {
 
 /// Smart Scan suggestions for a finished scan. Seeing them is free;
 /// acting on them goes through the Pro-gated cleanup.
-#[tauri::command]
+#[tauri::command(async)]
 fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<SuggestionDto>> {
     use tessera_insights::{Group, Safety};
     let scan = active(&state, scan_id)?;
@@ -589,7 +589,7 @@ fn moved_list(app: &AppHandle) -> Vec<MovedDto> {
 
 /// Items Tessera moved in the last 30 days. Available without Pro: a person
 /// must always be able to get their files back.
-#[tauri::command]
+#[tauri::command(async)]
 fn recently_moved(app: AppHandle) -> Vec<MovedDto> {
     moved_list(&app)
 }
@@ -627,7 +627,7 @@ async fn put_back_item(app: AppHandle, index: usize) -> CmdResult<Vec<MovedDto>>
     Ok(moved_list(&app))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn clear_moved_history(app: AppHandle) -> CmdResult<()> {
     let file = history_file(&app).ok_or("Tessera couldn't find its list of moved items.")?;
     tessera_cleanup::history::save(&file, &[]).map_err(|e| e.to_string())
@@ -1006,7 +1006,7 @@ struct PendingReview {
     plan: tessera_cleanup::Plan,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn review_cleanup(
     state: State<'_, AppState>,
     scan_id: u64,
@@ -1138,7 +1138,7 @@ fn existing_path(state: &AppState, scan_id: u64, id: NodeId) -> CmdResult<(PathB
     Ok((path, kind))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn reveal_item(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -1151,7 +1151,7 @@ fn reveal_item(
         .map_err(|_| "The item could not be shown.".to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn open_item(
     app: AppHandle,
     state: State<'_, AppState>,

@@ -148,7 +148,29 @@ pub fn list_volumes() -> Vec<VolumeInfo> {
     imp::list_volumes()
 }
 
-/// Capacity of the volume containing `path`.
+/// Capacity of the volume containing `path`. Gives up after 3 seconds so a
+/// hung network drive cannot stall the caller.
 pub fn volume_space(path: &Path) -> io::Result<VolumeSpace> {
-    imp::volume_space(path)
+    let p = path.to_path_buf();
+    with_timeout(3000, move || imp::volume_space(&p)).unwrap_or_else(|| {
+        Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "the drive did not respond",
+        ))
+    })
+}
+
+/// Runs `f` on its own thread and waits at most `ms` milliseconds.
+pub(crate) fn with_timeout<T: Send + 'static>(
+    ms: u64,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    std::thread::Builder::new()
+        .name("tessera-volume".into())
+        .spawn(move || {
+            let _ = tx.send(f());
+        })
+        .ok()?;
+    rx.recv_timeout(std::time::Duration::from_millis(ms)).ok()
 }

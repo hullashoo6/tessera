@@ -281,42 +281,56 @@ pub(super) fn list_volumes() -> Vec<VolumeInfo> {
             6 => VolumeKind::RamDisk,
             _ => VolumeKind::Unknown,
         };
-        let mut name = vec![0u16; 261];
-        let mut fs = vec![0u16; 261];
-        let (mut serial, mut maxlen, mut fsflags) = (0u32, 0u32, 0u32);
-        // SAFETY: buffer sizes passed match allocations.
-        let ok = unsafe {
-            GetVolumeInformationW(
-                root_w.as_ptr(),
-                name.as_mut_ptr(),
-                name.len() as u32,
-                &mut serial,
-                &mut maxlen,
-                &mut fsflags,
-                fs.as_mut_ptr(),
-                fs.len() as u32,
-            )
-        };
-        let (label, file_system) = if ok != 0 {
-            let l = utf16_until_nul(&name);
-            (
-                Some(l).filter(|s| !s.is_empty()),
-                Some(utf16_until_nul(&fs)).filter(|s| !s.is_empty()),
-            )
-        } else {
-            (None, None)
-        };
         let mount_point = PathBuf::from(String::from_utf16_lossy(root));
-        let space = volume_space(&mount_point).ok();
-        out.push(VolumeInfo {
+        // A disconnected network or optical drive can make these calls hang for
+        // a long time, so each drive is described on its own thread, with a limit.
+        let mp = mount_point.clone();
+        let described = super::with_timeout(2000, move || describe_volume(root_w, mp, kind));
+        out.push(described.unwrap_or(VolumeInfo {
             mount_point,
-            label,
-            file_system,
+            label: Some("Not responding".into()),
+            file_system: None,
             kind,
-            space,
-        });
+            space: None,
+        }));
     }
     out
+}
+
+fn describe_volume(root_w: Vec<u16>, mount_point: PathBuf, kind: VolumeKind) -> VolumeInfo {
+    let mut name = vec![0u16; 261];
+    let mut fs = vec![0u16; 261];
+    let (mut serial, mut maxlen, mut fsflags) = (0u32, 0u32, 0u32);
+    // SAFETY: buffer sizes passed match allocations.
+    let ok = unsafe {
+        GetVolumeInformationW(
+            root_w.as_ptr(),
+            name.as_mut_ptr(),
+            name.len() as u32,
+            &mut serial,
+            &mut maxlen,
+            &mut fsflags,
+            fs.as_mut_ptr(),
+            fs.len() as u32,
+        )
+    };
+    let (label, file_system) = if ok != 0 {
+        let l = utf16_until_nul(&name);
+        (
+            Some(l).filter(|s| !s.is_empty()),
+            Some(utf16_until_nul(&fs)).filter(|s| !s.is_empty()),
+        )
+    } else {
+        (None, None)
+    };
+    let space = volume_space(&mount_point).ok();
+    VolumeInfo {
+        mount_point,
+        label,
+        file_system,
+        kind,
+        space,
+    }
 }
 
 #[cfg(test)]
