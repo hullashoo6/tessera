@@ -62,7 +62,9 @@ Last updated: 2026-11-26.
 | Categorisation, developer storage view | Not implemented |
 | Cleanup (review → Trash) | Not implemented |
 | Storage history, reports | Not implemented |
-| Free/Pro entitlements, Dodo Payments (test mode) | Not implemented |
+| Licensing engine (Dodo public activate/validate/deactivate endpoints, test mode only, OS credential store, 30-day offline grace, configurable Pro features) | Automatically tested against a simulated Dodo server (7 tests). **Mock only**: no real Dodo test-mode key has been used yet |
+| Licensing in the app (Settings > Pro, gating cleanup) | Not implemented |
+| Live checkout | **Blocked by design** until owner approval (`LIVE_MODE_APPROVED = false`) |
 | Website (Astro 7, static): home, help, changelog, draft privacy/terms, 404, sitemap, robots, JSON-LD, OG image | Built and checked by headless-browser screenshots (desktop and narrow widths). Not deployed. Lighthouse not yet measured |
 | Website downloads | Driven by `website/src/data/releases.json` (empty: no release exists, so no download links are shown) |
 | Website pricing | Shows USD 14.99 marked "Draft price"; no checkout link. `pricing.approved` must be set by owner decision |
