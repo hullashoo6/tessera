@@ -8,7 +8,7 @@
   --sunken: #eceff2;
   --ink: #1c2127;
   --ink-2: #4e5964;
-  --ink-3: #7a858f;
+  --ink-3: #646e78; /* >= 4.5:1 on --bg and --surface (WCAG AA for small text) */
   --line: #e1e4e8;
   --line-strong: #c9d0d7;
   --accent: #3e6a9e;
@@ -44,7 +44,7 @@
   --sunken: #121418;
   --ink: #e7eaee;
   --ink-2: #a9b2bc;
-  --ink-3: #7d8791;
+  --ink-3: #858f99; /* >= 4.5:1 on --bg and --surface */
   --line: #2a3037;
   --line-strong: #3b434c;
   --accent: #86a9d1;
@@ -68,6 +68,25 @@ button, input, select { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* "Increase contrast" (macOS) and contrast themes (Windows): stronger text
+   and lines. The storage map switches palette too (palette.ts). */
+@media (prefers-contrast: more) {
+  :root { --ink-2: #1c2127; --ink-3: #3d454d; --line: #8a949e; --line-strong: #5c6670; --accent: #234a78; --accent-hover: #1b3b61; }
+  [data-theme='dark'] { --ink-2: #e7eaee; --ink-3: #c3cad1; --line: #6b7580; --line-strong: #98a2ac; --accent: #a9c6e8; --accent-hover: #c2d7ef; }
+}
+
+/* Windows contrast themes: the system chooses every colour. States shown
+   only by a background or shadow get an outline so they stay visible. */
+@media (forced-colors: active) {
+  .nav-item[aria-current='page'],
+  .segmented button[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .menu button:hover, .menu button:focus-visible { outline: 2px solid Highlight; }
+  .capacity-bar { border: 1px solid CanvasText; }
+  .capacity-used { background: Highlight; forced-color-adjust: none; }
+  .drop-hint { background: Canvas; outline-color: Highlight; }
+  :focus-visible { outline-color: Highlight; }
 }
 
 /* ---------- Shell ---------- */

@@ -16,17 +16,21 @@ import { Suggestions } from './components/Suggestions'
 import { Treemap, type Highlight } from './components/Treemap'
 import { Welcome } from './components/Welcome'
 import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
-import type { Theme } from './palette'
+import { setHighContrast, type Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
 type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'history' | 'apps' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
+const CONTRAST_QUERY = '(prefers-contrast: more), (forced-colors: active)'
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
   const theme: Theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
+  // "Increase contrast" on macOS, contrast themes on Windows.
+  const [contrast, setContrast] = useState(() => window.matchMedia(CONTRAST_QUERY).matches)
+  setHighContrast(contrast) // before children draw; idempotent
 
   const [info, setInfo] = useState({ os: 'windows', version: '' })
   const [volumes, setVolumes] = useState<Volume[] | null>(null)
@@ -81,7 +85,13 @@ export function App() {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const on = (e: MediaQueryListEvent) => setSystemDark(e.matches)
     mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
+    const hc = window.matchMedia(CONTRAST_QUERY)
+    const onContrast = (e: MediaQueryListEvent) => setContrast(e.matches)
+    hc.addEventListener('change', onContrast)
+    return () => {
+      mq.removeEventListener('change', on)
+      hc.removeEventListener('change', onContrast)
+    }
   }, [])
 
   const refreshDrives = useCallback(() => {
@@ -419,6 +429,7 @@ export function App() {
                   rootName={viewName}
                   metric={settings.metric}
                   theme={theme}
+                  contrast={contrast}
                   version={version}
                   selected={selected}
                   highlight={highlight}

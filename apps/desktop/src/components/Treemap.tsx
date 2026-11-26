@@ -1,7 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api, errorText, type Metric, type Tile } from '../api'
 import { formatBytes, percent, plural } from '../format'
-import { frameFill, grout, hoverInk, labelInk, moreFill, selectionInk, tileFill, type Theme } from '../palette'
+import {
+  frameFill,
+  grout,
+  hatchInk,
+  highContrast,
+  hoverInk,
+  labelInk,
+  moreFill,
+  selectionInk,
+  tileFill,
+  type Theme,
+} from '../palette'
 
 interface Props {
   scanId: number
@@ -9,6 +20,8 @@ interface Props {
   rootName: string
   metric: Metric
   theme: Theme
+  /** The system asks for high contrast (redraws with the high-contrast palette). */
+  contrast: boolean
   /** Changing this re-requests the layout (used while a scan is running). */
   version: number
   selected: number | null
@@ -85,7 +98,7 @@ function hatch(ctx: CanvasRenderingContext2D, theme: Theme): CanvasPattern | nul
   c.height = 6
   const p = c.getContext('2d')
   if (!p) return null
-  p.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.09)'
+  p.strokeStyle = hatchInk(theme)
   p.lineWidth = 1
   p.beginPath()
   p.moveTo(0, 6)
@@ -102,6 +115,8 @@ function drawBase(canvas: HTMLCanvasElement, tiles: Tile[], size: Size, theme: T
   ctx.fillRect(0, 0, size.w, size.h)
   const pattern = hatch(ctx, theme)
   const ink = labelInk(theme)
+  // Sizes are drawn a little lighter than names, except in high contrast.
+  const faint = highContrast() ? 1 : 0.7
 
   for (const t of tiles) {
     // A one-pixel "grout" line separates every tile.
@@ -133,7 +148,7 @@ function drawBase(canvas: HTMLCanvasElement, tiles: Tile[], size: Size, theme: T
         const room = w - 12
         if (room > sizeW + 50) {
           ctx.fillText(fit(ctx, t.name, room - sizeW - 10), x + 6, y + 12.5)
-          ctx.globalAlpha = 0.7
+          ctx.globalAlpha = faint
           ctx.fillText(sizeText, x + w - 6 - sizeW, y + 12.5)
           ctx.globalAlpha = 1
         } else {
@@ -144,7 +159,7 @@ function drawBase(canvas: HTMLCanvasElement, tiles: Tile[], size: Size, theme: T
       ctx.font = `12px ${font}`
       ctx.fillText(fit(ctx, tileName(t), w - 12), x + 6, y + 16)
       if (h > 38) {
-        ctx.globalAlpha = 0.7
+        ctx.globalAlpha = faint
         ctx.fillText(fit(ctx, formatBytes(t.size), w - 12), x + 6, y + 31)
         ctx.globalAlpha = 1
       }
@@ -152,7 +167,9 @@ function drawBase(canvas: HTMLCanvasElement, tiles: Tile[], size: Size, theme: T
   }
 }
 
-function outline(ctx: CanvasRenderingContext2D, t: Tile, color: string, width: number): void {
+function outline(ctx: CanvasRenderingContext2D, t: Tile, color: string, thin: number): void {
+  // Thicker outlines in high contrast so the selection stands out from the solid tile gaps.
+  const width = highContrast() ? thin + 1 : thin
   ctx.strokeStyle = color
   ctx.lineWidth = width
   const inset = width / 2 + 0.5
@@ -227,7 +244,8 @@ function neighbour(tiles: Tile[], from: Tile, dir: Direction): Tile | null {
 }
 
 export function Treemap(props: Props) {
-  const { scanId, rootId, rootName, metric, theme, version, selected, highlight, onSelect, onZoom, onUp, onMenu, onError } = props
+  const { scanId, rootId, rootName, metric, theme, contrast, version, selected, highlight, onSelect, onZoom, onUp, onMenu, onError } =
+    props
   const wrapRef = useRef<HTMLDivElement>(null)
   const baseRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -263,11 +281,11 @@ export function Treemap(props: Props) {
 
   useEffect(() => {
     if (baseRef.current) drawBase(baseRef.current, tiles, size, theme)
-  }, [tiles, size, theme])
+  }, [tiles, size, theme, contrast])
 
   useEffect(() => {
     if (overlayRef.current) drawOverlay(overlayRef.current, tiles, size, theme, hover?.tile ?? null, selected, highlight)
-  }, [tiles, size, theme, hover, selected, highlight])
+  }, [tiles, size, theme, contrast, hover, selected, highlight])
 
   const total = tiles.reduce((s, t) => (t.depth === 0 ? s + t.size : s), 0)
   const selectedTile = tiles.find((t) => t.id === selected && t.kind !== 'more') ?? null
