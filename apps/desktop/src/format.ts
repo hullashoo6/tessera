@@ -1,7 +1,14 @@
 // Size units follow the operating system's own convention so numbers match
 // what people see in Explorer (1 KB = 1024 bytes) or Finder (1 KB = 1000).
+import type { Volume } from './api'
 
 let base = 1024
+
+/** "Windows (C:)" or "Macintosh HD (/)"; the mount alone when unlabelled. */
+export function driveName(v: Volume): string {
+  const mount = v.mount.replace(/[\\/]+$/, '') || v.mount
+  return v.label ? `${v.label} (${mount})` : mount
+}
 
 export function setPlatform(os: string): void {
   base = os === 'macos' ? 1000 : 1024

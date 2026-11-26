@@ -1,5 +1,5 @@
 import type { ScanTarget, Status, Volume } from '../api'
-import { formatBytes, formatDuration, plural } from '../format'
+import { driveName, formatBytes, formatDuration, plural } from '../format'
 
 interface Props {
   volumes: Volume[] | null
@@ -7,11 +7,6 @@ interface Props {
   onScan: (target: ScanTarget) => void
   onOpenMap: () => void
   onRefreshDrives: () => void
-}
-
-function driveName(v: Volume): string {
-  const mount = v.mount.replace(/[\\/]+$/, '') || v.mount
-  return v.label ? `${v.label} (${mount})` : mount
 }
 
 function driveKind(v: Volume): string {

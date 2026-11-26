@@ -14,6 +14,7 @@ import { Restore } from './components/Restore'
 import { Search } from './components/Search'
 import { Suggestions } from './components/Suggestions'
 import { Treemap, type Highlight } from './components/Treemap'
+import { Welcome } from './components/Welcome'
 import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
@@ -60,6 +61,17 @@ export function App() {
   const scanId = status?.scanId ?? null
   const names = platformNames(info.os)
   const onError = useCallback((m: string) => setError(m), [])
+  // The first-run welcome screen is shown until the first scan or a skip.
+  const markWelcomed = useCallback(
+    () =>
+      setSettings((cur) => {
+        if (cur.welcomed) return cur
+        const next = { ...cur, welcomed: true }
+        saveSettings(next)
+        return next
+      }),
+    [],
+  )
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -99,10 +111,14 @@ export function App() {
       .scanStatus()
       .then((s) => {
         setStatus(s)
-        if (s) setView('map') // a scan already exists (e.g. the window was reloaded)
+        if (s) {
+          // A scan already exists (a folder given at launch, or the window was reloaded).
+          setView('map')
+          markWelcomed()
+        }
       })
       .catch((e) => onError(errorText(e)))
-  }, [refreshDrives, onError])
+  }, [refreshDrives, onError, markWelcomed])
 
   // Live progress, and periodic map refreshes while a scan runs.
   useEffect(() => {
@@ -332,7 +348,18 @@ export function App() {
           </div>
         )}
         <div className={view === 'map' || view === 'largest' || view === 'search' ? 'content fill' : 'content'}>
-          {view === 'overview' && (
+          {view === 'overview' && !settings.welcomed && (
+            <Welcome
+              os={info.os}
+              volumes={volumes}
+              onScan={(target) => {
+                markWelcomed()
+                startScan(target)
+              }}
+              onSkip={markWelcomed}
+            />
+          )}
+          {view === 'overview' && settings.welcomed && (
             <Overview
               volumes={volumes}
               status={status}
@@ -488,6 +515,10 @@ export function App() {
               os={info.os}
               version={info.version}
               onChange={updateSettings}
+              onShowWelcome={() => {
+                updateSettings({ ...settings, welcomed: false })
+                setView('overview')
+              }}
               entitlement={entitlement}
               onEntitlement={setEntitlement}
             />

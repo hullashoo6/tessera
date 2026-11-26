@@ -8,9 +8,11 @@ export interface Settings {
   hardLinks: HardLinks
   /** Fetch the website's public version file at start-up. */
   checkUpdates: boolean
+  /** The first-run welcome screen has been seen. */
+  welcomed: boolean
 }
 
-export const DEFAULTS: Settings = { theme: 'system', metric: 'allocated', hardLinks: 'auto', checkUpdates: true }
+export const DEFAULTS: Settings = { theme: 'system', metric: 'allocated', hardLinks: 'auto', checkUpdates: true, welcomed: false }
 
 const KEY = 'tessera.settings.v1'
 
@@ -25,6 +27,7 @@ export function loadSettings(): Settings {
       metric: v.metric === 'logical' ? 'logical' : 'allocated',
       hardLinks: v.hardLinks === 'thorough' || v.hardLinks === 'off' ? v.hardLinks : 'auto',
       checkUpdates: v.checkUpdates !== false,
+      welcomed: v.welcomed === true,
     }
   } catch {
     return DEFAULTS

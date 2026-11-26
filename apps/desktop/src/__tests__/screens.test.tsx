@@ -31,6 +31,7 @@ import { History } from '../components/History'
 import { ProLicence } from '../components/ProLicence'
 import { Restore } from '../components/Restore'
 import { Suggestions } from '../components/Suggestions'
+import { Welcome } from '../components/Welcome'
 
 const noop = () => undefined
 beforeEach(() => vi.clearAllMocks())
@@ -184,5 +185,36 @@ describe('Error safety net', () => {
       </ErrorBoundary>,
     )
     expect(screen.getByText('Reload')).toBeTruthy()
+  })
+})
+
+describe('Welcome', () => {
+  const vol = (mount: string, system: boolean) => ({
+    mount,
+    label: system ? 'Main' : null,
+    fileSystem: 'NTFS',
+    kind: 'fixed' as const,
+    space: { total: 200e9, available: 50e9, free: 50e9, used: 150e9 },
+    system,
+  })
+
+  it('offers the main drive first and scans it in one click', () => {
+    const scan = vi.fn()
+    render(<Welcome os="windows" volumes={[vol('D:\\', false), vol('C:\\', true)]} onScan={scan} onSkip={noop} />)
+    expect(screen.getByText(/moves items to the Recycle Bin/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Scan main drive'))
+    expect(scan).toHaveBeenCalledWith({ kind: 'volume', mount: 'C:\\' })
+  })
+
+  it('falls back to the home folder, says Trash on a Mac, and can be skipped', () => {
+    const scan = vi.fn()
+    const skip = vi.fn()
+    render(<Welcome os="macos" volumes={[]} onScan={scan} onSkip={skip} />)
+    expect(screen.queryByText('Scan main drive')).toBeNull()
+    expect(screen.getByText(/moves items to the Trash/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Scan home folder'))
+    expect(scan).toHaveBeenCalledWith({ kind: 'home' })
+    fireEvent.click(screen.getByText('Choose another drive or folder'))
+    expect(skip).toHaveBeenCalled()
   })
 })

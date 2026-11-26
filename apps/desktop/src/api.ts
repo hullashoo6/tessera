@@ -22,6 +22,8 @@ export interface Volume {
   fileSystem: string | null
   kind: 'fixed' | 'removable' | 'network' | 'optical' | 'ramdisk' | 'unknown'
   space: Space | null
+  /** The drive the operating system runs from. */
+  system: boolean
 }
 
 export interface Progress {

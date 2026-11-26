@@ -7,6 +7,7 @@ interface Props {
   os: string
   version: string
   onChange: (s: Settings) => void
+  onShowWelcome: () => void
   entitlement: Entitlement | null
   onEntitlement: (e: Entitlement) => void
 }
@@ -23,7 +24,7 @@ function Choice<T extends string>(props: { label: string; value: T; options: [T,
   )
 }
 
-export function SettingsView({ settings, os, version, onChange, entitlement, onEntitlement }: Props) {
+export function SettingsView({ settings, os, version, onChange, onShowWelcome, entitlement, onEntitlement }: Props) {
   return (
     <div className="settings">
       <ProLicence entitlement={entitlement} onChange={onEntitlement} />
@@ -99,6 +100,13 @@ export function SettingsView({ settings, os, version, onChange, entitlement, onE
           Scanning happens entirely on this computer. File names, folders and scan results are never sent anywhere.
           Tessera connects to the internet only to check a Pro licence and, if allowed above, to check for updates.
         </p>
+      </div>
+      <div className="setting">
+        <h3>Welcome screen</h3>
+        <p>See the short introduction from the first time you opened Tessera.</p>
+        <button className="btn" onClick={onShowWelcome}>
+          Show welcome screen
+        </button>
       </div>
       <p className="target-meta">Tessera {version}</p>
     </div>

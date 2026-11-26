@@ -79,12 +79,31 @@ pub struct VolumeDto {
     pub file_system: Option<String>,
     pub kind: &'static str,
     pub space: Option<SpaceDto>,
+    /// The drive the operating system runs from (offered first to new users).
+    pub system: bool,
+}
+
+/// `C:\` (or wherever Windows is installed) on Windows; `/` on macOS.
+fn is_system_volume(mount: &str) -> bool {
+    #[cfg(windows)]
+    {
+        let drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into());
+        mount
+            .trim_end_matches('\\')
+            .eq_ignore_ascii_case(drive.trim_end_matches('\\'))
+    }
+    #[cfg(not(windows))]
+    {
+        mount == "/"
+    }
 }
 
 impl From<VolumeInfo> for VolumeDto {
     fn from(v: VolumeInfo) -> Self {
+        let mount = v.mount_point.to_string_lossy().into_owned();
         VolumeDto {
-            mount: v.mount_point.to_string_lossy().into_owned(),
+            system: is_system_volume(&mount),
+            mount,
             label: v.label,
             file_system: v.file_system,
             kind: match v.kind {
