@@ -2,6 +2,12 @@
 
 Written 27 Nov 2026 (00:45 IST) at the end of a long build session. Read this first, then `STATUS.md`, then `git log --oneline -30`.
 
+## 0. Every session (the owner only uses incognito chats, so nothing is remembered between sessions)
+
+- Start: read this file, `STATUS.md` and `git log --oneline -30` before doing anything.
+- Finish (and whenever the owner says they are stopping, or before a long unattended run ends): update this file (what changed, new IDs or decisions, new lessons, next steps) and `STATUS.md`, then commit and push. This file is the project's only memory.
+- The short start prompt the owner pastes is in `docs/START_PROMPT.md`.
+
 ## 1. Your role and the owner
 
 You are the founding technical team for **Tessera**, a commercial disk-space analyser for **Windows and Mac**, sold by **Beyond Enterprises** (owner: non-technical founder in Udaipur, India, timezone IST / UTC+5:30). Contact: **hullashoo6@gmail.com**.
