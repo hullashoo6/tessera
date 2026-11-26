@@ -126,11 +126,11 @@ Live at https://tessera-96w.pages.dev (Cloudflare Pages, 26 Nov 2026): contact (
 
 Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and History (from a disposable C:\Demo folder; no personal paths), FAQ rewritten, latest.json for the update check, stretched-screenshot bug fixed. Lighthouse on the live site: mobile 98/100/100/100, desktop 100/100/100/100 (performance/accessibility/best practices/SEO).
 
-## Local release candidate, 27 Nov 2026 ~04:45 IST (tools/release.ps1, commit 41d2c02)
+## Local release candidate, 27 Nov 2026 ~06:15 IST (tools/release.ps1, code at commit 9834c6e)
 
 | Installer | Size | SHA-256 | Verified |
 |---|---|---|---|
-| Tessera_0.1.0_x64-setup.exe (local build) | 3.6 MB | 825feb1d6e1bf2375d4b43255ab514ab882db564af93398233a599483fc2e992 | Automated smoke test on the owner laptop (all checks first): silent install over the previous build, right-click entries present, launched on a disposable folder, Tessera's own window visible (checked by window class, not helper windows), never slower than 28 ms to respond over 10 s, local log records the start with no crash, closing quit. This build is the one now installed. Unsigned. No macOS build (GitHub Actions minutes used up). Earlier tonight: d762cfbd... (03:50) |
+| Tessera_0.1.0_x64-setup.exe (local build) | 3.6 MB | 77a55028f249c10d41c6ca137b7f28a569b398c662f79003bf5cdb20232357ef | Full `tools/check.ps1` passed first (all tests, memory gate 1.3 MiB, time budgets, macOS compile check, website build). Automated smoke test on the owner laptop: silent install over the previous build, right-click entries present, launched on a disposable folder, Tessera's own window visible (checked by window class), never slower than 49 ms to respond over 10 s, local log records the start with no crash, closing quit. **This build is the one now installed.** Unsigned. No macOS build (GitHub Actions minutes used up). Earlier tonight: d762cfbd... (03:50), 825feb1d... (04:45) |
 
 ## Release candidate, 27 Nov 2026 (built by the release workflow from commit 3802247)
 
