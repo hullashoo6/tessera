@@ -4133,6 +4133,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tessera-apps"
+version = "0.1.0"
+dependencies = [
+ "windows",
+ "winreg",
+]
+
+[[package]]
 name = "tessera-cleanup"
 version = "0.1.0"
 dependencies = [

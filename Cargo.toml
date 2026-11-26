@@ -7,6 +7,7 @@ members = [
     "crates/licensing",
     "crates/insights",
     "crates/dupes",
+    "crates/apps",
     "crates/testkit",
     "crates/cli",
     "apps/desktop/src-tauri",
