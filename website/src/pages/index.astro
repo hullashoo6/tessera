@@ -9,6 +9,10 @@ import { releaseFor } from '../data/releases'
 import shotDark from '../assets/screens/app-dark.png'
 import shotLight from '../assets/screens/app-light.png'
 import shotFiles from '../assets/screens/app-largest.png'
+import shotSmart from '../assets/screens/app-smart.png'
+import shotDupes from '../assets/screens/app-duplicates.png'
+import shotRestore from '../assets/screens/app-restore.png'
+import shotHistory from '../assets/screens/app-history.png'
 
 const title = 'Tessera: disk space analyzer for Windows and Mac'
 const description =
@@ -73,6 +77,26 @@ const features = [
         <figure class="window small">
           <Image src={shotLight} alt="The same storage map in the light theme." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
           <figcaption>Light and dark, following your system setting.</figcaption>
+        </figure>
+      </div>
+      <div class="pair">
+        <figure class="window small">
+          <Image src={shotSmart} alt="Smart Scan listing node_modules, Rust build output, a Python environment and a web build cache, each with why it was found and how safe it is to remove." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Smart Scan explains every suggestion and how safe it is.</figcaption>
+        </figure>
+        <figure class="window small">
+          <Image src={shotDupes} alt="Duplicates showing two exact copies of a video and three copies of a photo, with buttons to keep the oldest or newest copy." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Exact duplicates, found by comparing contents.</figcaption>
+        </figure>
+      </div>
+      <div class="pair">
+        <figure class="window small">
+          <Image src={shotRestore} alt="The Restore page listing two photos Tessera moved to the Recycle Bin, each with a Put back button." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Put back anything Tessera moved, from inside the app.</figcaption>
+        </figure>
+        <figure class="window small">
+          <Image src={shotHistory} alt="Storage history charting a folder's size over three scans, with the Videos folder grown by 40 MB." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
+          <figcaption>Storage history shows what grew, and when.</figcaption>
         </figure>
       </div>
     </div>
@@ -204,6 +228,8 @@ const features = [
   .fine { font-size: 14px; color: var(--mist); }
 
   .window { margin: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line-strong); box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7); background: var(--night); }
+  /* Keep screenshots in proportion: height follows the scaled width. */
+  .window img { display: block; width: 100%; height: auto; }
   .caption { margin-top: 16px; font-size: 14px; }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 56px; }
   .window.small figcaption { padding: 14px 16px; font-size: 14px; color: var(--mist); border-top: 1px solid var(--line); }

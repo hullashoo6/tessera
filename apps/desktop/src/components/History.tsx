@@ -129,7 +129,7 @@ export function History({ pro, onOpenSettings, onError }: Props) {
             <div className="section-title">Biggest changes</div>
             <div className="segmented" role="group" aria-label="Compare with">
               <button aria-pressed={mode === 'month'} onClick={() => setMode('month')}>
-                About a month ago
+                {monthAgo ? 'About a month ago' : 'First scan'}
               </button>
               <button aria-pressed={mode === 'previous'} onClick={() => setMode('previous')}>
                 Previous scan

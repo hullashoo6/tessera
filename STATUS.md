@@ -107,3 +107,5 @@ Live at https://tessera-96w.pages.dev (Cloudflare Pages, 26 Nov 2026): contact (
 ## Screen tests
 
 12 automated screen tests (Vitest + Testing Library, simulated browser, backend replaced by test data): Cleanup Pro lock; Smart Scan bulk-add safety and paging; Duplicates keep-oldest and every-copy warning; Restore states; Apps confirmation, Store removal, Mac leftovers; licence entry and test-mode notice; History Pro lock and growth comparison; error safety net. Run in CI on Windows and macOS.
+
+Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and History (from a disposable C:\Demo folder; no personal paths), FAQ rewritten, latest.json for the update check, stretched-screenshot bug fixed. Lighthouse on the live site: mobile 98/100/100/100, desktop 100/100/100/100 (performance/accessibility/best practices/SEO).
