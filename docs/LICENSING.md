@@ -1,8 +1,9 @@
 # Licensing and payments
 
 Owner: Beyond Enterprises (Dodo Payments account). Status: **live purchases
-disabled**. No real Dodo test-mode licence has been checked yet; all
-licensing tests so far use a simulated server.
+disabled**. Real test-mode activate / validate / deactivate verified from the
+app (Windows dev build) on 26 Nov 2026 with the owner's test key; automated
+tests use a simulated server.
 
 ## Products
 
@@ -53,8 +54,8 @@ provider's secret settings (never from git):
 ## Gates before live purchases
 
 1. Test product id set (done). Owner provides a real test-mode licence key.
-2. Activate, validate and deactivate the real test
-   key from an installed build. Record evidence in STATUS.md.
+2. Real test key activated, validated and deactivated from the app (done in a
+   dev build). Repeat from an installed build. Record evidence in STATUS.md.
 3. Signed installers exist and pass installed-build testing.
 4. Owner confirms live checkout verification is complete.
 5. Owner approves; then set `LIVE_MODE_APPROVED = true`, release, and enable

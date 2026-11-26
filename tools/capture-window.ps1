@@ -13,7 +13,7 @@ public static class TesseraCapture {
 }
 "@
 [void][TesseraCapture]::SetProcessDPIAware()
-$p = Get-Process $Process -ErrorAction Stop | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+. (Join-Path $PSScriptRoot 'ui-window.ps1'); $win = Get-TesseraWindow $Process; $p = [pscustomobject]@{ MainWindowHandle = [IntPtr]$win.Current.NativeWindowHandle }
 if (-not $p) { throw "No visible $Process window" }
 $r = New-Object TesseraCapture+RECT
 [void][TesseraCapture]::GetWindowRect($p.MainWindowHandle, [ref]$r)

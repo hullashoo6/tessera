@@ -2,9 +2,8 @@
 # (the accessibility API), without moving the mouse. Used for UI checks.
 # Usage: powershell -File tools\ui-invoke.ps1 -Name "Largest files"
 param([Parameter(Mandatory = $true)][string]$Name, [string]$Process = "tessera-desktop")
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-$p = Get-Process $Process -ErrorAction Stop | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-$root = [System.Windows.Automation.AutomationElement]::FromHandle($p.MainWindowHandle)
+. (Join-Path $PSScriptRoot 'ui-window.ps1')
+$root = Get-TesseraWindow $Process
 $cond = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $Name
 $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
 if (-not $el) {
