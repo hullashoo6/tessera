@@ -6,7 +6,7 @@ tested** · **Real platform tested** · **Blocked**
 "Real platform tested" here means exercised on the owner's Windows 11 laptop
 against real NTFS data. No macOS hardware has been used yet.
 
-Last updated: 2026-11-26.
+Last updated: 2026-11-27.
 
 ## Phase 1 — Foundation
 
@@ -42,8 +42,8 @@ Last updated: 2026-11-26.
 | Single folder with millions of entries | Not tested | Whole listing held in memory per folder |
 | Deterministic owner for hard-linked bytes | Not implemented | First path seen gets the bytes; may vary between scans |
 | NTFS MFT fast path | Not implemented (deferred by design) | Only after the portable scanner is proven |
-| Benchmarks 10k / 100k / 1M | Measured (Windows) | BENCHMARKS.md; 1M: 5.6 s warm, 183 MiB peak |
-| Memory efficiency at 1M+ entries | Below target | 183 MiB vs ~100 MiB estimate; chunked storage planned |
+| Benchmarks 10k / 100k / 1M | Measured (Windows) | BENCHMARKS.md; 1M after the memory work (26 Nov): 6.0 s median, 144 MiB peak, cancel 3 ms |
+| Memory efficiency at 1M+ entries | Held memory meets target; peak above it | ~75 MiB held after a 1M scan, steady over rescans (target < 100 MiB). Peak 144 MiB during the scan, 216 MiB while rescanning with the old result still shown |
 
 ## Phases 3–8
 
@@ -60,31 +60,37 @@ Last updated: 2026-11-26.
 | Sunburst, tree, table views | Not implemented |
 | UI with 1M-file scans | Not tested (scanner tested at 1M; UI at 100k) |
 | Smart Scan (tessera-insights): evidence-based junk, developer and large-download suggestions; app screen with reasons, safety labels, add-to-cleanup | Rules automatically tested (positive and negative evidence); screen checked on Windows with a disposable project folder. Seeing suggestions is free; cleanup stays Pro |
-| Cleanup (review → Trash) | Not implemented |
+| Cleanup (review → Recycle Bin/Trash only, protection rules, re-check before each move; Pro) | Real platform tested (Windows): installed build moved a 4 MB disposable file and two duplicate copies to the Recycle Bin, Put back restored identical contents (26-27 Nov). macOS: real Trash round trip on the CI runner only |
 | Duplicates (tessera-dupes): size, partial hash, full BLAKE3; screen with keep-oldest/newest and every-copy warning | Engine automatically tested (incl. same-size same-edges different-middle files, hard links, changed files, cancel); screen checked on Windows with a disposable folder |
 | Restore: "Recently moved" list with Put back (never overwrites; not Pro-gated) | **Real platform tested on Windows**, 26 Nov 2026: real Recycle Bin round trip test (incl. refusal when the original name is taken) and end to end in the app (cleanup, then Put back: identical SHA-256, nothing left in the bin). macOS: implemented (Trash location from NSFileManager, put back with RENAME_EXCL); real Trash round trip runs in CI on the macOS runner |
-| Apps (Windows): installed apps from the Settings registry entries, measured or app-reported size, Uninstall opens the app's own uninstaller (Pro) | Listing tested read-only on the owner laptop; uninstall launch verified end to end with a temporary harmless test entry (removed afterwards). Real apps, 26 Nov 2026: Microsoft Store app (Simple Spider Solitaire) listed and removed through Tessera (confirmed gone via Windows' package list); KeyStow's real uninstaller was opened by Tessera, but its dialog can't be driven by automation and it was not completed. Store app sizes: not reported yet. macOS: implemented (apps in /Applications and ~/Applications, moved to the Trash and recorded for Put back, leftovers in ~/Library by bundle id only); automated test on the macOS CI runner; not run on a real Mac |
+| Apps (Windows): installed apps from the Settings registry entries, measured or app-reported size, Uninstall opens the app's own uninstaller (Pro) | Listing tested read-only on the owner laptop; uninstall launch verified end to end with a temporary harmless test entry (removed afterwards). Real apps, 26 Nov 2026: Microsoft Store app (Simple Spider Solitaire) listed and removed through Tessera (confirmed gone via Windows' package list); KeyStow's real uninstaller was opened by Tessera, but its dialog can't be driven by automation and it was not completed. Store app and Mac app sizes are measured from their folders (since 27 Nov; to be checked on more machines). macOS: implemented (apps in /Applications and ~/Applications, moved to the Trash and recorded for Put back, leftovers in ~/Library by bundle id only); automated test on the macOS CI runner; not run on a real Mac |
 | Reports: CSV export of Largest files and of the current folder (Pro), formula-safe cells | Report contents automatically tested on a real scan; save-dialog cancel verified in the app. Saving through the dialog not automated (Windows dialog not scriptable) - needs one manual check |
 | Cloud "free up space" engine (Windows Cloud Files/OneDrive; macOS iCloud Drive) | Windows, 26 Nov 2026, real OneDrive: placeholder detection verified (Windows hides placeholders from apps by default; Tessera exposes them per thread only during the check) and the Explorer-equivalent 'free up space' mark applied correctly. **Not yet verified end to end**: OneDrive on the laptop was not processing changes (a new test file never uploaded), so the local copy was not removed within 60 s. The owner's file was restored exactly. macOS: compiles; untested (no iCloud on CI) |
-| Storage history | Not implemented |
-| Licensing engine (Dodo public activate/validate/deactivate endpoints, test mode only, OS credential store, 30-day offline grace, configurable Pro features) | Automatically tested against a simulated Dodo server (7 tests). **Mock only**: no real Dodo test-mode key has been used yet |
+| Storage history (summary of each finished scan kept locally; History page with growth chart and biggest folder changes; Pro) | Automatically tested: pruning per location and a real-scan snapshot (Rust tests); Pro lock and growth comparison (screen test). Not yet clicked through on an installed build, so the website still lists it as "in development" |
+| Update check (Settings > Updates, on by default, can be turned off; reads the website's latest.json; banner opens the download page; nothing downloaded automatically) | Real platform tested (Windows installed build) for the "no update" case only: no false banner. The "update available" banner has not been seen on an installed build |
+| Licensing engine (Dodo public activate/validate/deactivate endpoints, test mode only, OS credential store, 30-day offline grace, configurable Pro features) | Automatically tested against a simulated Dodo server (7 tests). A real Dodo test-mode key has since been used from the app (next row) |
 | Licensing in the app (Settings > Tessera Pro: activate/deactivate; cleanup gated to Pro; background re-check) | Implemented; interface type-checked. Real Dodo **test server** reached: unknown key correctly refused (opt-in test). Real Dodo **test-mode** cycle verified from the app on Windows (dev build), 26 Nov 2026: owner activated a real test key (Pro shown, credential stored); "Check now" re-validated with Dodo (last confirmed 6:46 pm to 6:47 pm, Pro kept); deactivation returned the app to Free and removed the credential. Not yet repeated on an installed build or on macOS |
 | Live checkout | **Blocked by design** until owner approval (`LIVE_MODE_APPROVED = false`). Live product `pdt_0Nsmg4vQiRrOCZ4yTeDEk` bound to live mode only; test product `pdt_0Nsmh1XPpX4NRvbkO8N7C` bound to test mode. See docs/LICENSING.md |
-| Website (Astro 7, static): home, help, changelog, draft privacy/terms, 404, sitemap, robots, JSON-LD, OG image | Built and checked by headless-browser screenshots (desktop and narrow widths). Not deployed. Lighthouse not yet measured |
+| Website (Astro 7, static): home, help, changelog, draft privacy/terms, 404, sitemap, robots, JSON-LD, OG image | Live at https://tessera-96w.pages.dev since 26 Nov 2026; Lighthouse 98-100 (see Website below) |
 | Website downloads | Driven by `website/src/data/releases.json` (empty: no release exists, so no download links are shown) |
-| Website pricing | Shows USD 14.99 marked "Draft price"; no checkout link. `pricing.approved` must be set by owner decision |
+| Website pricing | USD 9.78 one-time (set by the owner), shown as not yet on sale; no checkout link anywhere while `pricing.onSale` is false |
 | Windows installer (NSIS, per-user, no admin) `Tessera_0.1.0_x64-setup.exe`, 3.0 MB | Real platform tested on Windows 11, 26 Nov 2026: silent install (exit 0, uninstall entry "Tessera 0.1.0 by Beyond Enterprises", Start menu shortcut), installed app launched and scanned a folder (1,400 files in 140 ms), silent uninstall (exit 0; files, entry and shortcut removed; licence and WebView settings intentionally kept). **Unsigned**: SmartScreen behaviour not yet tested (local build has no download mark). Installed build, second pass (same day): launched with a disposable folder as argument; licence persisted across reinstall, "Check now" re-validated with Dodo test mode; cleanup moved a 4 MB disposable file to the Recycle Bin (confirmed there), other files untouched |
 | Release manifest (`tools/release-manifest.ps1`) | Implemented: file, version, size, SHA-256, signed/verified flags; nothing published |
-| Code signing (Windows Authenticode, Apple Developer ID) | **Blocked**: paid certificates need owner approval |
+| Code signing (Windows Authenticode, Apple Developer ID) | **Blocked**: paid certificates need owner approval. The owner declined Apple's USD 99/year for now; Windows is to be signed free through the Microsoft Store (next rows) |
 | macOS installer `Tessera_0.1.0_universal.dmg` (Apple silicon + Intel), 9.1 MB | Built by the manual release workflow (private artifact, sha256 7ec7b9098ed781ce94beb8f3cc72673cd698a12c7900688ba97c82db776082f5). Installer window shows the one-time "Open Anyway" steps. Ad-hoc signed, **not notarised**; **never run on a real Mac** (Intel or Apple silicon) |
 | Free Windows signing via Microsoft Store (MSIX) | Prepared: docs/STORE.md, tools/make-msix.ps1. Untested; needs owner to create a free Partner Center account |
 
 ## Owner decisions outstanding
 
-* Final product name (Tessera is a working name; trademark search needed).
-* Pricing (USD 14.99 is provisional; not published anywhere).
+Decided: the name Tessera (approved); price USD 9.78 one-time, tax included, one device, no expiry.
+
+Still outstanding:
+* Free Microsoft Store (Partner Center) account, for free Windows signing.
+* Why OneDrive on the laptop is not syncing (blocks the cloud free-up test).
 * Mac hardware for real macOS testing (CI alone is not acceptance).
-* Code-signing certificates for Windows and Apple Developer Program (paid).
+* Turning on live sales, once Dodo confirms live checkout.
+* Trademark search for "Tessera" and a lawyer review of the privacy policy and terms.
+* Apple Developer Program (USD 99/year), declined for now.
 
 ## Responsiveness ("not responding" prevention), 26 Nov 2026
 
