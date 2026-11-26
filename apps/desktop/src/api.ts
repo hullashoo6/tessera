@@ -194,6 +194,19 @@ export interface MovedItem {
   state: 'inBin' | 'restored' | 'gone' | 'finder'
 }
 
+export interface AppItem {
+  id: string
+  name: string
+  publisher: string | null
+  version: string | null
+  installDate: string | null
+  measuredBytes: number | null
+  reportedBytes: number | null
+  location: string | null
+  perUser: boolean
+  canUninstall: boolean
+}
+
 export interface Entitlement {
   pro: boolean
   summary: string
@@ -225,6 +238,8 @@ export const api = {
   findDuplicates: (scanId: number) => invoke<DupReport>('find_duplicates', { scanId }),
   cancelDuplicates: () => invoke<void>('cancel_duplicates'),
   recentlyMoved: () => invoke<MovedItem[]>('recently_moved'),
+  listApps: (scanId: number | null) => invoke<AppItem[]>('list_apps', { scanId }),
+  uninstallApp: (id: string) => invoke<void>('uninstall_app', { id }),
   putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),
   clearMovedHistory: () => invoke<void>('clear_moved_history'),
   onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>

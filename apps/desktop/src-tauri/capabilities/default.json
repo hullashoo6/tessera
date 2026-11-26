@@ -21,6 +21,8 @@
     "allow-recently-moved",
     "allow-put-back-item",
     "allow-clear-moved-history",
+    "allow-list-apps",
+    "allow-uninstall-app",
     "allow-review-cleanup",
     "allow-confirm-cleanup",
     "allow-license-status",

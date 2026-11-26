@@ -4173,6 +4173,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+ "tessera-apps",
  "tessera-cleanup",
  "tessera-dupes",
  "tessera-insights",

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, errorText, type Crumb, type Entitlement, type ScanTarget, type Status, type Tile, type Volume } from './api'
+import { Apps } from './components/Apps'
 import { Cleanup } from './components/Cleanup'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
@@ -16,7 +17,7 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'settings'
+type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'apps' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -222,6 +223,7 @@ export function App() {
     ['search', 'Search', scanId === null],
     ['cleanup', 'Cleanup', scanId === null],
     ['restore', 'Restore', false],
+    ['apps', 'Apps', false],
     ['settings', 'Settings', false],
   ]
 
@@ -406,6 +408,7 @@ export function App() {
             />
           )}
           {view === 'restore' && <Restore os={info.os} onDone={setToast} onError={onError} />}
+          {view === 'apps' && <Apps os={info.os} scanId={scanId} onDone={setToast} onError={onError} />}
           {view === 'duplicates' && scanId !== null && (
             <Duplicates
               scanId={scanId}

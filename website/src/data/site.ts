@@ -39,6 +39,7 @@ export const proFeatures: Feature[] = [
   { name: 'Everything in Free', status: 'available' },
   { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'available' },
   { name: 'Clean up Smart Scan suggestions and duplicates in a few clicks', status: 'available' },
+  { name: 'Uninstall apps with their own uninstaller (Windows)', status: 'available' },
   { name: 'Put back moved items from inside Tessera (Windows; on Mac, use Put Back in the Trash)', status: 'available' },
   { name: 'Storage history and growth between scans', status: 'in development' },
   { name: 'Exportable reports', status: 'in development' },

@@ -624,6 +624,69 @@ fn clear_moved_history(app: AppHandle) -> CmdResult<()> {
     tessera_cleanup::history::save(&file, &[]).map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppDto {
+    id: String,
+    name: String,
+    publisher: Option<String>,
+    version: Option<String>,
+    install_date: Option<String>,
+    /// Bytes measured in the current scan, when its folder was scanned.
+    measured_bytes: Option<u64>,
+    reported_bytes: Option<u64>,
+    location: Option<String>,
+    per_user: bool,
+    can_uninstall: bool,
+}
+
+/// Installed apps (Windows). Sizes are measured from the current scan when
+/// the app's folder is part of it; otherwise the app's own figure is shown.
+#[tauri::command]
+async fn list_apps(state: State<'_, AppState>, scan_id: Option<u64>) -> CmdResult<Vec<AppDto>> {
+    let scan = scan_id.and_then(|id| active(&state, id).ok());
+    tauri::async_runtime::spawn_blocking(move || {
+        let tree = scan.as_ref().map(|s| read(s));
+        tessera_apps::installed_apps()
+            .into_iter()
+            .map(|a| {
+                let measured = match (&tree, &a.install_location) {
+                    (Some(t), Some(loc)) => tessera_scan::query::find_by_path(t, loc)
+                        .filter(|&id| t.node(id).kind == tessera_scan::NodeKind::Dir)
+                        .map(|id| t.node(id).counted().1),
+                    _ => None,
+                };
+                AppDto {
+                    id: a.id,
+                    name: a.name,
+                    publisher: a.publisher,
+                    version: a.version,
+                    install_date: a.install_date,
+                    measured_bytes: measured,
+                    reported_bytes: a.reported_bytes,
+                    location: a.install_location.map(|p| p.to_string_lossy().into_owned()),
+                    per_user: a.per_user,
+                    can_uninstall: a.can_uninstall,
+                }
+            })
+            .collect()
+    })
+    .await
+    .map_err(|_| "Listing apps stopped unexpectedly.".to_string())
+}
+
+/// Opens the app's own uninstaller after the person confirmed in Tessera.
+#[tauri::command]
+fn uninstall_app(id: String) -> CmdResult<()> {
+    if !is_pro() {
+        return Err("Uninstalling from Tessera is part of Tessera Pro. You can always uninstall from Windows Settings > Apps.".into());
+    }
+    if id.len() > 300 {
+        return Err("Unknown app.".into());
+    }
+    tessera_apps::launch_uninstaller(&id)
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -834,6 +897,8 @@ pub fn run() {
             recently_moved,
             put_back_item,
             clear_moved_history,
+            list_apps,
+            uninstall_app,
             review_cleanup,
             confirm_cleanup,
             license_status,

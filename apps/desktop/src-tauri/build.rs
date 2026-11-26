@@ -17,6 +17,8 @@ const COMMANDS: &[&str] = &[
     "recently_moved",
     "put_back_item",
     "clear_moved_history",
+    "list_apps",
+    "uninstall_app",
     "review_cleanup",
     "confirm_cleanup",
     "license_status",
