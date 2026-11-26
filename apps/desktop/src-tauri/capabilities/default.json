@@ -23,6 +23,7 @@
     "allow-clear-moved-history",
     "allow-list-apps",
     "allow-uninstall-app",
+    "allow-move-leftovers",
     "allow-export-report",
     "allow-free-up-cloud",
     "allow-review-cleanup",

@@ -19,6 +19,7 @@ const COMMANDS: &[&str] = &[
     "clear_moved_history",
     "list_apps",
     "uninstall_app",
+    "move_leftovers",
     "export_report",
     "free_up_cloud",
     "review_cleanup",

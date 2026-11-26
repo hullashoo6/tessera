@@ -684,21 +684,111 @@ async fn list_apps(state: State<'_, AppState>, scan_id: Option<u64>) -> CmdResul
     .map_err(|_| "Listing apps stopped unexpectedly.".to_string())
 }
 
-/// Opens the app's own uninstaller after the person confirmed in Tessera.
-#[tauri::command]
-fn uninstall_app(id: String) -> CmdResult<&'static str> {
-    if !is_pro() {
-        return Err("Uninstalling from Tessera is part of Tessera Pro. You can always uninstall from Windows Settings > Apps.".into());
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UninstallDto {
+    /// "opened" (its own uninstaller is open), "removed" (Store app) or
+    /// "trashed" (Mac app moved to the Trash; can be put back).
+    kind: &'static str,
+    bundle_id: Option<String>,
+    leftovers: Vec<(String, u64)>,
+}
+
+fn record_moved(app: &AppHandle, items: Vec<tessera_cleanup::history::Moved>) {
+    if let Some(file) = history_file(app) {
+        let _ = tessera_cleanup::history::append(&file, items, unix_now());
     }
-    if id.len() > 300 {
+}
+
+/// Uninstalls after the person confirmed in Tessera: opens the app's own
+/// uninstaller (Windows), removes a Store app, or moves a Mac app to the Trash.
+#[tauri::command]
+async fn uninstall_app(app: AppHandle, id: String) -> CmdResult<UninstallDto> {
+    if !is_pro() {
+        return Err("Uninstalling from Tessera is part of Tessera Pro. You can always uninstall the usual way for your system.".into());
+    }
+    if id.len() > 1024 {
         return Err("Unknown app.".into());
     }
-    tessera_apps::launch_uninstaller(&id).map(|o| match o {
-        tessera_apps::Outcome::OpenedUninstaller => "opened",
-        tessera_apps::Outcome::Removed => "removed",
+    let outcome =
+        tauri::async_runtime::spawn_blocking(move || tessera_apps::launch_uninstaller(&id))
+            .await
+            .map_err(|_| "Uninstalling stopped unexpectedly.".to_string())??;
+    Ok(match outcome {
+        tessera_apps::Outcome::OpenedUninstaller => UninstallDto {
+            kind: "opened",
+            bundle_id: None,
+            leftovers: Vec::new(),
+        },
+        tessera_apps::Outcome::Removed => UninstallDto {
+            kind: "removed",
+            bundle_id: None,
+            leftovers: Vec::new(),
+        },
+        tessera_apps::Outcome::MovedToTrash {
+            original,
+            recycled,
+            bytes,
+            leftovers,
+            bundle_id,
+        } => {
+            record_moved(
+                &app,
+                vec![tessera_cleanup::history::Moved {
+                    original,
+                    recycled,
+                    bytes,
+                    moved_at: unix_now(),
+                    restored: false,
+                }],
+            );
+            UninstallDto {
+                kind: "trashed",
+                bundle_id,
+                leftovers: leftovers
+                    .into_iter()
+                    .map(|(p, n)| (p.to_string_lossy().into_owned(), n))
+                    .collect(),
+            }
+        }
     })
 }
 
+/// Moves a Mac app's leftover support files (found by bundle id in
+/// ~/Library) to the Trash. Paths are recomputed here, never taken from the
+/// interface. Each can be put back from Restore.
+#[tauri::command]
+async fn move_leftovers(app: AppHandle, bundle_id: String) -> CmdResult<(usize, u64)> {
+    if !is_pro() {
+        return Err("This is part of Tessera Pro.".into());
+    }
+    if !cfg!(target_os = "macos") || !tessera_apps::valid_bundle_id(&bundle_id) {
+        return Err("Leftover files are only found for Mac apps.".into());
+    }
+    let library = std::env::var_os("HOME")
+        .map(|h| PathBuf::from(h).join("Library"))
+        .ok_or("Your home folder could not be found.")?;
+    let moved = tauri::async_runtime::spawn_blocking(move || {
+        let mut moved = Vec::new();
+        for p in tessera_apps::leftover_paths(&library, &bundle_id) {
+            if let Ok(recycled) = tessera_cleanup::move_to_trash(&p) {
+                moved.push(tessera_cleanup::history::Moved {
+                    original: p,
+                    recycled,
+                    bytes: 0,
+                    moved_at: unix_now(),
+                    restored: false,
+                });
+            }
+        }
+        moved
+    })
+    .await
+    .map_err(|_| "Moving leftovers stopped unexpectedly.".to_string())?;
+    let n = moved.len();
+    record_moved(&app, moved);
+    Ok((n, 0))
+}
 /// One CSV cell: quoted, and protected against spreadsheet formulas.
 fn csv_cell(s: &str) -> String {
     let s = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
@@ -1122,6 +1212,7 @@ pub fn run() {
             clear_moved_history,
             list_apps,
             uninstall_app,
+            move_leftovers,
             export_report,
             free_up_cloud,
             review_cleanup,

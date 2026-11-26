@@ -4136,6 +4136,9 @@ dependencies = [
 name = "tessera-apps"
 version = "0.1.0"
 dependencies = [
+ "plist",
+ "tessera-cleanup",
+ "tessera-testkit",
  "windows",
  "windows-core",
  "winreg",

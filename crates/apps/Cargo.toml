@@ -13,3 +13,10 @@ publish.workspace = true
 windows = { version = "0.62.2", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_System_Com", "Foundation", "Foundation_Collections", "ApplicationModel", "Management_Deployment", "Storage"] }
 windows-core = "0.62"
 winreg = "0.56.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+plist = "1"
+tessera-cleanup = { path = "../cleanup" }
+
+[dev-dependencies]
+tessera-testkit = { path = "../testkit" }

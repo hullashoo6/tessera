@@ -241,7 +241,9 @@ export const api = {
   cancelDuplicates: () => invoke<void>('cancel_duplicates'),
   recentlyMoved: () => invoke<MovedItem[]>('recently_moved'),
   listApps: (scanId: number | null) => invoke<AppItem[]>('list_apps', { scanId }),
-  uninstallApp: (id: string) => invoke<'opened' | 'removed'>('uninstall_app', { id }),
+  uninstallApp: (id: string) =>
+    invoke<{ kind: 'opened' | 'removed' | 'trashed'; bundleId: string | null; leftovers: [string, number][] }>('uninstall_app', { id }),
+  moveLeftovers: (bundleId: string) => invoke<[number, number]>('move_leftovers', { bundleId }),
   exportReport: (scanId: number, kind: 'largest' | 'folder', under: number | null, metric: Metric) =>
     invoke<string | null>('export_report', { scanId, kind, under, metric }),
   putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),

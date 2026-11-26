@@ -17,6 +17,7 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
   const [apps, setApps] = useState<AppItem[] | null>(null)
   const [filter, setFilter] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [leftovers, setLeftovers] = useState<{ name: string; bundleId: string; items: [string, number][] } | null>(null)
 
   const load = useCallback(() => {
     api
@@ -26,14 +27,7 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
   }, [scanId, onError])
   useEffect(load, [load])
 
-  if (os !== 'windows') {
-    return (
-      <div className="empty">
-        <p>Uninstalling apps from Tessera is coming to macOS later. For now, drag an app from Applications to the Trash.</p>
-      </div>
-    )
-  }
-
+  const mac = os === 'macos'
   const shown = (apps ?? []).filter((a) => `${a.name} ${a.publisher ?? ''}`.toLowerCase().includes(filter.trim().toLowerCase()))
 
   const uninstall = (a: AppItem) => {
@@ -41,8 +35,12 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
     api
       .uninstallApp(a.id)
       .then((r) => {
-        if (r === 'removed') {
+        if (r.kind === 'removed') {
           onDone(`${a.name} was removed.`)
+          load()
+        } else if (r.kind === 'trashed') {
+          onDone(`${a.name} is in the Trash. You can put it back from Restore.`)
+          if (r.bundleId && r.leftovers.length) setLeftovers({ name: a.name, bundleId: r.bundleId, items: r.leftovers })
           load()
         } else onDone(`${a.name}'s own uninstaller is open. When it finishes, choose Refresh.`)
       })
@@ -53,9 +51,35 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
     <div className="overview suggestions">
       <h2>Apps</h2>
       <p className="lede">
-        Apps installed on this computer, largest first. Uninstall opens the app’s own uninstaller, the same one Windows
-        Settings uses. Tessera does not delete app files itself.
+        {mac
+          ? 'Apps in your Applications folders, largest first. Uninstall moves the app to the Trash, where you can put it back from Restore, and finds the files it left in your Library.'
+          : 'Apps installed on this computer, largest first. Uninstall opens the app’s own uninstaller, the same one Windows Settings uses. Store apps are removed by Windows. Tessera does not delete app files itself.'}
       </p>
+      {leftovers && (
+        <div className="current-scan">
+          <span className="spacer">
+            {leftovers.name} left {leftovers.items.length === 1 ? '1 item' : `${leftovers.items.length} items`} (
+            {formatBytes(leftovers.items.reduce((n, [, b]) => n + b, 0))}) in your Library, such as settings and caches.
+          </span>
+          <button
+            className="btn btn-primary"
+            onClick={() =>
+              void api
+                .moveLeftovers(leftovers.bundleId)
+                .then(([n]) => {
+                  onDone(`Moved ${n === 1 ? '1 leftover item' : `${n} leftover items`} to the Trash. You can put them back from Restore.`)
+                  setLeftovers(null)
+                })
+                .catch((e) => onError(errorText(e)))
+            }
+          >
+            Move leftovers to Trash
+          </button>
+          <button className="btn" onClick={() => setLeftovers(null)}>
+            Keep them
+          </button>
+        </div>
+      )}
       <div className="actions">
         <input
           className="search-input"
@@ -84,9 +108,9 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
                 </span>
                 {confirm === a.id && (
                   <span className="actions">
-                    <span className="review-reason">{a.id.startsWith('APPX|') ? `Remove ${a.name} from this computer?` : `Open ${a.name}’s uninstaller? Windows may ask for permission.`}</span>
+                    <span className="review-reason">{a.id.startsWith('APPX|') ? `Remove ${a.name} from this computer?` : `${mac ? `Move ${a.name} to the Trash?` : `Open ${a.name}’s uninstaller? Windows may ask for permission.`}`}</span>
                     <button className="btn btn-primary" onClick={() => uninstall(a)}>
-                      {a.id.startsWith('APPX|') ? 'Remove app' : 'Open uninstaller'}
+                      {a.id.startsWith('APPX|') ? 'Remove app' : mac ? 'Move to Trash' : 'Open uninstaller'}
                     </button>
                     <button className="btn" onClick={() => setConfirm(null)}>
                       Cancel
