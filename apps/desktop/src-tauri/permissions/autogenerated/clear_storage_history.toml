@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-clear-storage-history"
+description = "Enables the clear_storage_history command without any pre-configured scope."
+commands.allow = ["clear_storage_history"]
+
+[[permission]]
+identifier = "deny-clear-storage-history"
+description = "Denies the clear_storage_history command without any pre-configured scope."
+commands.deny = ["clear_storage_history"]

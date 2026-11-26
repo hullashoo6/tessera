@@ -307,3 +307,10 @@ button, input, select { font: inherit; color: inherit; }
 /* Keep the size column aligned whether a row says "Add to cleanup" or "Added". */
 .review-list .btn-quiet { min-width: 116px; }
 .safety-staysInCloud { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- Storage history ---------- */
+.history-chart { width: 100%; max-width: 640px; height: 140px; margin: 8px 0 18px; }
+.history-chart polyline { stroke: var(--accent); }
+.history-chart circle { fill: var(--accent); }
+.grew { color: var(--ink); font-weight: 600; }
+.shrank { color: var(--accent); }

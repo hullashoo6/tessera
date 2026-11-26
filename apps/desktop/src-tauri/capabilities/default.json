@@ -27,6 +27,8 @@
     "allow-export-report",
     "allow-free-up-cloud",
     "allow-check-update",
+    "allow-storage-history",
+    "allow-clear-storage-history",
     "allow-open-download-page",
     "allow-review-cleanup",
     "allow-confirm-cleanup",

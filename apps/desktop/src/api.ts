@@ -207,6 +207,16 @@ export interface AppItem {
   canUninstall: boolean
 }
 
+export interface Snapshot {
+  root: string
+  at: number
+  allocated: number
+  logical: number
+  files: number
+  folders: number
+  top: [string, number][]
+}
+
 export interface Entitlement {
   pro: boolean
   summary: string
@@ -235,6 +245,8 @@ export const api = {
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
+  storageHistory: () => invoke<Snapshot[]>('storage_history'),
+  clearStorageHistory: () => invoke<void>('clear_storage_history'),
   checkUpdate: () => invoke<{ available: boolean; current: string; latest: string | null }>('check_update'),
   openDownloadPage: () => invoke<void>('open_download_page'),
   freeUpCloud: (scanId: number, ids: number[]) =>

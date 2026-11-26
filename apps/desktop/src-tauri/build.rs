@@ -23,6 +23,8 @@ const COMMANDS: &[&str] = &[
     "export_report",
     "free_up_cloud",
     "check_update",
+    "storage_history",
+    "clear_storage_history",
     "open_download_page",
     "review_cleanup",
     "confirm_cleanup",

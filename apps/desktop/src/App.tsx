@@ -5,6 +5,7 @@ import { Cleanup } from './components/Cleanup'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
 import { Duplicates } from './components/Duplicates'
+import { History } from './components/History'
 import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
@@ -17,7 +18,7 @@ import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatfo
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'apps' | 'settings'
+type View = 'overview' | 'suggestions' | 'duplicates' | 'map' | 'largest' | 'search' | 'cleanup' | 'restore' | 'history' | 'apps' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -231,6 +232,7 @@ export function App() {
     ['search', 'Search', scanId === null],
     ['cleanup', 'Cleanup', scanId === null],
     ['restore', 'Restore', false],
+    ['history', 'History', false],
     ['apps', 'Apps', false],
     ['settings', 'Settings', false],
   ]
@@ -442,6 +444,9 @@ export function App() {
             />
           )}
           {view === 'restore' && <Restore os={info.os} onDone={setToast} onError={onError} />}
+          {view === 'history' && (
+            <History pro={entitlement?.pro ?? false} onOpenSettings={() => setView('settings')} onError={onError} />
+          )}
           {view === 'apps' && <Apps os={info.os} scanId={scanId} onDone={setToast} onError={onError} />}
           {view === 'duplicates' && scanId !== null && (
             <Duplicates

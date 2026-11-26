@@ -6,6 +6,7 @@
 //! items by id within the current scan. Nothing here modifies files.
 
 mod dto;
+mod history;
 mod licence;
 mod safety;
 mod update;
@@ -167,6 +168,11 @@ fn run_scan(app: AppHandle, scan: Arc<ActiveScan>, opts: ScanOptions) {
         *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()) = Outcome::Running(*p);
         let _ = app.emit("scan-progress", ProgressDto::new(id, p));
     });
+    if let Ok(summary) = &result
+        && !summary.cancelled
+    {
+        history::record(&app, &read(&scan), unix_now());
+    }
     let outcome = match result {
         Ok(summary) => Outcome::Finished(summary),
         Err(e) => Outcome::Failed(format!("The scan stopped: {e}.")),
@@ -1226,6 +1232,8 @@ pub fn run() {
             export_report,
             free_up_cloud,
             update::check_update,
+            history::storage_history,
+            history::clear_storage_history,
             update::open_download_page,
             review_cleanup,
             confirm_cleanup,
