@@ -1,0 +1,23 @@
+// Only the commands listed here can be called from the interface, and only
+// if a capability file grants them (see capabilities/default.json).
+const COMMANDS: &[&str] = &[
+    "app_info",
+    "list_volumes",
+    "start_scan",
+    "cancel_scan",
+    "scan_status",
+    "node_details",
+    "children",
+    "treemap",
+    "largest_files",
+    "reveal_item",
+    "open_item",
+];
+
+fn main() {
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
+    )
+    .expect("failed to run tauri-build");
+}

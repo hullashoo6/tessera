@@ -547,13 +547,14 @@ impl Aggregator {
             match info.kind {
                 NodeKind::File => {
                     add_f += 1;
-                    if self.dedupe_files && info.nlink > 1 {
-                        if let Some(key) = info.identity {
-                            if self.seen_files.insert(key) {
-                                f |= flags::HARD_LINKED;
-                            } else {
-                                f |= flags::COUNTED_ELSEWHERE | flags::HARD_LINKED;
-                            }
+                    if self.dedupe_files
+                        && info.nlink > 1
+                        && let Some(key) = info.identity
+                    {
+                        if self.seen_files.insert(key) {
+                            f |= flags::HARD_LINKED;
+                        } else {
+                            f |= flags::COUNTED_ELSEWHERE | flags::HARD_LINKED;
                         }
                     }
                     if f & flags::COUNTED_ELSEWHERE == 0 {

@@ -132,11 +132,9 @@ pub(super) fn describe(entry: &DirEntry, dir: &Path, ctx: &VolumeContext) -> io:
         }
     }
 
-    if want_identity {
-        if let Some((volume, index, links)) = wide.as_deref().and_then(file_identity) {
-            info.identity = Some((volume, index));
-            info.nlink = links;
-        }
+    if want_identity && let Some((volume, index, links)) = wide.as_deref().and_then(file_identity) {
+        info.identity = Some((volume, index));
+        info.nlink = links;
     }
     Ok(info)
 }

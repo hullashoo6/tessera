@@ -1,11 +1,17 @@
 [workspace]
 resolver = "3"
-members = ["crates/scan", "crates/testkit", "crates/cli"]
+members = [
+    "crates/scan",
+    "crates/treemap",
+    "crates/testkit",
+    "crates/cli",
+    "apps/desktop/src-tauri",
+]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.90"
 license = "LicenseRef-Proprietary"
 publish = false
 

@@ -23,6 +23,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Interface (install, type-check, lint, build)
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npx oxlint src
+          npm run build
       - name: Install pinned toolchain (rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2

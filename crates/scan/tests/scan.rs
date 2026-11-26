@@ -410,7 +410,7 @@ fn files_changing_during_scan_do_not_break_it() {
             let d = churn_root.join(format!("churn_{}", i % 7));
             let _ = std::fs::create_dir_all(&d);
             let _ = std::fs::write(d.join(format!("f{i}")), b"x");
-            if i % 3 == 0 {
+            if i.is_multiple_of(3) {
                 let _ = std::fs::remove_dir_all(churn_root.join(format!("churn_{}", (i + 3) % 7)));
             }
             i += 1;

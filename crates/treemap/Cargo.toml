@@ -1,0 +1,10 @@
+[package]
+name = "tessera-treemap"
+description = "Squarified treemap layout with nesting and small-item aggregation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
