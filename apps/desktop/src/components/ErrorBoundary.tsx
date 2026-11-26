@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from 'react'
+import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { logScreenError } from '../diagnostics'
 
 /**
  * If a screen hits an unexpected error, show a way back instead of a blank
@@ -9,6 +10,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
 
   static getDerivedStateFromError() {
     return { failed: true }
+  }
+
+  override componentDidCatch(error: unknown, info: ErrorInfo) {
+    logScreenError(error, info.componentStack ? `\nScreen:${info.componentStack}` : '')
   }
 
   override render() {

@@ -20,6 +20,7 @@ const api = vi.hoisted(() => ({
   storageHistory: vi.fn(),
   clearStorageHistory: vi.fn(),
   freeUpCloud: vi.fn(),
+  logError: vi.fn(() => Promise.resolve()),
 }))
 vi.mock('../api', () => ({ api, errorText: (e: unknown) => String(e) }))
 
@@ -185,6 +186,7 @@ describe('Error safety net', () => {
       </ErrorBoundary>,
     )
     expect(screen.getByText('Reload')).toBeTruthy()
+    expect(api.logError).toHaveBeenCalledWith(expect.stringContaining('Error: boom'))
   })
 })
 

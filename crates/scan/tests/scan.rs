@@ -489,3 +489,39 @@ fn volumes_are_listed_with_os_reported_capacity() {
     let space = tessera_scan::volume_space(t.path()).expect("capacity of temp volume");
     assert!(space.total > 0 && space.free <= space.total && space.available <= space.total);
 }
+
+/// The scanned folder vanishing mid-scan (a USB drive pulled out, a folder
+/// deleted by another app) must end the scan normally: no panic, no
+/// internal error, a consistent tree, and the missing parts counted as
+/// items that could not be read.
+#[test]
+fn scan_target_disappearing_mid_scan_finishes_cleanly() {
+    let t = tmp();
+    let root = t.path().join("fixture");
+    kit::generate(&root, kit::GenSpec::new(20_000), |_| {}).unwrap();
+    let opts = ScanOptions {
+        threads: 2,
+        progress_interval: Duration::from_millis(5),
+        ..ScanOptions::default()
+    };
+    let mut remover: Option<std::thread::JoinHandle<()>> = None;
+    let victim = root.clone();
+    let (tree, s) = scan(&root, &opts, &CancelToken::new(), &mut |_| {
+        if remover.is_none() {
+            let v = victim.clone();
+            remover = Some(std::thread::spawn(move || {
+                let _ = std::fs::remove_dir_all(&v);
+            }));
+        }
+    })
+    .expect("a vanished folder ends the scan normally");
+    if let Some(h) = remover {
+        h.join().unwrap();
+    } else {
+        eprintln!("note: scan finished before the first progress callback");
+    }
+    tree.check_invariants().expect("tree consistent");
+    assert_eq!(s.internal_errors, 0);
+    assert!(!s.cancelled);
+    assert!(!tree.root().has(flags::PENDING));
+}

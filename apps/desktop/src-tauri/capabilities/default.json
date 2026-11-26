@@ -37,6 +37,8 @@
     "allow-activate-license",
     "allow-deactivate-license",
     "allow-reveal-item",
-    "allow-open-item"
+    "allow-open-item",
+    "allow-log-error",
+    "allow-show-log-file"
   ]
 }

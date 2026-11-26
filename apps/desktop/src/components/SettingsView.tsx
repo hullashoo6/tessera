@@ -1,4 +1,4 @@
-import type { Entitlement, HardLinks, Metric } from '../api'
+import { api, type Entitlement, type HardLinks, type Metric } from '../api'
 import { ProLicence } from './ProLicence'
 import type { Settings, ThemeSetting } from '../settings'
 
@@ -100,6 +100,16 @@ export function SettingsView({ settings, os, version, onChange, onShowWelcome, e
           Scanning happens entirely on this computer. File names, folders and scan results are never sent anywhere.
           Tessera connects to the internet only to check a Pro licence and, if allowed above, to check for updates.
         </p>
+      </div>
+      <div className="setting">
+        <h3>Diagnostics</h3>
+        <p>
+          Tessera keeps a small log of crashes and errors on this computer, without any file or folder names. It is
+          never sent anywhere. If you contact support about a problem, you can attach it to your email.
+        </p>
+        <button className="btn" onClick={() => void api.showLogFile().catch(() => undefined)}>
+          Show log file
+        </button>
       </div>
       <div className="setting">
         <h3>Welcome screen</h3>

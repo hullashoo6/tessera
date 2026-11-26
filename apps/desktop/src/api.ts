@@ -275,6 +275,9 @@ export const api = {
   deactivateLicense: () => invoke<Entitlement>('deactivate_license'),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
   openItem: (scanId: number, id: number) => invoke<void>('open_item', { scanId, id }),
+  /** Adds a screen error to the local log (file and folder names are removed by the backend). */
+  logError: (message: string) => invoke<void>('log_error', { message }),
+  showLogFile: () => invoke<void>('show_log_file'),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>
     listen<Progress>('scan-progress', (e) => cb(e.payload)),
   onFinished: (cb: (scanId: number) => void): Promise<UnlistenFn> =>

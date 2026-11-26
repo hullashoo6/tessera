@@ -6,6 +6,7 @@
 //! from outside the window (`launch.rs`), and every other request refers to
 //! items by id within the current scan. Nothing here modifies files.
 
+mod diagnostics;
 mod dto;
 mod history;
 mod launch;
@@ -166,18 +167,32 @@ fn begin_scan(
 
 fn run_scan(app: AppHandle, scan: Arc<ActiveScan>, opts: ScanOptions) {
     let id = scan.id;
-    let result = scan_shared(&scan.tree, &opts, &scan.cancel, &mut |p| {
-        *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()) = Outcome::Running(*p);
-        let _ = app.emit("scan-progress", ProgressDto::new(id, p));
-    });
-    if let Ok(summary) = &result
+    // An unexpected fault inside the scanner ends this scan with a message
+    // (the crash itself goes to the local log) instead of leaving the window
+    // showing "Scanning" forever. Locks recover from poisoning everywhere.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        scan_shared(&scan.tree, &opts, &scan.cancel, &mut |p| {
+            *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()) = Outcome::Running(*p);
+            let _ = app.emit("scan-progress", ProgressDto::new(id, p));
+        })
+    }));
+    if let Ok(Ok(summary)) = &result
         && !summary.cancelled
     {
         history::record(&app, &read(&scan), unix_now());
     }
     let outcome = match result {
-        Ok(summary) => Outcome::Finished(summary),
-        Err(e) => Outcome::Failed(format!("The scan stopped: {e}.")),
+        Ok(Ok(summary)) => Outcome::Finished(summary),
+        Ok(Err(e)) => {
+            let message = format!("The scan stopped: {e}.");
+            diagnostics::record("scan failed", &message);
+            Outcome::Failed(message)
+        }
+        Err(_) => Outcome::Failed(
+            "Something went wrong during the scan, and it stopped. Your files were not changed. \
+             Please try again; if it keeps happening, Settings > Diagnostics shows a log you can send us."
+                .into(),
+        ),
     };
     *scan.outcome.lock().unwrap_or_else(|e| e.into_inner()) = outcome;
     let _ = app.emit("scan-finished", id);
@@ -1195,6 +1210,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .setup(|app| {
+            diagnostics::init(app.handle());
             // A folder given on the command line (`tessera-desktop.exe "D:\Photos"`,
             // a shortcut, or the "Scan with Tessera" menu entry) is scanned at
             // launch. The interface picks the scan up when it loads.
@@ -1250,6 +1266,8 @@ pub fn run() {
             deactivate_license,
             reveal_item,
             open_item,
+            diagnostics::log_error,
+            diagnostics::show_log_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting Tessera");

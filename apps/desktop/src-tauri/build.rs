@@ -34,6 +34,8 @@ const COMMANDS: &[&str] = &[
     "deactivate_license",
     "reveal_item",
     "open_item",
+    "log_error",
+    "show_log_file",
 ];
 
 fn main() {
