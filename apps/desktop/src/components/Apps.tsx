@@ -112,7 +112,8 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
                     <button className="btn btn-primary" onClick={() => uninstall(a)}>
                       {a.id.startsWith('APPX|') ? 'Remove app' : mac ? 'Move to Trash' : 'Open uninstaller'}
                     </button>
-                    <button className="btn" onClick={() => setConfirm(null)}>
+                    {/* Focus starts on Cancel: the safer choice for keyboard users. */}
+                    <button className="btn" autoFocus onClick={() => setConfirm(null)}>
                       Cancel
                     </button>
                   </span>
@@ -125,7 +126,7 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
                 </span>
               </span>
               {a.canUninstall ? (
-                <button className="btn btn-quiet" onClick={() => setConfirm(a.id)}>
+                <button className="btn btn-quiet" aria-label={`Uninstall ${a.name}`} onClick={() => setConfirm(a.id)}>
                   Uninstall…
                 </button>
               ) : (

@@ -106,7 +106,7 @@ export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany,
                     <span className="target-meta">Modified {formatDate(c.node.modified)}</span>
                   </div>
                   <span className="num">{formatBytes(g.size)}</span>
-                  <button className="btn btn-quiet" aria-pressed={marked.has(c.node.id)} onClick={() => onToggleMark(c.node.id)}>
+                  <button className="btn btn-quiet" aria-label={`Add to cleanup: ${c.path}`} aria-pressed={marked.has(c.node.id)} onClick={() => onToggleMark(c.node.id)}>
                     {marked.has(c.node.id) ? 'Added' : 'Add to cleanup'}
                   </button>
                 </li>

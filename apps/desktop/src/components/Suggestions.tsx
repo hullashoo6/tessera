@@ -124,11 +124,11 @@ export function Suggestions({ scanId, scanning, version, marked, onToggleMark, o
                   {s.safety === 'useAppTool' ? (
                     <span className="target-meta">Use the app</span>
                   ) : s.safety === 'staysInCloud' ? (
-                    <button className="btn btn-quiet" disabled={freed.has(s.id)} onClick={() => freeUp([s])}>
+                    <button className="btn btn-quiet" aria-label={`Free up space: ${s.name}`} disabled={freed.has(s.id)} onClick={() => freeUp([s])}>
                       {freed.has(s.id) ? 'Freeing…' : 'Free up space'}
                     </button>
                   ) : (
-                    <button className="btn btn-quiet" aria-pressed={marked.has(s.id)} onClick={() => onToggleMark(s.id)}>
+                    <button className="btn btn-quiet" aria-label={`Add to cleanup: ${s.label}, ${s.path}`} aria-pressed={marked.has(s.id)} onClick={() => onToggleMark(s.id)}>
                       {marked.has(s.id) ? 'Added' : 'Add to cleanup'}
                     </button>
                   )}

@@ -23,6 +23,8 @@ pub struct InstalledApp {
     pub install_date: Option<String>,
     /// Size the app reports about itself (often missing or out of date).
     pub reported_bytes: Option<u64>,
+    /// Size measured by Tessera from the app's own folder, when known.
+    pub measured_bytes: Option<u64>,
     pub install_location: Option<PathBuf>,
     /// True when installed for this user only.
     pub per_user: bool,
@@ -170,6 +172,7 @@ mod imp {
                     version,
                     install_date: text(&k, "InstallDate"),
                     reported_bytes: num(&k, "EstimatedSize").map(|kb| kb as u64 * 1024),
+                    measured_bytes: None,
                     install_location: text(&k, "InstallLocation")
                         .map(|p| PathBuf::from(p.trim_matches('"'))),
                     per_user: tag == "HKCU",
@@ -178,7 +181,7 @@ mod imp {
             }
         }
         out.extend(store_apps());
-        out.sort_by_key(|a| std::cmp::Reverse(a.reported_bytes.unwrap_or(0)));
+        out.sort_by_key(|a| std::cmp::Reverse(a.measured_bytes.or(a.reported_bytes).unwrap_or(0)));
         out
     }
 
@@ -229,6 +232,10 @@ mod imp {
                 .InstalledDate()
                 .ok()
                 .map(|d| yyyymmdd(d.UniversalTime / 10_000_000 - 11_644_473_600));
+            let location = p.InstalledPath().ok().map(|s| PathBuf::from(s.to_string()));
+            // Windows keeps no size for Store apps that apps can read, so the
+            // package's own folder is measured (shown as measured, not reported).
+            let measured = location.as_deref().map(folder_size).filter(|&n| n > 0);
             out.push(InstalledApp {
                 id: format!("APPX|{full}"),
                 name,
@@ -240,12 +247,31 @@ mod imp {
                 version,
                 install_date,
                 reported_bytes: None,
-                install_location: p.InstalledPath().ok().map(|s| PathBuf::from(s.to_string())),
+                measured_bytes: measured,
+                install_location: location,
                 per_user: true,
                 can_uninstall: true,
             });
         }
         out
+    }
+
+    fn folder_size(p: &std::path::Path) -> u64 {
+        let mut total = 0;
+        let mut stack = vec![p.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&d) else {
+                continue;
+            };
+            for e in rd.flatten() {
+                match e.file_type() {
+                    Ok(t) if t.is_dir() => stack.push(e.path()),
+                    Ok(t) if t.is_file() => total += e.metadata().map(|m| m.len()).unwrap_or(0),
+                    _ => {}
+                }
+            }
+        }
+        total
     }
 
     fn yyyymmdd(t: i64) -> String {
@@ -421,14 +447,15 @@ mod imp {
                     publisher: bundle,
                     version,
                     install_date: None,
-                    reported_bytes: Some(size_of(&p)),
+                    reported_bytes: None,
+                    measured_bytes: Some(size_of(&p)),
                     install_location: Some(p.clone()),
                     per_user: root != Path::new("/Applications"),
                     can_uninstall: true,
                 });
             }
         }
-        out.sort_by_key(|a| std::cmp::Reverse(a.reported_bytes.unwrap_or(0)));
+        out.sort_by_key(|a| std::cmp::Reverse(a.measured_bytes.or(a.reported_bytes).unwrap_or(0)));
         out
     }
 
@@ -555,7 +582,7 @@ mod tests {
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].name, "Tessera Trial");
         assert_eq!(listed[0].version.as_deref(), Some("1.2"));
-        assert!(listed[0].reported_bytes.unwrap() >= 64 * 1024);
+        assert!(listed[0].measured_bytes.unwrap() >= 64 * 1024);
 
         let out = imp::trash_app(&listed[0].id, std::slice::from_ref(&apps), Some(&lib)).unwrap();
         let Outcome::MovedToTrash {

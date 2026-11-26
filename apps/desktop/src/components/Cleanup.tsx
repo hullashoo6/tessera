@@ -173,8 +173,8 @@ export function Cleanup({ scanId, marked, metric, os, pro, onOpenSettings, onUnm
               Move {plural(review.items.length, 'item', 'items')} ({size(review.totalLogical, review.totalAllocated)}) to the {bin}?
             </h3>
             <p id="confirm-body">
-              You can restore them from the {bin} until it is emptied. Each item is checked again just before it moves, and
-              anything that has changed is left where it is.
+              You can put them back from Tessera’s Restore page, or from the {bin}, until it is emptied. Each item is checked
+              again just before it moves, and anything that has changed is left where it is.
             </p>
             <div className="actions">
               <button className="btn" onClick={() => setConfirming(false)}>Cancel</button>

@@ -60,7 +60,7 @@ export function Restore({ os, onDone, onError }: Props) {
                 </div>
                 <span className="num">{formatBytes(m.bytes)}</span>
                 {m.state === 'inBin' ? (
-                  <button className="btn btn-quiet" disabled={busy !== null} onClick={() => putBack(m)}>
+                  <button className="btn btn-quiet" aria-label={`Put back ${m.name}`} disabled={busy !== null} onClick={() => putBack(m)}>
                     {busy === m.index ? 'Putting back…' : 'Put back'}
                   </button>
                 ) : (

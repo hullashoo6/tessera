@@ -678,7 +678,7 @@ async fn list_apps(state: State<'_, AppState>, scan_id: Option<u64>) -> CmdResul
                     publisher: a.publisher,
                     version: a.version,
                     install_date: a.install_date,
-                    measured_bytes: measured,
+                    measured_bytes: measured.or(a.measured_bytes),
                     reported_bytes: a.reported_bytes,
                     location: a.install_location.map(|p| p.to_string_lossy().into_owned()),
                     per_user: a.per_user,
