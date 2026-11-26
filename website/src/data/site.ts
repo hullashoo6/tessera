@@ -31,7 +31,7 @@ export const freeFeatures: Feature[] = [
   { name: 'Interactive storage map', status: 'available' },
   { name: 'Largest files, ranked', status: 'available' },
   { name: 'Open, reveal and copy the path of any item', status: 'available' },
-  { name: 'Search and filters', status: 'in development' },
+  { name: 'Search and filters', status: 'available' },
 ]
 
 export const proFeatures: Feature[] = [

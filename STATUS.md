@@ -56,7 +56,7 @@ Last updated: 2026-11-26.
 | Largest files view | Real platform tested (Windows, dev build) |
 | Open refuses programs/scripts; reveal; copy path | Rules automatically tested (3 tests); reveal/open not yet clicked through on an installed build |
 | Light/dark/system theme, size-on-disk vs file size | Real platform tested (Windows, dev build) |
-| Search and filters | Not implemented |
+| Search and filters (name, path, type groups, size, date, empty folders, scope, 4 sort orders) with map highlighting | Engine automatically tested (4 tests); UI checked on Windows with a 100k-file scan |
 | Sunburst, tree, table views | Not implemented |
 | UI with 1M-file scans | Not tested (scanner tested at 1M; UI at 100k) |
 | Categorisation, developer storage view | Not implemented |

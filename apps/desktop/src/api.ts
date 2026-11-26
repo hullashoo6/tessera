@@ -107,6 +107,28 @@ export interface FileRow {
   path: string
 }
 
+export type SortKey = 'size' | 'name' | 'modified' | 'type'
+
+export interface SearchQuery {
+  text: string
+  matchPath: boolean
+  extensions: string[]
+  files: boolean
+  folders: boolean
+  minSize: number | null
+  maxSize: number | null
+  modifiedBefore: number | null
+  modifiedAfter: number | null
+  emptyFolders: boolean
+  under: number | null
+}
+
+export interface SearchResult {
+  total: number
+  items: FileRow[]
+  containing: number[]
+}
+
 export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
 
 export const api = {
@@ -123,6 +145,8 @@ export const api = {
     invoke<Tile[]>('treemap', { scanId, id, width, height, metric }),
   largestFiles: (scanId: number, under: number | null, metric: Metric, limit: number) =>
     invoke<FileRow[]>('largest_files', { scanId, under, metric, limit }),
+  search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
+    invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
   openItem: (scanId: number, id: number) => invoke<void>('open_item', { scanId, id }),
   onProgress: (cb: (p: Progress) => void): Promise<UnlistenFn> =>

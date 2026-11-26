@@ -20,6 +20,11 @@ export function baseName(path: string): string {
   return cut >= 0 && cut < trimmed.length - 1 ? trimmed.slice(cut + 1) : path
 }
 
+/** Bytes in `n` units, using the platform's convention (1024 or 1000). */
+export function unitBytes(n: number, unit: 'MB' | 'GB'): number {
+  return n * base ** (unit === 'MB' ? 2 : 3)
+}
+
 const UNITS = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB']
 
 export function formatBytes(n: number): string {

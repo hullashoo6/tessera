@@ -10,6 +10,7 @@ const COMMANDS: &[&str] = &[
     "children",
     "treemap",
     "largest_files",
+    "search",
     "reveal_item",
     "open_item",
 ];

@@ -15,7 +15,9 @@ use std::sync::{Arc, Mutex, RwLock};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
-use tessera_scan::query::{largest_files as top_files, sorted_children};
+use tessera_scan::query::{
+    SortKey, largest_files as top_files, search as run_search, sorted_children,
+};
 use tessera_scan::{
     CancelToken, HardLinkMode, NodeId, NodeKind, Progress, ScanOptions, ScanSummary, Tree,
     list_volumes as volumes, prepare_root, scan_shared, volume_space,
@@ -310,6 +312,52 @@ fn largest_files(
     )
 }
 
+#[tauri::command]
+fn search(
+    state: State<'_, AppState>,
+    scan_id: u64,
+    query: SearchQuery,
+    metric: MetricSetting,
+    sort: SortSetting,
+    limit: u32,
+) -> CmdResult<SearchResultDto> {
+    let filter = query.to_filter()?;
+    let scan = active(&state, scan_id)?;
+    let tree = read(&scan);
+    if let Some(u) = filter.under {
+        check_id(&tree, u)?;
+    }
+    let sort = match sort {
+        SortSetting::Size => SortKey::Size,
+        SortSetting::Name => SortKey::Name,
+        SortSetting::Modified => SortKey::Modified,
+        SortSetting::Type => SortKey::Type,
+    };
+    let hits = run_search(
+        &tree,
+        &filter,
+        metric.into(),
+        sort,
+        limit.min(2000) as usize,
+    );
+    let mut containing = std::collections::BTreeSet::new();
+    for &id in &hits.ids {
+        containing.extend(tree.ancestors(id));
+    }
+    Ok(SearchResultDto {
+        total: hits.total as u32,
+        items: hits
+            .ids
+            .iter()
+            .map(|&id| FileRowDto {
+                node: NodeDto::new(&tree, id),
+                path: tree.path_of(id).to_string_lossy().into_owned(),
+            })
+            .collect(),
+        containing: containing.into_iter().collect(),
+    })
+}
+
 fn existing_path(state: &AppState, scan_id: u64, id: NodeId) -> CmdResult<(PathBuf, NodeKind)> {
     let scan = active(state, scan_id)?;
     let tree = read(&scan);
@@ -380,6 +428,7 @@ pub fn run() {
             children,
             treemap,
             largest_files,
+            search,
             reveal_item,
             open_item,
         ])

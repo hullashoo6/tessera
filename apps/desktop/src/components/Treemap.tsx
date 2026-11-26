@@ -12,6 +12,7 @@ interface Props {
   /** Changing this re-requests the layout (used while a scan is running). */
   version: number
   selected: number | null
+  highlight: Highlight | null
   onSelect: (id: number) => void
   onZoom: (id: number) => void
   onUp: () => void
@@ -158,6 +159,30 @@ function outline(ctx: CanvasRenderingContext2D, t: Tile, color: string, width: n
   ctx.strokeRect(t.x + inset, t.y + inset, Math.max(0, t.w - 2 * inset), Math.max(0, t.h - 2 * inset))
 }
 
+export interface Highlight {
+  matches: Set<number>
+  containing: Set<number>
+  label: string
+}
+
+const inside = (outer: Tile, t: Tile) =>
+  t.x >= outer.x && t.y >= outer.y && t.x + t.w <= outer.x + outer.w + 0.01 && t.y + t.h <= outer.y + outer.h + 0.01
+
+function drawHighlight(ctx: CanvasRenderingContext2D, tiles: Tile[], theme: Theme, h: Highlight): void {
+  const matched = tiles.filter((t) => t.kind !== 'more' && h.matches.has(t.id))
+  const checkInside = matched.length <= 200
+  ctx.fillStyle = theme === 'dark' ? 'rgba(22, 25, 29, 0.66)' : 'rgba(246, 247, 248, 0.7)'
+  for (const t of tiles) {
+    const keep =
+      (t.kind === 'more' ? h.containing.has(t.id) : h.matches.has(t.id) || h.containing.has(t.id)) ||
+      (checkInside && matched.some((m) => m !== t && inside(m, t)))
+    if (keep) continue
+    // Opened folders: dim only their label strip; their contents are dimmed individually.
+    ctx.fillRect(t.x, t.y, t.w, t.opened ? Math.min(18, t.h) : t.h)
+  }
+  for (const t of matched) outline(ctx, t, hoverInk(theme), 2)
+}
+
 function drawOverlay(
   canvas: HTMLCanvasElement,
   tiles: Tile[],
@@ -165,10 +190,12 @@ function drawOverlay(
   theme: Theme,
   hover: Tile | null,
   selected: number | null,
+  highlight: Highlight | null,
 ): void {
   const ctx = prepare(canvas, size)
   if (!ctx) return
   ctx.clearRect(0, 0, size.w, size.h)
+  if (highlight) drawHighlight(ctx, tiles, theme, highlight)
   if (selected !== null) {
     const t = tiles.find((x) => x.id === selected && x.kind !== 'more')
     if (t) outline(ctx, t, selectionInk(theme), 2)
@@ -200,7 +227,7 @@ function neighbour(tiles: Tile[], from: Tile, dir: Direction): Tile | null {
 }
 
 export function Treemap(props: Props) {
-  const { scanId, rootId, rootName, metric, theme, version, selected, onSelect, onZoom, onUp, onMenu, onError } = props
+  const { scanId, rootId, rootName, metric, theme, version, selected, highlight, onSelect, onZoom, onUp, onMenu, onError } = props
   const wrapRef = useRef<HTMLDivElement>(null)
   const baseRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -239,8 +266,8 @@ export function Treemap(props: Props) {
   }, [tiles, size, theme])
 
   useEffect(() => {
-    if (overlayRef.current) drawOverlay(overlayRef.current, tiles, size, theme, hover?.tile ?? null, selected)
-  }, [tiles, size, theme, hover, selected])
+    if (overlayRef.current) drawOverlay(overlayRef.current, tiles, size, theme, hover?.tile ?? null, selected, highlight)
+  }, [tiles, size, theme, hover, selected, highlight])
 
   const total = tiles.reduce((s, t) => (t.depth === 0 ? s + t.size : s), 0)
   const selectedTile = tiles.find((t) => t.id === selected && t.kind !== 'more') ?? null

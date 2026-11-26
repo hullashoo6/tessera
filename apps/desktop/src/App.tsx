@@ -6,12 +6,13 @@ import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
 import { SettingsView } from './components/SettingsView'
-import { Treemap } from './components/Treemap'
+import { Search } from './components/Search'
+import { Treemap, type Highlight } from './components/Treemap'
 import { baseName, formatBytes, formatDuration, platformNames, plural, setPlatform } from './format'
 import type { Theme } from './palette'
 import { loadSettings, saveSettings, type Settings } from './settings'
 
-type View = 'overview' | 'map' | 'largest' | 'settings'
+type View = 'overview' | 'map' | 'largest' | 'search' | 'settings'
 
 const isDriveRoot = (p: string) => /^[A-Za-z]:\\?$/.test(p) || p === '/'
 
@@ -31,6 +32,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; tile: Tile } | null>(null)
+  const [highlight, setHighlight] = useState<Highlight | null>(null)
   const lastRefresh = useRef(0)
 
   const scanId = status?.scanId ?? null
@@ -123,6 +125,7 @@ export function App() {
         setViewRoot(0)
         setSelected(null)
         setCrumbs([])
+        setHighlight(null)
         setView('map')
         return api.scanStatus().then(setStatus)
       })
@@ -188,6 +191,7 @@ export function App() {
     ['overview', 'Overview', false],
     ['map', 'Storage map', scanId === null],
     ['largest', 'Largest files', scanId === null],
+    ['search', 'Search', scanId === null],
     ['settings', 'Settings', false],
   ]
 
@@ -260,7 +264,7 @@ export function App() {
             </button>
           </div>
         )}
-        <div className={view === 'map' || view === 'largest' ? 'content fill' : 'content'}>
+        <div className={view === 'map' || view === 'largest' || view === 'search' ? 'content fill' : 'content'}>
           {view === 'overview' && (
             <Overview
               volumes={volumes}
@@ -272,7 +276,13 @@ export function App() {
           )}
           {view === 'map' && scanId !== null && (
             <div className="explore">
-              <div className="map-pane">
+              <div className={highlight ? 'map-pane with-strip' : 'map-pane'}>
+                {highlight && (
+                  <div className="highlight-strip" role="status">
+                    <span className="spacer">Highlighting {highlight.label}</span>
+                    <button className="btn" onClick={() => setHighlight(null)}>Clear</button>
+                  </div>
+                )}
                 <div className="crumbs" aria-label="Location">
                   {crumbs.map((c, i) => (
                     <span key={c.id} className="crumb-item">
@@ -296,6 +306,7 @@ export function App() {
                   theme={theme}
                   version={version}
                   selected={selected}
+                  highlight={highlight}
                   onSelect={setSelected}
                   onZoom={zoom}
                   onUp={up}
@@ -326,6 +337,22 @@ export function App() {
               os={info.os}
               version={version}
               onCommand={command}
+              onError={onError}
+            />
+          )}
+          {view === 'search' && scanId !== null && (
+            <Search
+              scanId={scanId}
+              viewRoot={viewRoot}
+              viewRootName={viewName}
+              metric={settings.metric}
+              os={info.os}
+              version={version}
+              onCommand={command}
+              onHighlight={(m, c, label) => {
+                setHighlight({ matches: new Set(m), containing: new Set(c), label })
+                setView('map')
+              }}
               onError={onError}
             />
           )}

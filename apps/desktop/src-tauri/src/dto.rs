@@ -277,6 +277,71 @@ pub struct PageDto {
     pub items: Vec<NodeDto>,
 }
 
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum SortSetting {
+    Size,
+    Name,
+    Modified,
+    Type,
+}
+
+/// Search criteria from the interface; validated by `SearchQuery::to_filter`.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchQuery {
+    pub text: String,
+    pub match_path: bool,
+    pub extensions: Vec<String>,
+    pub files: bool,
+    pub folders: bool,
+    pub min_size: Option<u64>,
+    pub max_size: Option<u64>,
+    pub modified_before: Option<i64>,
+    pub modified_after: Option<i64>,
+    pub empty_folders: bool,
+    pub under: Option<NodeId>,
+}
+
+impl SearchQuery {
+    pub fn to_filter(&self) -> Result<tessera_scan::query::Filter, String> {
+        if self.text.chars().count() > 200 || self.extensions.len() > 64 {
+            return Err("That search is too long.".into());
+        }
+        let mut extensions = Vec::with_capacity(self.extensions.len());
+        for e in &self.extensions {
+            let e = e.trim_start_matches('.').to_ascii_lowercase();
+            if e.is_empty() || e.len() > 16 || !e.chars().all(|c| c.is_ascii_alphanumeric()) {
+                return Err("A file type in the search is not valid.".into());
+            }
+            extensions.push(e);
+        }
+        let text = self.text.trim().to_string();
+        let text = (!text.is_empty()).then_some(text);
+        Ok(tessera_scan::query::Filter {
+            name: if self.match_path { None } else { text.clone() },
+            path: if self.match_path { text } else { None },
+            extensions,
+            files: self.files,
+            folders: self.folders,
+            min_size: self.min_size,
+            max_size: self.max_size,
+            modified_before: self.modified_before,
+            modified_after: self.modified_after,
+            empty_folders: self.empty_folders,
+            under: self.under,
+        })
+    }
+}
+
+#[derive(Serialize)]
+pub struct SearchResultDto {
+    pub total: u32,
+    pub items: Vec<FileRowDto>,
+    /// Folders that contain at least one listed match (for map highlighting).
+    pub containing: Vec<NodeId>,
+}
+
 #[derive(Serialize)]
 pub struct FileRowDto {
     pub node: NodeDto,
