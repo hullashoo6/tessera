@@ -164,22 +164,43 @@ export function App() {
     saveSettings(s)
   }
 
+  // Clears everything that belonged to the previous scan and opens the map.
+  const showNewScan = useCallback(() => {
+    setViewRoot(0)
+    setSelected(null)
+    setCrumbs([])
+    setHighlight(null)
+    setMarked(new Set())
+    setView('map')
+    return api.scanStatus().then(setStatus)
+  }, [])
+
   const startScan = (target: ScanTarget) => {
     setError(null)
     api
       .startScan(target, settings.hardLinks)
       .then((id) => {
         if (id === null) return // folder picker dismissed
-        setViewRoot(0)
-        setSelected(null)
-        setCrumbs([])
-        setHighlight(null)
-        setMarked(new Set())
-        setView('map')
-        return api.scanStatus().then(setStatus)
+        return showNewScan()
       })
       .catch((e) => onError(errorText(e)))
   }
+
+  // Scans started from outside the window (right-click menu, a second launch,
+  // a folder dropped on the window, or Finder), and the drop hint.
+  const [dropHint, setDropHint] = useState(false)
+  useEffect(() => {
+    const unStarted = api.onScanStarted(() => {
+      setError(null)
+      markWelcomed()
+      showNewScan().catch((e) => onError(errorText(e)))
+    })
+    const unRefused = api.onScanRefused((m) => onError(m))
+    const unHover = api.onDragHover(setDropHint)
+    return () => {
+      for (const u of [unStarted, unRefused, unHover]) void u.then((f) => f()).catch(() => undefined)
+    }
+  }, [markWelcomed, showNewScan, onError])
 
   const zoom = (id: number) => {
     setViewRoot(id)
@@ -567,6 +588,11 @@ export function App() {
         </footer>
       </main>
 
+      {dropHint && (
+        <div className="drop-hint" aria-hidden="true">
+          <div className="drop-hint-card">Drop a folder or drive to scan it</div>
+        </div>
+      )}
       {menu && <ContextMenu x={menu.x} y={menu.y} actions={menuActions(menu.tile)} onClose={() => setMenu(null)} />}
       {toast && (
         <div className="toast" role="status">

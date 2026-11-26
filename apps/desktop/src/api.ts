@@ -4,6 +4,7 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 export type Metric = 'allocated' | 'logical'
 export type HardLinks = 'auto' | 'thorough' | 'off'
@@ -278,6 +279,15 @@ export const api = {
     listen<Progress>('scan-progress', (e) => cb(e.payload)),
   onFinished: (cb: (scanId: number) => void): Promise<UnlistenFn> =>
     listen<number>('scan-finished', (e) => cb(e.payload)),
+  /** A scan started from outside the window: right-click menu, second launch, drop, Finder. */
+  onScanStarted: (cb: (scanId: number) => void): Promise<UnlistenFn> =>
+    listen<number>('scan-started', (e) => cb(e.payload)),
+  /** Something was dropped or opened that cannot be scanned. */
+  onScanRefused: (cb: (message: string) => void): Promise<UnlistenFn> =>
+    listen<string>('scan-refused', (e) => cb(e.payload)),
+  /** Dragging over the window, for the "drop to scan" hint. The drop itself is handled by the backend. */
+  onDragHover: (cb: (over: boolean) => void): Promise<UnlistenFn> =>
+    getCurrentWebview().onDragDropEvent((e) => cb(e.payload.type === 'enter' || e.payload.type === 'over')),
 }
 
 /** Error text from a rejected command, suitable for showing to the user. */

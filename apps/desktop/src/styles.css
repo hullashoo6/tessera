@@ -132,6 +132,18 @@ button, input, select { font: inherit; color: inherit; }
 .welcome-points .target-meta { margin-top: 2px; max-width: 62ch; }
 .welcome-actions { margin-top: 14px; }
 
+/* Shown while a folder is dragged over the window. */
+.drop-hint {
+  position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  outline: 3px dashed var(--accent); outline-offset: -10px;
+}
+.drop-hint-card {
+  padding: 14px 20px; border-radius: var(--r-l); background: var(--surface);
+  border: 1px solid var(--line-strong); font-size: var(--t-title); font-weight: 600;
+}
+
 .target-list { border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
 .target { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 14px 16px; }
 .target + .target { border-top: 1px solid var(--line); }

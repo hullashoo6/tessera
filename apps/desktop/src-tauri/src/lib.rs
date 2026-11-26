@@ -2,11 +2,13 @@
 //!
 //! The interface talks to this module through a small set of commands. It
 //! never sends file paths: scans start from a detected drive, the home
-//! folder, or the native folder picker, and every other request refers to
+//! folder, the native folder picker, or a folder the person hands to Tessera
+//! from outside the window (`launch.rs`), and every other request refers to
 //! items by id within the current scan. Nothing here modifies files.
 
 mod dto;
 mod history;
+mod launch;
 mod licence;
 mod safety;
 mod update;
@@ -1176,14 +1178,17 @@ fn open_item(
 }
 
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         // A second launch brings the open window forward instead of starting
-        // another copy that would scan alongside it.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.unminimize();
-                let _ = w.show();
-                let _ = w.set_focus();
+        // another copy that would scan alongside it. If it was given a folder
+        // ("Scan with Tessera" while Tessera is open), the open window scans it.
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            launch::focus(app);
+            let cwd = PathBuf::from(cwd);
+            if let Some(folder) =
+                launch::folder_from_args(args.into_iter().map(std::ffi::OsString::from), Some(&cwd))
+            {
+                launch::scan_folder(app, &folder);
             }
         }))
         .plugin(tauri_plugin_dialog::init())
@@ -1191,13 +1196,9 @@ pub fn run() {
         .manage(AppState::default())
         .setup(|app| {
             // A folder given on the command line (`tessera-desktop.exe "D:\Photos"`,
-            // a shortcut, or a future "Scan with Tessera" menu entry) is scanned
-            // at launch. Only an existing folder is accepted; anything else is
-            // ignored. The person launching the app chose it, as with the picker.
-            let folder = std::env::args_os()
-                .nth(1)
-                .map(PathBuf::from)
-                .filter(|p| p.is_dir());
+            // a shortcut, or the "Scan with Tessera" menu entry) is scanned at
+            // launch. The interface picks the scan up when it loads.
+            let folder = launch::folder_from_args(std::env::args_os(), None);
             // Development builds only: TESSERA_DEV_SCAN=<folder> does the same.
             #[cfg(debug_assertions)]
             let folder = folder.or_else(|| std::env::var_os("TESSERA_DEV_SCAN").map(PathBuf::from));
@@ -1208,6 +1209,12 @@ pub fn run() {
                 let _ = begin_scan(app.handle().clone(), &state, root, ScanOptions::default());
             }
             Ok(())
+        })
+        // A folder or drive dropped onto the window is scanned.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                launch::dropped(window.app_handle(), paths);
+            }
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
@@ -1244,6 +1251,21 @@ pub fn run() {
             reveal_item,
             open_item,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Tessera");
+        .build(tauri::generate_context!())
+        .expect("error while starting Tessera");
+    app.run(|_app, _event| {
+        // macOS: a folder opened with Tessera from Finder ("Open With", or
+        // dropped on the Dock icon). Info.plist declares that Tessera can
+        // open folders and drives, as a viewer only.
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = &_event
+            && let Some(folder) = urls
+                .iter()
+                .filter_map(|u| u.to_file_path().ok())
+                .find(|p| p.is_dir())
+        {
+            launch::focus(_app);
+            launch::scan_folder(_app, &folder);
+        }
+    });
 }

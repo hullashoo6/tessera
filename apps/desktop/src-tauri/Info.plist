@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged into Tessera's Info.plist by the Tauri bundler.
+  Declares that Tessera can open folders and drives as a viewer (it never
+  edits them), so Finder offers "Open With > Tessera" on a folder's
+  right-click menu and a folder can be dropped on Tessera's Dock icon.
+  "Alternate" rank: Tessera never becomes the default app for folders.
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Folder</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.folder</string>
+        <string>public.volume</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>
