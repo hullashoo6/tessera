@@ -14,3 +14,4 @@ Thumbs.db
 *.p12
 *.pfx
 /apps/desktop/src-tauri/gen/
+/dist-local/

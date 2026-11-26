@@ -28,3 +28,11 @@ debug = "line-tables-only"
 # Benchmarks use the release profile; tests stay fast to compile.
 [profile.test]
 opt-level = 1
+
+# Keep development builds small on disk: minimal debug info for our code,
+# none for third-party crates. (Full debug info filled 30 GB here.)
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
