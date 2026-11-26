@@ -6,9 +6,12 @@
 //!   tessera-cli soak <dir> [--runs N] [--max-peak-growth-mib X]
 //!                                        (repeated scans in one process; memory held after each)
 //!   tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]
+//!   tessera-cli ui-bench <dir> [--check]   (times what the screens ask of a finished scan)
 //!
 //! `scan` and `bench` never modify anything. `gen` only writes into a new or
 //! empty directory and marks it as a fixture.
+
+mod ui_bench;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -39,6 +42,7 @@ fn main() -> ExitCode {
         },
         Some("bench") => cmd_bench(&args[1..]),
         Some("soak") => cmd_soak(&args[1..]),
+        Some("ui-bench") => ui_bench::run(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -56,7 +60,8 @@ const USAGE: &str = "usage:
   tessera-cli gen <new-empty-dir> --files N [--seed S]
   tessera-cli soak <dir> [--runs N] [--max-peak-growth-mib X]
                                        (repeated scans in one process; memory held after each)
-  tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]";
+  tessera-cli bench <fixture-dir> [--runs N] [--threads N] [--hard-links MODE] [--out FILE]
+  tessera-cli ui-bench <dir> [--check]   (times what the screens ask of a finished scan)";
 
 struct Args {
     positional: Vec<String>,

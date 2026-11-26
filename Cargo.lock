@@ -4268,8 +4268,10 @@ name = "tessera-cli"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "tessera-insights",
  "tessera-scan",
  "tessera-testkit",
+ "tessera-treemap",
  "windows-sys 0.61.2",
 ]
 

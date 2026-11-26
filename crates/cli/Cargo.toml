@@ -12,8 +12,10 @@ name = "tessera-cli"
 path = "src/main.rs"
 
 [dependencies]
+tessera-insights = { path = "../insights" }
 tessera-scan = { path = "../scan" }
 tessera-testkit = { path = "../testkit" }
+tessera-treemap = { path = "../treemap" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }

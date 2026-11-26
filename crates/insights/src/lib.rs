@@ -611,14 +611,16 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
         while let Some(d) = stack.pop() {
             for c in tree.children(d) {
                 let n = tree.node(c);
-                let nm = name(tree, c);
                 match n.kind {
-                    NodeKind::Dir
+                    NodeKind::Dir => {
+                        // Only folder names are needed (one lower-case copy each).
+                        let nm = name(tree, c);
                         if !nm.starts_with('.')
                             && !(d == top && APP_MANAGED.contains(&nm.as_str()))
-                            && !BUNDLE_ENDINGS.iter().any(|e| nm.ends_with(e)) =>
-                    {
-                        stack.push(c)
+                            && !BUNDLE_ENDINGS.iter().any(|e| nm.ends_with(e))
+                        {
+                            stack.push(c)
+                        }
                     }
                     NodeKind::File
                         if n.counted().1 >= LARGE_OLD_BYTES
