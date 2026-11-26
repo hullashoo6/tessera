@@ -68,10 +68,11 @@ Last updated: 2026-11-26.
 | Website (Astro 7, static): home, help, changelog, draft privacy/terms, 404, sitemap, robots, JSON-LD, OG image | Built and checked by headless-browser screenshots (desktop and narrow widths). Not deployed. Lighthouse not yet measured |
 | Website downloads | Driven by `website/src/data/releases.json` (empty: no release exists, so no download links are shown) |
 | Website pricing | Shows USD 14.99 marked "Draft price"; no checkout link. `pricing.approved` must be set by owner decision |
-| Windows installer (NSIS, per-user, no admin) `Tessera_0.1.0_x64-setup.exe`, 3.0 MB | Real platform tested on Windows 11, 26 Nov 2026: silent install (exit 0, uninstall entry "Tessera 0.1.0 by Beyond Enterprises", Start menu shortcut), installed app launched and scanned a folder (1,400 files in 140 ms), silent uninstall (exit 0; files, entry and shortcut removed; licence and WebView settings intentionally kept). **Unsigned**: SmartScreen behaviour not yet tested (local build has no download mark). Cleanup and licensing not yet repeated on the installed build |
+| Windows installer (NSIS, per-user, no admin) `Tessera_0.1.0_x64-setup.exe`, 3.0 MB | Real platform tested on Windows 11, 26 Nov 2026: silent install (exit 0, uninstall entry "Tessera 0.1.0 by Beyond Enterprises", Start menu shortcut), installed app launched and scanned a folder (1,400 files in 140 ms), silent uninstall (exit 0; files, entry and shortcut removed; licence and WebView settings intentionally kept). **Unsigned**: SmartScreen behaviour not yet tested (local build has no download mark). Installed build, second pass (same day): launched with a disposable folder as argument; licence persisted across reinstall, "Check now" re-validated with Dodo test mode; cleanup moved a 4 MB disposable file to the Recycle Bin (confirmed there), other files untouched |
 | Release manifest (`tools/release-manifest.ps1`) | Implemented: file, version, size, SHA-256, signed/verified flags; nothing published |
 | Code signing (Windows Authenticode, Apple Developer ID) | **Blocked**: paid certificates need owner approval |
-| macOS installer (DMG) | Not built: needs a Mac or CI release job |
+| macOS installer `Tessera_0.1.0_aarch64.dmg` (Apple silicon) | Built by the manual release workflow on GitHub (private artifact, sha256 a70fc9b766760a2e2866714fe34513e566f790feaa1ce82cf8fe9080be5e7491). Ad-hoc signed, **not notarised**; **never run on a real Mac** |
+| Free Windows signing via Microsoft Store (MSIX) | Prepared: docs/STORE.md, tools/make-msix.ps1. Untested; needs owner to create a free Partner Center account |
 
 ## Owner decisions outstanding
 
