@@ -6,6 +6,7 @@ members = [
     "crates/cleanup",
     "crates/licensing",
     "crates/insights",
+    "crates/dupes",
     "crates/testkit",
     "crates/cli",
     "apps/desktop/src-tauri",
