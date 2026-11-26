@@ -451,6 +451,7 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
                 Group::Downloads => "downloads",
                 Group::Cloud => "cloud",
                 Group::Backups => "backups",
+                Group::Old => "old",
             },
             label: s.label,
             safety: match s.safety {

@@ -314,3 +314,59 @@ fn newer_rules_cover_both_systems_and_need_evidence() {
         "backups and recordings are never added automatically"
     );
 }
+
+#[test]
+fn large_old_files_only_in_the_persons_own_folders() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-insights-")
+        .tempdir()
+        .unwrap();
+    let r = t.path().join("root");
+    let home = r.join("home");
+    let big = tessera_insights::LARGE_OLD_BYTES as usize + 4096;
+    let old = |rel: &str| {
+        let p = kit::dense_file(&home, rel, big).unwrap();
+        set_age(&p, 400);
+    };
+    old("Videos/2023 holiday.mkv");
+    old("Pictures/Photos Library.photoslibrary/originals/A/IMG_1.mov");
+    old("AppData/Local/Game/data.pak");
+    old(".vagrant/box.img");
+    let recent = kit::dense_file(&home, "Videos/recent.mkv", big).unwrap();
+    set_age(&recent, 30);
+
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let places = Places {
+        home: Some(home.clone()),
+        ..Places::default()
+    };
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let found = analyse(&tree, &places, now);
+    let old_files: Vec<String> = found
+        .iter()
+        .filter(|s| s.group == Group::Old)
+        .map(|s| {
+            tree.path_of(s.id)
+                .strip_prefix(&r)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect();
+    assert_eq!(old_files, vec!["home/Videos/2023 holiday.mkv".to_string()]);
+    assert!(
+        found
+            .iter()
+            .filter(|s| s.group == Group::Old)
+            .all(|s| s.safety == Safety::Review)
+    );
+}

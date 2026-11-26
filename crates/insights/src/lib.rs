@@ -23,6 +23,8 @@ pub enum Group {
     Cloud,
     /// The person's own backups and recordings: worth a look, never automatic.
     Backups,
+    /// Large files in the person's folders that have not changed for a year.
+    Old,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -84,6 +86,28 @@ impl Places {
 
 /// Suggestions smaller than this are not shown.
 pub const MIN_BYTES: u64 = 1 << 20;
+/// "Large old files": at least this big and unchanged for `OLD_DAYS`.
+pub const LARGE_OLD_BYTES: u64 = 256 << 20;
+pub const OLD_DAYS: i64 = 365;
+/// Folders inside the home folder that apps manage; never searched for old files.
+const APP_MANAGED: [&str; 3] = ["appdata", "library", "applications"];
+/// Libraries and bundles that look like folders but belong to an app (Photos,
+/// Music, iMovie, Final Cut, Lightroom, apps): taking a file out of one would
+/// damage it, so their contents are never offered as old files.
+const BUNDLE_ENDINGS: [&str; 12] = [
+    ".photoslibrary",
+    ".musiclibrary",
+    ".tvlibrary",
+    ".imovielibrary",
+    ".fcpbundle",
+    ".aplibrary",
+    ".lrdata",
+    ".lrlibrary",
+    ".app",
+    ".bundle",
+    ".pvm",
+    ".vmwarevm",
+];
 const DAY: i64 = 86_400;
 
 fn name(tree: &Tree, id: NodeId) -> String {
@@ -575,6 +599,42 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
         for f in files.into_iter().take(500) {
             b.add(f, Group::Cloud, "Downloaded cloud file", Safety::StaysInCloud,
                 "Kept in your cloud storage. Freeing space removes only the copy on this computer; it downloads again when you open it.".into());
+        }
+    }
+
+    // Large files in the person's own folders, unchanged for a year. App data
+    // and hidden folders are skipped; anything an earlier rule explains (a
+    // backup, a cloud file, a build folder) keeps that better suggestion.
+    if let Some(top) = home.as_ref().and_then(|h| find_by_path(tree, h)) {
+        let mut stack = vec![top];
+        let mut files = Vec::new();
+        while let Some(d) = stack.pop() {
+            for c in tree.children(d) {
+                let n = tree.node(c);
+                let nm = name(tree, c);
+                match n.kind {
+                    NodeKind::Dir
+                        if !nm.starts_with('.')
+                            && !(d == top && APP_MANAGED.contains(&nm.as_str()))
+                            && !BUNDLE_ENDINGS.iter().any(|e| nm.ends_with(e)) =>
+                    {
+                        stack.push(c)
+                    }
+                    NodeKind::File
+                        if n.counted().1 >= LARGE_OLD_BYTES
+                            && n.modified != i64::MIN
+                            && now - n.modified >= OLD_DAYS * DAY =>
+                    {
+                        files.push(c)
+                    }
+                    _ => {}
+                }
+            }
+        }
+        files.sort_by_key(|&f| std::cmp::Reverse(tree.node(f).counted().1));
+        for f in files.into_iter().take(200) {
+            b.add(f, Group::Old, "Large old file", Safety::Review,
+                "A large file in your folders that has not changed in over a year. Keep it if you still need it, or move it to an external drive.".into());
         }
     }
 

@@ -24,6 +24,11 @@ const GROUPS: { key: Suggestion['group']; title: string; blurb: string }[] = [
     blurb: 'Phone backups and screen recordings that are yours to keep or remove. Nothing here is added to cleanup automatically.',
   },
   {
+    key: 'old',
+    title: 'Large old files',
+    blurb: 'Big files in your folders that have not changed for over a year. Keep what you need; nothing here is added to cleanup automatically.',
+  },
+  {
     key: 'cloud',
     title: 'Cloud files on this computer',
     blurb: 'Files kept in your cloud storage that also take space here. Freeing space keeps them in the cloud.',
