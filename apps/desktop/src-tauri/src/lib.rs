@@ -529,15 +529,23 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
-        .setup(|_app| {
-            // Development builds only: TESSERA_DEV_SCAN=<folder> starts a scan
-            // at launch so the UI can be checked against a synthetic fixture.
+        .setup(|app| {
+            // A folder given on the command line (`tessera-desktop.exe "D:\Photos"`,
+            // a shortcut, or a future "Scan with Tessera" menu entry) is scanned
+            // at launch. Only an existing folder is accepted; anything else is
+            // ignored. The person launching the app chose it, as with the picker.
+            let folder = std::env::args_os()
+                .nth(1)
+                .map(PathBuf::from)
+                .filter(|p| p.is_dir());
+            // Development builds only: TESSERA_DEV_SCAN=<folder> does the same.
             #[cfg(debug_assertions)]
-            if let Ok(p) = std::env::var("TESSERA_DEV_SCAN")
-                && let Ok(root) = prepare_root(std::path::Path::new(&p))
+            let folder = folder.or_else(|| std::env::var_os("TESSERA_DEV_SCAN").map(PathBuf::from));
+            if let Some(p) = folder
+                && let Ok(root) = prepare_root(&p)
             {
-                let state = _app.state::<AppState>();
-                let _ = begin_scan(_app.handle().clone(), &state, root, ScanOptions::default());
+                let state = app.state::<AppState>();
+                let _ = begin_scan(app.handle().clone(), &state, root, ScanOptions::default());
             }
             Ok(())
         })
