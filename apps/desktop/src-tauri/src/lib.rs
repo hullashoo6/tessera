@@ -1170,6 +1170,15 @@ fn open_item(
 
 pub fn run() {
     tauri::Builder::default()
+        // A second launch brings the open window forward instead of starting
+        // another copy that would scan alongside it.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())

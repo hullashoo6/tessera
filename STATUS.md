@@ -85,3 +85,17 @@ Last updated: 2026-11-26.
 * Pricing (USD 14.99 is provisional; not published anywhere).
 * Mac hardware for real macOS testing (CI alone is not acceptance).
 * Code-signing certificates for Windows and Apple Developer Program (paid).
+
+## Responsiveness ("not responding" prevention), 26 Nov 2026
+
+| Scenario | Prevention | Verified |
+|---|---|---|
+| Heavy work on the window thread (map, search, Smart Scan, review, drive list, open/reveal, Restore list, licence check) | All 14 such commands run off the main thread | Compiles; app checked on a 100k-item scan, window responding |
+| Hung network / optical drive | Each drive described on its own thread, 2 s limit, shown as Not responding; free-space query 3 s limit | Drive list checked on the owner laptop; a hung drive not simulated |
+| Scans starving the interface | Scan and duplicate workers at below-normal priority (Windows) / utility QoS (macOS); raised again on Cancel; pre-cancelled scan starts no threads | Full test suite 4/4 in parallel under CPU contention |
+| Memory creep over long sessions | Names in one buffer per scan; spare capacity released | Soak: flat after 10 rescans (see BENCHMARKS.md) |
+| Very long lists | Smart Scan groups and Duplicates show 100 at a time | Type-checked |
+| Huge single folder in the map | Tiles capped and small items merged (existing); layout now off the window thread | Existing tests |
+| Leaked listeners / observers | Audited: every listener and observer is removed on unmount | Code audit |
+| Second copy of the app | Single-instance: a second launch focuses the open window | Verified: second launch left one process |
+| Unexpected screen error (blank window) | Error boundary with Reload; scans kept in the backend | Type-checked; not triggered deliberately |

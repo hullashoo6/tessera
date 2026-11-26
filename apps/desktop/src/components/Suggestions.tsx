@@ -30,6 +30,8 @@ const safe = (s: Suggestion) => s.safety === 'regenerable' || s.safety === 'redo
 export function Suggestions({ scanId, scanning, version, marked, onToggleMark, onMarkMany, onOpenCleanup, onError, onDone }: Props) {
   const [items, setItems] = useState<Suggestion[] | null>(null)
   const [freed, setFreed] = useState<Set<number>>(() => new Set())
+  // Long lists are shown 100 at a time so the window stays smooth.
+  const [limit, setLimit] = useState<Record<string, number>>({})
   const freeUp = (list: Suggestion[]) =>
     api
       .freeUpCloud(scanId, list.map((s) => s.id))
@@ -110,7 +112,7 @@ export function Suggestions({ scanId, scanning, version, marked, onToggleMark, o
               )}
             </div>
             <ul className="review-list">
-              {list.map((s) => (
+              {list.slice(0, limit[g.key] ?? 100).map((s) => (
                 <li key={s.id}>
                   <div className="review-main">
                     <span className="review-name">{s.label}</span>
@@ -133,6 +135,11 @@ export function Suggestions({ scanId, scanning, version, marked, onToggleMark, o
                 </li>
               ))}
             </ul>
+            {list.length > (limit[g.key] ?? 100) && (
+              <button className="btn" onClick={() => setLimit((l) => ({ ...l, [g.key]: (l[g.key] ?? 100) + 100 }))}>
+                Show {Math.min(100, list.length - (limit[g.key] ?? 100))} more of {list.length}
+              </button>
+            )}
           </section>
         )
       })}

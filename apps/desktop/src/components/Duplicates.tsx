@@ -16,6 +16,8 @@ export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany,
   const [report, setReport] = useState<DupReport | null>(null)
   const [running, setRunning] = useState(false)
   const [read, setRead] = useState(0)
+  // Shown 100 groups at a time so the window stays smooth.
+  const [shownGroups, setShownGroups] = useState(100)
 
   useEffect(() => {
     const un = api.onDupesProgress(setRead)
@@ -74,7 +76,7 @@ export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany,
           </button>
         </div>
       )}
-      {report?.groups.map((g) => {
+      {report?.groups.slice(0, shownGroups).map((g) => {
         const allChosen = g.copies.every((c) => marked.has(c.node.id))
         const others = (keep: number) => g.copies.filter((_, i) => i !== keep).map((c) => c.node.id)
         return (
@@ -113,6 +115,11 @@ export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany,
           </section>
         )
       })}
+      {report && report.groups.length > shownGroups && (
+        <button className="btn" onClick={() => setShownGroups((n) => n + 100)}>
+          Show {Math.min(100, report.groups.length - shownGroups)} more of {report.groups.length} groups
+        </button>
+      )}
     </div>
   )
 }
