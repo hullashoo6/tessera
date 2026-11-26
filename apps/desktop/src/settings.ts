@@ -10,9 +10,18 @@ export interface Settings {
   checkUpdates: boolean
   /** The first-run welcome screen has been seen. */
   welcomed: boolean
+  /** The storage map's how-to tips have been dismissed. */
+  mapTipsSeen: boolean
 }
 
-export const DEFAULTS: Settings = { theme: 'system', metric: 'allocated', hardLinks: 'auto', checkUpdates: true, welcomed: false }
+export const DEFAULTS: Settings = {
+  theme: 'system',
+  metric: 'allocated',
+  hardLinks: 'auto',
+  checkUpdates: true,
+  welcomed: false,
+  mapTipsSeen: false,
+}
 
 const KEY = 'tessera.settings.v1'
 
@@ -28,6 +37,7 @@ export function loadSettings(): Settings {
       hardLinks: v.hardLinks === 'thorough' || v.hardLinks === 'off' ? v.hardLinks : 'auto',
       checkUpdates: v.checkUpdates !== false,
       welcomed: v.welcomed === true,
+      mapTipsSeen: v.mapTipsSeen === true,
     }
   } catch {
     return DEFAULTS

@@ -432,7 +432,20 @@ export function App() {
           )}
           {view === 'map' && scanId !== null && (
             <div className="explore">
-              <div className={highlight ? 'map-pane with-strip' : 'map-pane'}>
+              <div className={highlight || !settings.mapTipsSeen ? 'map-pane with-strip' : 'map-pane'}>
+                {!highlight && !settings.mapTipsSeen && (
+                  <div className="highlight-strip" role="note">
+                    <span className="spacer">
+                      Click a tile to see what it is, double-click a folder to open it, and right-click
+                      {info.os === 'macos' ? ' (or Control-click)' : ''} for actions.{' '}
+                      {info.os === 'macos' ? 'The Delete key' : 'Backspace'} goes back up. Smart Scan suggests what you
+                      could remove.
+                    </span>
+                    <button className="btn" onClick={() => updateSettings({ ...settings, mapTipsSeen: true })}>
+                      Got it
+                    </button>
+                  </div>
+                )}
                 {highlight && (
                   <div className="highlight-strip" role="status">
                     <span className="spacer">Highlighting {highlight.label}</span>
@@ -593,7 +606,7 @@ export function App() {
               storeManaged={info.storeManaged}
               onChange={updateSettings}
               onShowWelcome={() => {
-                updateSettings({ ...settings, welcomed: false })
+                updateSettings({ ...settings, welcomed: false, mapTipsSeen: false })
                 setView('overview')
               }}
               entitlement={entitlement}

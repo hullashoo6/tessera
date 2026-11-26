@@ -124,7 +124,7 @@ export function SettingsView({ settings, os, version, storeManaged, onChange, on
       </div>
       <div className="setting">
         <h3>Welcome screen</h3>
-        <p>See the short introduction from the first time you opened Tessera.</p>
+        <p>See the short introduction and the storage map tips from the first time you opened Tessera.</p>
         <button className="btn" onClick={onShowWelcome}>
           Show welcome screen
         </button>
