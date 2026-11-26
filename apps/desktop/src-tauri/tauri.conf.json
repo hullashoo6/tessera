@@ -34,6 +34,9 @@
     "publisher": "Beyond Enterprises",
     "copyright": "© 2026 Beyond Enterprises",
     "category": "Utility",
+    "resources": {
+      "../../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    },
     "shortDescription": "See what fills your storage.",
     "longDescription": "Tessera maps every folder on your drive to scale, finds your largest files, and keeps every scan on your computer.",
     "macOS": {

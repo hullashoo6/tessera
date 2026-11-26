@@ -1,4 +1,5 @@
 ---
+import { contact } from '../data/site'
 import Mark from './Mark.astro'
 const year = new Date().getFullYear()
 ---
@@ -29,7 +30,7 @@ const year = new Date().getFullYear()
   </div>
   <div class="wrap base muted">
     <span>© {year} Tessera</span>
-    <span>Contact details will be published before launch.</span>
+    <span>{contact.company} · <a href={`mailto:${contact.email}`}>{contact.email}</a></span>
   </div>
 </footer>
 

@@ -1,21 +1,43 @@
 ---
 import Base from '../layouts/Base.astro'
 import Prose from '../components/Prose.astro'
+import { contact } from '../data/site'
 ---
 
-<Base title="Privacy policy (draft) | Tessera" description="How Tessera handles your information. Draft pending review." noindex>
-  <Prose title="Privacy policy" draft intro="Written from how the app actually behaves today. It must be reviewed, completed with the owner's legal details, and approved before publication.">
-    <h2>What the app does with your files</h2>
-    <p>Tessera reads file and folder names, sizes, dates and attributes on your computer to build its storage map. This information stays on your computer. The app does not read file contents and does not upload anything.</p>
-    <h2>Network connections</h2>
-    <p>The current version of the app makes no network connections. Future versions may contact a licensing service to activate a Pro licence and may check for updates. Those requests will not include file names, folders or scan results. This policy will be updated before such features ship.</p>
-    <h2>Settings stored on your computer</h2>
-    <p>The app stores your preferences, such as theme and size display, in its local storage on your computer. No file names or paths are stored.</p>
-    <h2>This website</h2>
-    <p>This website does not use cookies, analytics or tracking scripts. Hosting providers may keep standard server logs; details will be added once hosting is chosen.</p>
+<Base title="Privacy policy | Tessera" description="How Tessera handles your information: scans stay on your computer, no analytics, no tracking.">
+  <Prose title="Privacy policy" intro="Effective 26 November 2026. Tessera is offered by Beyond Enterprises. This policy describes what the app and this website actually do.">
+    <h2>Your files stay on your computer</h2>
+    <p>To build its storage map, Tessera reads the names, sizes, dates and attributes of files and folders on your computer. That information stays on your computer and is never uploaded.</p>
+    <p>When you use Duplicates, Tessera reads the contents of files of 1 MB and larger to compare them. This happens only on your computer. Files that are stored online only (for example in OneDrive or iCloud Drive) are never opened, so nothing is downloaded.</p>
+
+    <h2>What Tessera stores on your computer</h2>
+    <ul>
+      <li>Your preferences, such as theme and how sizes are shown.</li>
+      <li>Your Pro licence activation, kept in Windows Credential Manager or the macOS Keychain.</li>
+      <li>A "Recently moved" list of items Tessera moved to the Recycle Bin or Trash (their location, size and the time they were moved), so you can put them back. Entries are removed after 30 days, and you can clear the list at any time.</li>
+      <li>Storage history: for each scan you keep, the total size and the size of each top-level folder, so you can see how your storage changes. You can clear it at any time.</li>
+    </ul>
+
+    <h2>When Tessera connects to the internet</h2>
+    <ul>
+      <li><strong>Licence checks.</strong> When you activate Tessera Pro, and every few days afterwards, Tessera sends your licence key and a general device label such as "Tessera on Windows" to our payment provider, Dodo Payments, to confirm the licence. Deactivating sends the same details.</li>
+      <li><strong>Update check.</strong> Tessera can fetch a small public file from this website that lists the latest version. The request contains no information about you or your files beyond what any web request includes, such as your IP address. You can turn this off in Settings.</li>
+    </ul>
+    <p>Tessera has no analytics, no telemetry, no advertising and no crash reporting. File names, folders and scan results are never sent anywhere.</p>
+
     <h2>Payments</h2>
-    <p>Purchases are not yet available. When they are, payment will be handled by a third-party payment provider, and Tessera will not receive or store card details.</p>
+    <p>Purchases are processed by Dodo Payments, which acts as the merchant of record and handles payment, billing details and tax. We receive the order and licence details needed to provide and support your licence, such as your name, email address and country. We never receive or store your card details.</p>
+
+    <h2>This website</h2>
+    <p>This website uses no cookies, analytics or tracking scripts. It is hosted on Cloudflare Pages, which processes standard request information such as IP addresses to deliver and protect the site.</p>
+
+    <h2>Your choices</h2>
+    <p>You can clear the Recently moved list and storage history inside Tessera, deactivate your licence in Settings, and remove the app at any time. To ask about the information we hold about your purchase, or to have it corrected or deleted where the law allows, email us.</p>
+
     <h2>Contact</h2>
-    <p>Contact details will be added before publication.</p>
+    <p>Beyond Enterprises, <a href={`mailto:${contact.email}`}>{contact.email}</a></p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version will be published here with a new effective date.</p>
   </Prose>
 </Base>

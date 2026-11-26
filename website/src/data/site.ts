@@ -65,3 +65,8 @@ export const platforms: Platform[] = [
 export function formatPrice(): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: pricing.currency }).format(pricing.pro)
 }
+
+export const contact = {
+  email: 'hullashoo6@gmail.com',
+  company: 'Beyond Enterprises',
+}

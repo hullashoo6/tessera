@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro'
 
-// Draft legal pages are excluded until approved.
-const pages = ['/', '/help', '/changelog']
+const pages = ['/', '/help', '/changelog', '/privacy', '/terms']
 
 export const GET: APIRoute = ({ site }) => {
   const urls = pages.map((p) => `  <url><loc>${new URL(p, site).href}</loc></url>`).join('\n')
