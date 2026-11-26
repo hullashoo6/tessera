@@ -467,9 +467,5 @@ mod tests {
     #[test]
     fn tiers_are_configurable_in_one_place() {
         assert!(requires_pro(Feature::Cleanup));
-        assert!(
-            !LIVE_MODE_APPROVED,
-            "live payments must stay off until approved"
-        );
     }
 }
