@@ -60,23 +60,23 @@ pub(super) fn describe(
         allocated: if is_dir {
             0
         } else {
-            (md.blocks() as u64).saturating_mul(512)
+            md.blocks().saturating_mul(512)
         },
         flags: 0,
         modified: unix_seconds(&md),
         identity: None,
-        nlink: md.nlink() as u64,
+        nlink: md.nlink(),
         other_fs: false,
     };
     if is_dir {
-        info.identity = Some((md.dev() as u64, md.ino()));
+        info.identity = Some((md.dev(), md.ino()));
         if let Some(root_dev) = ctx.root_device {
-            if md.dev() as u64 != root_dev as u64 && !ctx.cross_filesystems {
+            if md.dev() != root_dev && !ctx.cross_filesystems {
                 info.other_fs = true;
             }
         }
     } else if kind == NodeKind::File && ctx.identity_min_size.is_some() {
-        info.identity = Some((md.dev() as u64, md.ino()));
+        info.identity = Some((md.dev(), md.ino()));
     }
 
     #[cfg(target_os = "macos")]
@@ -137,9 +137,9 @@ pub(super) fn list_volumes() -> Vec<VolumeInfo> {
         }
         let unit = m.f_bsize as u64;
         let space = Some(VolumeSpace {
-            total: (m.f_blocks as u64).saturating_mul(unit),
-            available: (m.f_bavail as u64).saturating_mul(unit),
-            free: (m.f_bfree as u64).saturating_mul(unit),
+            total: m.f_blocks.saturating_mul(unit),
+            available: m.f_bavail.saturating_mul(unit),
+            free: m.f_bfree.saturating_mul(unit),
         });
         out.push(VolumeInfo {
             label: Path::new(&on)
