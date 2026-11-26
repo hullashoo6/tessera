@@ -20,6 +20,7 @@ const COMMANDS: &[&str] = &[
     "list_apps",
     "uninstall_app",
     "export_report",
+    "free_up_cloud",
     "review_cleanup",
     "confirm_cleanup",
     "license_status",

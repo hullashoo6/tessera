@@ -160,10 +160,10 @@ export interface CleanupReport {
 
 export interface Suggestion {
   id: number
-  group: 'junk' | 'developer' | 'downloads'
+  group: 'junk' | 'developer' | 'downloads' | 'cloud'
   label: string
   reason: string
-  safety: 'regenerable' | 'redownloadable' | 'review' | 'useAppTool'
+  safety: 'regenerable' | 'redownloadable' | 'review' | 'useAppTool' | 'staysInCloud'
   safetyText: string
   bytes: number
   name: string
@@ -235,6 +235,8 @@ export const api = {
   search: (scanId: number, query: SearchQuery, metric: Metric, sort: SortKey, limit: number) =>
     invoke<SearchResult>('search', { scanId, query, metric, sort, limit }),
   smartScan: (scanId: number) => invoke<Suggestion[]>('smart_scan', { scanId }),
+  freeUpCloud: (scanId: number, ids: number[]) =>
+    invoke<{ freed: number; freedBytes: number; skipped: [string, string][] }>('free_up_cloud', { scanId, ids }),
   findDuplicates: (scanId: number) => invoke<DupReport>('find_duplicates', { scanId }),
   cancelDuplicates: () => invoke<void>('cancel_duplicates'),
   recentlyMoved: () => invoke<MovedItem[]>('recently_moved'),

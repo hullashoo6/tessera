@@ -19,6 +19,8 @@ pub enum Group {
     Developer,
     /// Large re-downloadable data such as AI models and disk images.
     Downloads,
+    /// Files kept in a cloud service that also take space on this computer.
+    Cloud,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +33,8 @@ pub enum Safety {
     Review,
     /// Managed by an app; use that app's own clean-up instead of moving files.
     UseAppTool,
+    /// Stays in the cloud; only the copy on this computer is removed.
+    StaysInCloud,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +54,8 @@ pub struct Places {
     pub home: Option<PathBuf>,
     pub temp: Option<PathBuf>,
     pub local_app_data: Option<PathBuf>,
+    /// Cloud sync folders (OneDrive, iCloud Drive).
+    pub cloud_roots: Vec<PathBuf>,
 }
 
 impl Places {
@@ -59,6 +65,7 @@ impl Places {
             home: env("USERPROFILE").or_else(|| env("HOME")),
             temp: Some(std::env::temp_dir()),
             local_app_data: env("LOCALAPPDATA"),
+            cloud_roots: Vec::new(),
         }
     }
 }
@@ -309,6 +316,32 @@ pub fn analyse(tree: &Tree, places: &Places, now: i64) -> Vec<Suggestion> {
         }
     }
 
+    // Downloaded cloud files: freeing space keeps them in the cloud.
+    for root in &places.cloud_roots {
+        let Some(top) = find_by_path(tree, root) else {
+            continue;
+        };
+        let mut stack = vec![top];
+        let mut files = Vec::new();
+        while let Some(d) = stack.pop() {
+            for c in tree.children(d) {
+                let n = tree.node(c);
+                match n.kind {
+                    NodeKind::Dir => stack.push(c),
+                    NodeKind::File if !n.has(flags::CLOUD_ONLY) && n.counted().1 >= MIN_BYTES => {
+                        files.push(c)
+                    }
+                    _ => {}
+                }
+            }
+        }
+        files.sort_by_key(|&f| std::cmp::Reverse(tree.node(f).counted().1));
+        for f in files.into_iter().take(500) {
+            b.add(f, Group::Cloud, "Downloaded cloud file", Safety::StaysInCloud,
+                "Kept in your cloud storage. Freeing space removes only the copy on this computer; it downloads again when you open it.".into());
+        }
+    }
+
     b.out.sort_by_key(|s| std::cmp::Reverse(s.bytes));
     b.out
 }
@@ -320,6 +353,7 @@ pub fn safety_text(s: Safety) -> &'static str {
         Safety::Redownloadable => "Downloaded again when needed",
         Safety::Review => "Look before removing",
         Safety::UseAppTool => "Use the app's own clean-up",
+        Safety::StaysInCloud => "Stays in the cloud",
     }
 }
 

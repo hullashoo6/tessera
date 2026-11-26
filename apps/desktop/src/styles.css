@@ -306,3 +306,4 @@ button, input, select { font: inherit; color: inherit; }
 
 /* Keep the size column aligned whether a row says "Add to cleanup" or "Added". */
 .review-list .btn-quiet { min-width: 116px; }
+.safety-staysInCloud { background: var(--accent-soft); color: var(--accent); }

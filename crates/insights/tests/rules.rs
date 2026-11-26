@@ -49,6 +49,7 @@ fn rules_fire_only_with_evidence() {
     // Evidence missing: must not be suggested.
     kit::dense_file(&home, "projects/fake/node_modules/x.js", MB2).unwrap();
     kit::dense_file(&home, "Documents/cache/photos.zip", MB2).unwrap();
+    kit::dense_file(&home, "OneDrive/Pictures/trip.jpg", MB2).unwrap();
     kit::file(&home, "projects/notrust/target/debug/x", 10).unwrap();
 
     let (tree, _) = scan(
@@ -62,6 +63,7 @@ fn rules_fire_only_with_evidence() {
         home: Some(home.clone()),
         temp: Some(tmp.clone()),
         local_app_data: Some(lad.clone()),
+        cloud_roots: vec![home.join("OneDrive")],
     };
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -118,6 +120,11 @@ fn rules_fire_only_with_evidence() {
         Safety::Review,
         "recreating a venv needs the project's requirements"
     );
+    let cloud = found
+        .iter()
+        .find(|s| s.group == Group::Cloud)
+        .expect("downloaded cloud file suggested");
+    assert_eq!(cloud.safety, Safety::StaysInCloud);
     let hf = found.iter().find(|s| s.group == Group::Downloads).unwrap();
     assert_eq!(hf.safety, Safety::Review);
     assert!(

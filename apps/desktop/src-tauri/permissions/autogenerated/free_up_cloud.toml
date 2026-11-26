@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-free-up-cloud"
+description = "Enables the free_up_cloud command without any pre-configured scope."
+commands.allow = ["free_up_cloud"]
+
+[[permission]]
+identifier = "deny-free-up-cloud"
+description = "Denies the free_up_cloud command without any pre-configured scope."
+commands.deny = ["free_up_cloud"]

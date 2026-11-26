@@ -408,7 +408,14 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
-    let found = tessera_insights::analyse(&tree, &tessera_insights::Places::for_this_user(), now);
+    let found = tessera_insights::analyse(
+        &tree,
+        &tessera_insights::Places {
+            cloud_roots: tessera_cleanup::cloud::sync_roots(),
+            ..tessera_insights::Places::for_this_user()
+        },
+        now,
+    );
     Ok(found
         .into_iter()
         .take(2000)
@@ -418,6 +425,7 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
                 Group::Junk => "junk",
                 Group::Developer => "developer",
                 Group::Downloads => "downloads",
+                Group::Cloud => "cloud",
             },
             label: s.label,
             safety: match s.safety {
@@ -425,6 +433,7 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
                 Safety::Redownloadable => "redownloadable",
                 Safety::Review => "review",
                 Safety::UseAppTool => "useAppTool",
+                Safety::StaysInCloud => "staysInCloud",
             },
             safety_text: tessera_insights::safety_text(s.safety),
             reason: s.reason,
@@ -844,6 +853,63 @@ mod report_tests {
     }
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FreeUpDto {
+    freed: usize,
+    freed_bytes: u64,
+    skipped: Vec<(String, String)>,
+}
+
+/// Frees the local copy of cloud files (Pro). Each file is re-checked: only
+/// real cloud files are changed; nothing is deleted from the cloud.
+#[tauri::command]
+async fn free_up_cloud(
+    state: State<'_, AppState>,
+    scan_id: u64,
+    ids: Vec<NodeId>,
+) -> CmdResult<FreeUpDto> {
+    if !is_pro() {
+        return Err("Freeing space from cloud files is part of Tessera Pro.".into());
+    }
+    if ids.len() > 10_000 {
+        return Err("Too many files at once.".into());
+    }
+    let scan = active(&state, scan_id)?;
+    let items: Vec<(String, PathBuf, u64)> = {
+        let tree = read(&scan);
+        ids.iter()
+            .filter(|&&id| check_id(&tree, id).is_ok())
+            .map(|&id| {
+                (
+                    tree.node(id).display_name().into_owned(),
+                    tree.path_of(id),
+                    tree.node(id).counted().1,
+                )
+            })
+            .collect()
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut out = FreeUpDto {
+            freed: 0,
+            freed_bytes: 0,
+            skipped: Vec::new(),
+        };
+        for (name, path, bytes) in items {
+            match tessera_cleanup::cloud::free_up(&path) {
+                Ok(()) => {
+                    out.freed += 1;
+                    out.freed_bytes += bytes;
+                }
+                Err(e) => out.skipped.push((name, e.to_string())),
+            }
+        }
+        out
+    })
+    .await
+    .map_err(|_| "Freeing space stopped unexpectedly.".to_string())
+}
+
 struct PendingReview {
     id: u64,
     scan_id: u64,
@@ -1057,6 +1123,7 @@ pub fn run() {
             list_apps,
             uninstall_app,
             export_report,
+            free_up_cloud,
             review_cleanup,
             confirm_cleanup,
             license_status,

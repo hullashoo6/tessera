@@ -419,6 +419,7 @@ export function App() {
               onMarkMany={markMany}
               onOpenCleanup={() => setView('cleanup')}
               onError={onError}
+              onDone={setToast}
             />
           )}
           {view === 'restore' && <Restore os={info.os} onDone={setToast} onError={onError} />}
