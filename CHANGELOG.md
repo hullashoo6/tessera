@@ -24,7 +24,8 @@ How far each item has been verified is recorded in STATUS.md.
   "Large old files" (256 MB or more, unchanged for a year).
 - Background mode (Settings > Background, off unless turned on): Tessera can
   stay in the notification area or menu bar after its window is closed,
-  showing free space, and can warn when the main drive is almost full.
+  showing free space, can start there when you sign in, and can warn when the
+  main drive is almost full.
 - Diagnostics: a small local log of crashes and errors, with no file or
   folder names, that can be attached to a support email (Settings >
   Diagnostics). Nothing is sent automatically.
