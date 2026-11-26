@@ -15,6 +15,20 @@ How far each item has been verified is recorded in STATUS.md.
   in Finder ("Open With > Tessera"), drop a folder onto Tessera's window or
   Dock icon, or launch Tessera with a folder. If Tessera is already open, the
   open window scans it.
+- Smart Scan finds more: Firefox caches, Android emulator images and virtual
+  devices, iOS simulators and Xcode archives, Unity and Unreal Engine caches,
+  a previous Windows installation and Windows Update downloads (with the
+  steps to remove them using Windows' own clean-up), macOS installers,
+  installers left in Downloads for over a month, and two new groups:
+  "Backups and recordings" (iPhone and iPad backups, screen recordings) and
+  "Large old files" (256 MB or more, unchanged for a year).
+- Background mode (Settings > Background, off unless turned on): Tessera can
+  stay in the notification area or menu bar after its window is closed,
+  showing free space, and can warn when the main drive is almost full.
+- Diagnostics: a small local log of crashes and errors, with no file or
+  folder names, that can be attached to a support email (Settings >
+  Diagnostics). Nothing is sent automatically.
+- History chart shows its scale and dates.
 - High contrast: Windows contrast themes and the Mac's "Increase contrast"
   setting give stronger text and lines, outlines for states otherwise shown
   only by colour, and a high-contrast storage map (labels at least 7:1).
@@ -22,6 +36,12 @@ How far each item has been verified is recorded in STATUS.md.
 ### Changed
 - Small grey text and the dark storage map's colours adjusted so all text
   meets the 4.5:1 contrast guideline.
+- Smart Scan suggestions that only knew Windows locations (browser caches,
+  pip and Yarn caches, crash reports) now find the Mac equivalents too.
+
+### Fixed
+- If something unexpected stops a scan, Tessera now says so instead of
+  showing "Scanning" forever.
 
 ## 0.1.0 (release candidate, 27 Nov 2026; not published)
 
