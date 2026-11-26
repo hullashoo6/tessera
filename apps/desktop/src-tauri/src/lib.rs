@@ -677,14 +677,17 @@ async fn list_apps(state: State<'_, AppState>, scan_id: Option<u64>) -> CmdResul
 
 /// Opens the app's own uninstaller after the person confirmed in Tessera.
 #[tauri::command]
-fn uninstall_app(id: String) -> CmdResult<()> {
+fn uninstall_app(id: String) -> CmdResult<&'static str> {
     if !is_pro() {
         return Err("Uninstalling from Tessera is part of Tessera Pro. You can always uninstall from Windows Settings > Apps.".into());
     }
     if id.len() > 300 {
         return Err("Unknown app.".into());
     }
-    tessera_apps::launch_uninstaller(&id)
+    tessera_apps::launch_uninstaller(&id).map(|o| match o {
+        tessera_apps::Outcome::OpenedUninstaller => "opened",
+        tessera_apps::Outcome::Removed => "removed",
+    })
 }
 
 /// One CSV cell: quoted, and protected against spreadsheet formulas.

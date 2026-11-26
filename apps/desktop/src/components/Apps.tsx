@@ -40,7 +40,12 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
     setConfirm(null)
     api
       .uninstallApp(a.id)
-      .then(() => onDone(`${a.name}'s own uninstaller is open. When it finishes, choose Refresh.`))
+      .then((r) => {
+        if (r === 'removed') {
+          onDone(`${a.name} was removed.`)
+          load()
+        } else onDone(`${a.name}'s own uninstaller is open. When it finishes, choose Refresh.`)
+      })
       .catch((e) => onError(errorText(e)))
   }
 
@@ -79,9 +84,9 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
                 </span>
                 {confirm === a.id && (
                   <span className="actions">
-                    <span className="review-reason">Open {a.name}’s uninstaller? Windows may ask for permission.</span>
+                    <span className="review-reason">{a.id.startsWith('APPX|') ? `Remove ${a.name} from this computer?` : `Open ${a.name}’s uninstaller? Windows may ask for permission.`}</span>
                     <button className="btn btn-primary" onClick={() => uninstall(a)}>
-                      Open uninstaller
+                      {a.id.startsWith('APPX|') ? 'Remove app' : 'Open uninstaller'}
                     </button>
                     <button className="btn" onClick={() => setConfirm(null)}>
                       Cancel
@@ -90,7 +95,7 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
                 )}
               </div>
               <span className="num" title={a.measuredBytes !== null ? 'Measured in this scan' : 'Reported by the app'}>
-                {size(a) ? formatBytes(size(a)) : '—'}
+                {size(a) ? formatBytes(size(a)) : 'Size not reported'}
                 <span className="target-meta">
                   {a.measuredBytes !== null ? ' measured' : a.reportedBytes !== null ? ' reported by the app' : ''}
                 </span>

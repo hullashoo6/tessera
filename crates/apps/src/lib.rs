@@ -40,11 +40,20 @@ pub fn split_command(cmd: &str) -> Option<(String, String)> {
     Some((c[..i].to_string(), c[i..].trim().to_string()))
 }
 
+/// What uninstalling did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    /// The app's own uninstaller was opened; it finishes the job.
+    OpenedUninstaller,
+    /// A Microsoft Store app was removed by Windows.
+    Removed,
+}
+
 pub use imp::{installed_apps, launch_uninstaller};
 
 #[cfg(windows)]
 mod imp {
-    use super::{InstalledApp, split_command};
+    use super::{InstalledApp, Outcome, split_command};
     use std::collections::HashSet;
     use std::path::PathBuf;
     use winreg::RegKey;
@@ -120,8 +129,108 @@ mod imp {
                 });
             }
         }
+        out.extend(store_apps());
         out.sort_by_key(|a| std::cmp::Reverse(a.reported_bytes.unwrap_or(0)));
         out
+    }
+
+    fn com() {
+        // WinRT needs COM on this thread; an existing setup is fine.
+        // SAFETY: plain initialisation call with no pointers.
+        let _ = unsafe {
+            windows::Win32::System::Com::CoInitializeEx(
+                None,
+                windows::Win32::System::Com::COINIT_MULTITHREADED,
+            )
+        };
+    }
+
+    /// Microsoft Store apps installed for this user (as in Windows Settings).
+    fn store_apps() -> Vec<InstalledApp> {
+        use windows::ApplicationModel::PackageSignatureKind;
+        use windows::Management::Deployment::PackageManager;
+        com();
+        let Ok(pm) = PackageManager::new() else {
+            return Vec::new();
+        };
+        let Ok(pkgs) = pm.FindPackagesByUserSecurityId(&windows_core::HSTRING::new()) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for p in pkgs {
+            let hidden = p.IsFramework().unwrap_or(true)
+                || p.IsResourcePackage().unwrap_or(true)
+                || p.IsStub().unwrap_or(false)
+                || p.SignatureKind()
+                    .map(|k| k == PackageSignatureKind::System)
+                    .unwrap_or(true);
+            if hidden {
+                continue;
+            }
+            let name = p.DisplayName().map(|s| s.to_string()).unwrap_or_default();
+            if name.is_empty() || name.starts_with("ms-resource:") {
+                continue;
+            }
+            let Ok(id) = p.Id() else { continue };
+            let Ok(full) = id.FullName() else { continue };
+            let version = id
+                .Version()
+                .ok()
+                .map(|v| format!("{}.{}.{}.{}", v.Major, v.Minor, v.Build, v.Revision));
+            let install_date = p
+                .InstalledDate()
+                .ok()
+                .map(|d| yyyymmdd(d.UniversalTime / 10_000_000 - 11_644_473_600));
+            out.push(InstalledApp {
+                id: format!("APPX|{full}"),
+                name,
+                publisher: p
+                    .PublisherDisplayName()
+                    .ok()
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty()),
+                version,
+                install_date,
+                reported_bytes: None,
+                install_location: p.InstalledPath().ok().map(|s| PathBuf::from(s.to_string())),
+                per_user: true,
+                can_uninstall: true,
+            });
+        }
+        out
+    }
+
+    fn yyyymmdd(t: i64) -> String {
+        let z = t.div_euclid(86_400) + 719_468;
+        let era = z.div_euclid(146_097);
+        let doe = z - era * 146_097;
+        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let d = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        let y = yoe + era * 400 + i64::from(m <= 2);
+        format!("{y:04}{m:02}{d:02}")
+    }
+
+    fn remove_store_app(full: &str) -> Result<Outcome, String> {
+        use windows::Management::Deployment::PackageManager;
+        com();
+        let pm = PackageManager::new().map_err(|e| e.message())?;
+        let op = pm
+            .RemovePackageAsync(&windows_core::HSTRING::from(full))
+            .map_err(|e| e.message())?;
+        let result = op
+            .join()
+            .map_err(|e| format!("Windows could not remove it: {}", e.message()))?;
+        let text = result
+            .ErrorText()
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+        if !text.is_empty() {
+            return Err(format!("Windows could not remove it: {text}"));
+        }
+        Ok(Outcome::Removed)
     }
 
     fn wide(s: &str) -> Vec<u16> {
@@ -130,12 +239,15 @@ mod imp {
 
     /// Opens the app's own uninstaller. Windows may ask for administrator
     /// permission for machine-wide apps.
-    pub fn launch_uninstaller(id: &str) -> Result<(), String> {
+    pub fn launch_uninstaller(id: &str) -> Result<Outcome, String> {
         use windows::Win32::UI::Shell::ShellExecuteW;
         use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
         use windows::core::PCWSTR;
 
         let (tag, key) = id.split_once('|').ok_or("Unknown app.")?;
+        if tag == "APPX" {
+            return remove_store_app(key);
+        }
         let (_, hive, view) = sources()
             .into_iter()
             .find(|(t, _, _)| *t == tag)
@@ -170,7 +282,7 @@ mod imp {
             )
         };
         if r.0 as usize > 32 {
-            Ok(())
+            Ok(Outcome::OpenedUninstaller)
         } else {
             Err("The uninstaller could not be started.".into())
         }
@@ -179,13 +291,13 @@ mod imp {
 
 #[cfg(not(windows))]
 mod imp {
-    use super::InstalledApp;
+    use super::{InstalledApp, Outcome};
 
     pub fn installed_apps() -> Vec<InstalledApp> {
         Vec::new()
     }
 
-    pub fn launch_uninstaller(_id: &str) -> Result<(), String> {
+    pub fn launch_uninstaller(_id: &str) -> Result<Outcome, String> {
         Err("Uninstalling apps from Tessera is not available on this system yet.".into())
     }
 }
