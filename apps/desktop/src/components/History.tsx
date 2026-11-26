@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, errorText, type Snapshot } from '../api'
 import { formatBytes, formatDate } from '../format'
+import { deepChanges, hasDeep } from '../historyChanges'
 
 interface Props {
   pro: boolean
@@ -72,6 +73,8 @@ export function History({ pro, onOpenSettings, onError }: Props) {
         .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
         .slice(0, 20)
     : []
+  // Folders at any depth, when both scans recorded them (scans since 27 Nov 2026).
+  const deep = base && hasDeep(latest, base) ? deepChanges(latest, base) : null
 
   // Small line chart of the total over time, labelled with the highest and
   // lowest size (left) and the first and latest scan dates (below).
@@ -165,7 +168,35 @@ export function History({ pro, onOpenSettings, onError }: Props) {
               </button>
             </div>
           </div>
-          {changes.length === 0 ? (
+          {deep !== null ? (
+            deep.length === 0 ? (
+              <p className="target-meta">No folder changed size by more than 1 MB.</p>
+            ) : (
+              <ul className="review-list">
+                {deep.map((c) => (
+                  <li key={c.path}>
+                    <div className="review-main">
+                      <span className="review-name">{c.path}</span>
+                      <span className="target-meta">
+                        {c.then === null
+                          ? c.atLeast
+                            ? `under ${formatBytes(base.deepFloor)} → ${formatBytes(c.now ?? 0)}`
+                            : 'new since then'
+                          : c.now === null
+                            ? c.atLeast
+                              ? `${formatBytes(c.then)} → under ${formatBytes(latest.deepFloor)}`
+                              : 'no longer there'
+                            : `${formatBytes(c.then)} → ${formatBytes(c.now)}`}
+                      </span>
+                    </div>
+                    <span className={`num ${c.delta > 0 ? 'grew' : 'shrank'}`}>
+                      {c.atLeast ? `at least ${signed(c.delta)}` : signed(c.delta)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : changes.length === 0 ? (
             <p className="target-meta">No folder changed size.</p>
           ) : (
             <ul className="review-list">

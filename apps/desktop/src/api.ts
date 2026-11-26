@@ -226,6 +226,10 @@ export interface Snapshot {
   files: number
   folders: number
   top: [string, number][]
+  /** Largest folders at any depth (relative path, bytes); empty in older snapshots. */
+  deep: [string, number][]
+  /** Folders not in `deep` were smaller than this. */
+  deepFloor: number
 }
 
 export interface Entitlement {

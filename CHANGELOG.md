@@ -29,7 +29,9 @@ How far each item has been verified is recorded in STATUS.md.
 - Diagnostics: a small local log of crashes and errors, with no file or
   folder names, that can be attached to a support email (Settings >
   Diagnostics). Nothing is sent automatically.
-- History chart shows its scale and dates.
+- History chart shows its scale and dates, and History now points to the
+  specific folders that grew or shrank at any depth (for scans made from now
+  on), instead of only the top-level folders.
 - Printable report (Pro): a one-page summary of any folder from the storage
   map, which can be printed or saved as a PDF from the system print dialog.
 - Smaller windows: Tessera now fits small or highly scaled screens (down to
