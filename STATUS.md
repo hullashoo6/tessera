@@ -91,11 +91,10 @@ Last updated: 2026-11-27.
 
 Decided: the name Tessera (approved); price USD 9.78 one-time, tax included, one device, no expiry.
 
-Decided 27 Nov evening: website republish approved; **English only, no other languages** (owner, 19:49 IST; docs/LOCALISATION.md); Delete permanently allowed as a warned second choice; Microsoft Store route **MSIX** (free signing and Store updates; EXE/MSI would need a paid certificate) and a longer Store name (plain "Tessera" is taken in the Store; the identity suggests "Tessera - Disk Space Analyzer and Clea...", exact text to confirm; the app itself stays "Tessera").
+Decided 27 Nov evening: website republish approved; **English only, no other languages** (owner, 19:49 IST; docs/LOCALISATION.md); Delete permanently allowed as a warned second choice; Microsoft Store route **MSIX** (free signing and Store updates; EXE/MSI would need a paid certificate) and the Store name "Tessera - Disk Space Analyzer and Cleaner" (plain "Tessera" is taken in the Store; the app itself stays "Tessera"); Developer Mode on the laptop for Store test installs; **live sales on and Store submission approved** (20:46 IST).
 
 Still outstanding:
 * GitHub Actions minutes are used up for this month (all CI runs since 27 Nov ~02:00 IST fail before starting; the Mac installer can only be built there). Advised to keep the repository private (making it public can be undone, but copies made meanwhile can't) and wait for the monthly reset; CI now runs macOS only weekly, on request, or with [mac] in a commit message.
-* Microsoft Store: identity values received (docs/STORE.md); still needed: the **exact reserved app name** (the package must match it) and, for a test install before submitting, **Developer Mode** turned on (or skip the local test). Submission and publishing need the owner's OK.
 * Why OneDrive on the laptop is not syncing (blocks the cloud free-up test).
 * Mac hardware for real macOS testing (CI alone is not acceptance).
 * Live sales are on (27 Nov): the owner should make one real purchase with their 100%-off code and activate the key in the installed app, so the whole buying path is proven.
@@ -119,7 +118,7 @@ Still outstanding:
 
 ## Website
 
-Republished 27 Nov 2026 ~19:40 IST with the owner's OK: guides, FAQ (deletion "never without asking", Undo, "What if a file cannot be removed?"), feature list, privacy policy effective 27 Nov (local diagnostics log; permanently deleted items on the local list), and two older home-page claims corrected (it said Tessera "never changes or deletes your files" and "makes no network connections at all"; both stopped being true with Pro cleanup and the licence/update checks). Live at https://tessera-96w.pages.dev (Cloudflare Pages, first deployed 26 Nov 2026): contact (Beyond Enterprises, hullashoo6@gmail.com), privacy policy and terms with a 14-day refund policy published (not lawyer-reviewed), FAQ updated, price shown as not yet on sale, no download links. See docs/WEBSITE.md.
+Republished 27 Nov 2026 ~19:40 IST with the owner's OK: guides, FAQ (deletion "never without asking", Undo, "What if a file cannot be removed?"), feature list, privacy policy effective 27 Nov (local diagnostics log; permanently deleted items on the local list), and two older home-page claims corrected (it said Tessera "never changes or deletes your files" and "makes no network connections at all"; both stopped being true with Pro cleanup and the licence/update checks). Live at https://tessera-96w.pages.dev (Cloudflare Pages, first deployed 26 Nov 2026): contact (Beyond Enterprises, hullashoo6@gmail.com), privacy policy and terms with a 14-day refund policy published (not lawyer-reviewed), FAQ updated. Since 1.0.0 (27 Nov ~21:06 IST): on sale with the live Dodo checkout, Windows download published (see Release 1.0.0 below). See docs/WEBSITE.md.
 
 ## Screen tests
 
