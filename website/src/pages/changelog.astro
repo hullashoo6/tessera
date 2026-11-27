@@ -4,12 +4,26 @@ import Prose from '../components/Prose.astro'
 ---
 
 <Base title="Changelog | Tessera" description="What has changed in Tessera.">
-  <Prose title="Changelog" intro="No version has been released yet. Development progress so far:">
-    <h2>In development</h2>
+  <Prose title="Changelog" intro="What is new in each version of Tessera.">
+    <h2 id="1.0.0">1.0.0, 27 November 2026</h2>
+    <p>The first public release, for Windows 11 (64-bit). The Mac version is still in testing.</p>
+    <h3>Free</h3>
     <ul>
-      <li>Parallel scanning engine with live results, cancellation, and honest accounting of hard links, sparse and online-only files.</li>
-      <li>Interactive storage map with nested folders, keyboard navigation, and light and dark themes.</li>
-      <li>Largest files view with show, open and copy path.</li>
+      <li>Fast scans of any drive or folder, with results while it reads, and an interactive storage map of every folder to scale.</li>
+      <li>Largest files, search with filters (name, type, size, date, empty folders), and highlighting on the map.</li>
+      <li>Smart Scan suggestions that explain why each item was found and how safe it is to remove.</li>
+      <li>An exact duplicate finder that compares file contents.</li>
+      <li>Installed apps and their sizes, and a Restore page to put back anything Tessera moved.</li>
+      <li>Scan a folder from its right-click menu in File Explorer (Show more options), or drop it on the window.</li>
+      <li>Light, dark and high-contrast themes; keyboard navigation throughout.</li>
     </ul>
+    <h3>Tessera Pro (one-time purchase)</h3>
+    <ul>
+      <li>A cleanup list for everything you choose: select all, filter and sort, then move to the Recycle Bin in one step, with progress, Stop and Undo.</li>
+      <li>Plain answers when something can't be removed, for example which app has a file open, with Try again; a folder an app keeps a few files open in can be emptied of everything else.</li>
+      <li>Delete permanently as a separate choice with its own warning.</li>
+      <li>Free up space from OneDrive files while keeping them in the cloud, uninstall apps, storage history, CSV and printable reports.</li>
+    </ul>
+    <p>Scans stay on your computer. Tessera goes online only to check a Pro licence and, if you allow it, to see whether a new version is available.</p>
   </Prose>
 </Base>

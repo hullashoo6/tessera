@@ -1,9 +1,18 @@
 # Licensing and payments
 
-Owner: Beyond Enterprises (Dodo Payments account). Status: **live purchases
-disabled**. Real test-mode activate / validate / deactivate verified from the
-app (Windows dev build) on 26 Nov 2026 with the owner's test key; automated
-tests use a simulated server.
+Owner: Beyond Enterprises (Dodo Payments account). Status: **live sales on
+since 27 Nov 2026 ~20:50 IST** (owner: "make sales live"). Before switching:
+the live static payment link opened a checkout session for Tessera at USD
+9.78, and the live licence server answered (`{"valid":false}` for a made-up
+key). App builds from version 1.0.0 use live mode (`LIVE_MODE_APPROVED =
+true`): test keys no longer work in them. Still to do: one real live
+purchase with the owner's 100%-off code, activated in the installed app.
+Real test-mode activate / validate / deactivate was verified on 26 Nov
+2026; automated tests use a simulated server.
+
+Live payment link: `https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1`
+(website Buy button; the app's Buy Tessera Pro opens it through the
+`open_purchase_page` command, address fixed in `crates/licensing`).
 
 ## Products
 

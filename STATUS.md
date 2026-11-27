@@ -98,7 +98,8 @@ Still outstanding:
 * Microsoft Store: identity values received (docs/STORE.md); still needed: the **exact reserved app name** (the package must match it) and, for a test install before submitting, **Developer Mode** turned on (or skip the local test). Submission and publishing need the owner's OK.
 * Why OneDrive on the laptop is not syncing (blocks the cloud free-up test).
 * Mac hardware for real macOS testing (CI alone is not acceptance).
-* Turning on live sales, once Dodo confirms live checkout.
+* Live sales are on (27 Nov): the owner should make one real purchase with their 100%-off code and activate the key in the installed app, so the whole buying path is proven.
+* Microsoft Store submission: the helper uploads `target\store-submission` in Partner Center (choose "Publish manually").
 * Trademark search for "Tessera" and a lawyer review of the privacy policy and terms.
 * Apple Developer Program (USD 99/year), declined for now.
 
@@ -125,6 +126,15 @@ Republished 27 Nov 2026 ~19:40 IST with the owner's OK: guides, FAQ (deletion "n
 35 automated screen tests (Vitest + Testing Library, simulated browser, backend replaced by test data; 42 interface tests in all with the 5 history-logic and 2 contrast tests). Cleanup (15, `cleanup.test.tsx`): everything selected at first, Select all/none, unticking, filter, take off the list without touching files, no re-check when only taking items off, one-step move with Undo/Open Recycle Bin/Scan again, recovers by itself when the list changed since it was checked, Delete permanently only after ticking the warning, progress and Stop, files in use named by app with Try again, Move the rest, Delete permanently for items too big for the bin, Mac wording, cause grouping and order. Also: Cleanup Pro lock; Smart Scan bulk-add safety and paging; Duplicates keep-oldest and every-copy warning; Restore states; Apps confirmation, Store removal, Mac leftovers; licence entry and test-mode notice; History Pro lock, growth comparison and chart labels; error safety net and its log entry; Welcome (main drive first, Mac wording, skip); Background setting (off by default, Mac wording, start at sign-in unavailable in the Store version); Report (Pro lock, contents). Plus 2 storage-map contrast tests. Run in CI on Windows and macOS, and by `tools/check.ps1`.
 
 Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and History (from a disposable C:\Demo folder; no personal paths), FAQ rewritten, latest.json for the update check, stretched-screenshot bug fixed. Lighthouse on the live site: mobile 98/100/100/100, desktop 100/100/100/100 (performance/accessibility/best practices/SEO).
+
+## Release 1.0.0, 27 Nov 2026 ~21:05 IST (owner: "submit, and also make sales live")
+
+| Item | State |
+|---|---|
+| Live sales | **On.** App builds from 1.0.0 use live licensing (`LIVE_MODE_APPROVED = true`). Before switching, the live checkout link opened a Dodo session for Tessera at USD 9.78 and the live licence server answered. Website Buy button and the app's Buy Tessera Pro open `https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1`. **Not yet done: one real live purchase (owner's 100%-off code) activated in the installed app.** |
+| Windows installer `Tessera_1.0.0_x64-setup.exe` | 3.6 MB (3,765,434 bytes), sha256 cae6eeaedef26cd3981ae52b79b798fd823f614edc3045b19f88a1cfeca90e1e. tools/release.ps1 with quick checks (all passed), production interface, installed on the owner laptop and smoke-tested (window responsive, slowest 74 ms; right-click entries; no crash). Live mode confirmed in the installed app (no test notice, Buy Tessera Pro shown; the old test activation no longer counts). **Unsigned** (SmartScreen note on the download section) |
+| Website | Republished ~21:06 IST: on sale (Buy Tessera Pro), Windows download live at `/downloads/Tessera_1.0.0_x64-setup.exe` (download from the live site has the same SHA-256), Mac shown as in testing, latest.json 1.0.0, changelog page with 1.0.0 |
+| Microsoft Store | `target\msix\Tessera_1.0.0.0_x64.msix` built from the same program with the real identity and reserved name; everything to submit is in `target\store-submission` (package, HOW-TO-SUBMIT.md, listing text, 5 screenshots). **Submission must be done in Partner Center by the owner's helper** (needs their sign-in) |
 
 ## Local release candidate, 27 Nov 2026 ~20:30 IST (tools/release.ps1 with its checks)
 

@@ -94,16 +94,19 @@ during certification anyway.
 
 1. Apps and games > Tessera > **Start your submission**.
 2. **Pricing and availability**: Free (Tessera Pro is bought inside the app,
-   through Dodo Payments; non-game apps may use their own payments).
-   Markets: all. Visibility: choose **"Hide this product in the Store"** or
-   private audience until launch if the owner wants a quiet first release.
+   through Dodo Payments; non-game apps may use their own payments). If
+   asked about in-app purchases, answer that the app offers an optional
+   one-time Pro upgrade sold through its own checkout. Markets: all.
+   Visibility: public (owner, 27 Nov: "submit, and also make sales live");
+   the app is in live-sales mode from version 1.0.0.
 3. **Properties**: category *Utilities & tools*; privacy policy URL
    `https://tessera-96w.pages.dev/privacy`; website
    `https://tessera-96w.pages.dev`; support contact `hullashoo6@gmail.com`.
    System requirements: Windows 11, 64-bit.
 4. **Age ratings**: answer the questionnaire (no violence, user content,
    chat, location or purchases of physical goods) - expected rating 3+.
-5. **Packages**: upload `Tessera_0.1.0.0_x64.msix`.
+5. **Packages**: upload `target\msix\Tessera_1.0.0.0_x64.msix` (version
+   1.0.0, live sales; built 27 Nov evening).
 6. **Store listing (English)**: paste from `docs/STORE-LISTING.md`; add at
    least one screenshot (PNG, 1366 x 768 or larger).
 7. **Submission options**: choose **"Publish manually"**, so nothing goes
