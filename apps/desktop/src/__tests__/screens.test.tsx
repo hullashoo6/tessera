@@ -260,6 +260,14 @@ describe('Background setting', () => {
     expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false, false)
   })
 
+  it('in the Microsoft Store version, says starting at sign-in is not available yet', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false, startAtLogin: false })
+    render(<BackgroundSetting os="windows" storeManaged />)
+    const login = (await screen.findByLabelText(/Start Tessera there when I sign in/)) as HTMLInputElement
+    expect(login.disabled).toBe(true)
+    expect(screen.getByText(/not available in the Microsoft Store version yet/)).toBeTruthy()
+  })
+
   it('turning keep-running off also stops starting at sign-in', async () => {
     api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: true, startAtLogin: true })
     api.setBackgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: true, startAtLogin: false })

@@ -85,18 +85,17 @@ Last updated: 2026-11-27.
 | Release manifest (`tools/release-manifest.ps1`) | Implemented: file, version, size, SHA-256, signed/verified flags; nothing published |
 | Code signing (Windows Authenticode, Apple Developer ID) | **Blocked**: paid certificates need owner approval. The owner declined Apple's USD 99/year for now; Windows is to be signed free through the Microsoft Store (next rows) |
 | macOS installer `Tessera_0.1.0_universal.dmg` (Apple silicon + Intel), 9.1 MB | Built by the manual release workflow (private artifact, sha256 7ec7b9098ed781ce94beb8f3cc72673cd698a12c7900688ba97c82db776082f5). Installer window shows the one-time "Open Anyway" steps. Ad-hoc signed, **not notarised**; **never run on a real Mac** (Intel or Apple silicon) |
-| Free Windows signing via Microsoft Store (MSIX) | Prepared: docs/STORE.md, tools/make-msix.ps1 (now ships the licence credits and takes the version from the app). 27 Nov: package built from the release build with placeholder identity values and accepted by makeappx's manifest validation; not installable or submittable without the real identity. Store copies skip the website update check (Store rules) and Settings says so. Right-click "Scan with Tessera" is not available in a Store package (needs a different mechanism). Needs the owner's free Partner Center account |
+| Free Windows signing via Microsoft Store (MSIX) | docs/STORE.md, docs/STORE-LISTING.md, tools/make-msix.ps1 (ships the licence credits, takes the version from the app, real identity as defaults). 27 Nov evening: Partner Center product reserved as MSIX; package built with the **real identity** and a provisional display name, accepted by makeappx; not yet installed (needs Developer Mode) or submitted (needs the exact reserved name and the owner's OK). "Start at sign-in" is refused and shown as unavailable in Store copies (packaged apps' registry writes are private). Store copies skip the website update check (Store rules) and Settings says so. Right-click "Scan with Tessera" is not available in a Store package (needs a different mechanism). Needs the owner's free Partner Center account |
 
 ## Owner decisions outstanding
 
 Decided: the name Tessera (approved); price USD 9.78 one-time, tax included, one device, no expiry.
 
-Decided 27 Nov evening: website republish approved; languages left to Claude (Hindi first, then Spanish, Portuguese (Brazil), German, French, Japanese; docs/LOCALISATION.md); Delete permanently allowed as a warned second choice; Microsoft Store route **MSIX** (free signing and Store updates; EXE/MSI would need a paid certificate) and Store name "Tessera by Beyond Enterprises" (plain "Tessera" is taken in the Store; the app itself stays "Tessera").
+Decided 27 Nov evening: website republish approved; **English only, no other languages** (owner, 19:49 IST; docs/LOCALISATION.md); Delete permanently allowed as a warned second choice; Microsoft Store route **MSIX** (free signing and Store updates; EXE/MSI would need a paid certificate) and a longer Store name (plain "Tessera" is taken in the Store; the identity suggests "Tessera - Disk Space Analyzer and Clea...", exact text to confirm; the app itself stays "Tessera").
 
 Still outstanding:
 * GitHub Actions minutes are used up for this month (all CI runs since 27 Nov ~02:00 IST fail before starting; the Mac installer can only be built there). Advised to keep the repository private (making it public can be undone, but copies made meanwhile can't) and wait for the monthly reset; CI now runs macOS only weekly, on request, or with [mac] in a commit message.
-* Microsoft Store: account created; reserve the name, then send Package/Identity/Name, Package/Identity/Publisher and PublisherDisplayName.
-* Reviewers for each language other than Hindi.
+* Microsoft Store: identity values received (docs/STORE.md); still needed: the **exact reserved app name** (the package must match it) and, for a test install before submitting, **Developer Mode** turned on (or skip the local test). Submission and publishing need the owner's OK.
 * Why OneDrive on the laptop is not syncing (blocks the cloud free-up test).
 * Mac hardware for real macOS testing (CI alone is not acceptance).
 * Turning on live sales, once Dodo confirms live checkout.

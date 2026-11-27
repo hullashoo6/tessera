@@ -299,8 +299,12 @@ pub fn set_background_settings(
     start_at_login: bool,
 ) -> Result<BackgroundSettings, String> {
     use tauri_plugin_autostart::ManagerExt;
-    // Starting at sign-in only makes sense when Tessera keeps running.
-    let want_login = start_at_login && keep_running;
+    // Starting at sign-in only makes sense when Tessera keeps running. A
+    // Microsoft Store (MSIX) copy can't use the sign-in Run entry: Windows
+    // keeps a packaged app's registry writes private, so it would silently
+    // do nothing. Store copies need the package's own startup task instead
+    // (not built yet), so the option is refused there.
+    let want_login = start_at_login && keep_running && !super::update::store_managed();
     if want_login != login_registered(&app) {
         let result = if want_login {
             app.autolaunch().enable()

@@ -1,10 +1,15 @@
 # Builds an unsigned MSIX package for Microsoft Store submission (the Store
-# signs it). Identity values come from Partner Center > Product identity.
-# Prepared but untested until those values exist. See docs/STORE.md.
+# signs it). Identity values are Tessera's, from Partner Center > Product
+# identity (27 Nov 2026); they are not secret (every package contains them).
+# See docs/STORE.md.
 param(
-  [Parameter(Mandatory = $true)][string]$Name,
-  [Parameter(Mandatory = $true)][string]$Publisher,
-  [Parameter(Mandatory = $true)][string]$PublisherDisplayName,
+  [string]$Name = 'BeyondEnterprises.Tessera-DiskSpaceAnalyzerandClea',
+  [string]$Publisher = 'CN=A889C9DB-0747-4E48-BAEE-F4F32691A911',
+  [string]$PublisherDisplayName = 'Beyond Enterprises',
+  # The app name reserved in Partner Center, exactly as written there: the
+  # package's display name must be one of the reserved names. The Start menu
+  # and the window still say "Tessera".
+  [Parameter(Mandatory = $true)][string]$StoreName,
   # Store versions have four parts and the last must be 0; default: the app's version + ".0".
   [string]$Version = ""
 )
@@ -37,7 +42,7 @@ $manifest = @"
          IgnorableNamespaces="uap rescap">
   <Identity Name="$Name" Publisher="$Publisher" Version="$Version" ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>Tessera</DisplayName>
+    <DisplayName>$([Security.SecurityElement]::Escape($StoreName))</DisplayName>
     <PublisherDisplayName>$PublisherDisplayName</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
