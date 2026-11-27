@@ -39,8 +39,8 @@ const features = [
   ['A map of everything', 'Every folder becomes a tile sized by the space it takes. Open any tile to go deeper, follow the breadcrumbs back, or move through it all with the keyboard.'],
   ['Your biggest files, ranked', 'The thousand largest files on a drive or in a folder, with where they live and when they last changed. Show any of them in File Explorer or Finder in one click.'],
   ['Numbers you can trust', 'Files with several names are counted once. Online-only files show as using no space. Estimates are labelled, and folders Tessera could not read are flagged, never silently skipped.'],
-  ['Private by design', 'No account, no uploads, no tracking. This version of Tessera makes no network connections at all.'],
-  ['Read-only, and careful', 'Tessera never changes or deletes your files. It will not open programs or scripts for you, and it does not follow links into other places.'],
+  ['Private by design', 'No account, no uploads, no tracking. Tessera goes online only to check a Pro licence and, if you allow it, to see whether a new version is available.'],
+  ['Careful with your files', 'Tessera never removes anything on its own. Cleanup moves only what you have reviewed to the Recycle Bin or Trash, protects system folders, and can be undone. It will not open programs or scripts for you, and it does not follow links into other places.'],
   ['Results as it reads', 'The map fills in while the scan runs, so you can start exploring at once, and you can stop a scan the moment you have seen enough.'],
 ] as const
 ---
@@ -133,7 +133,7 @@ const features = [
       <h2 id="privacy-title">Your files stay yours.</h2>
       <div class="stack">
         <p class="lede">Scanning happens entirely on your computer. Tessera does not upload file names, folders or results, and it does not ask you to create an account.</p>
-        <p class="muted">When paid licences arrive, activating one will be the only reason Tessera goes online, and it will send your licence key, nothing about your files.</p>
+        <p class="muted">Tessera goes online only to check a Pro licence, sending your licence key and nothing about your files, and, if you allow it, to see whether a new version is available.</p>
       </div>
     </div>
   </section>

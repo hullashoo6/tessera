@@ -7,6 +7,22 @@ How far each item has been verified is recorded in STATUS.md.
 ## Unreleased
 
 ### Added
+- Cleanup rebuilt around a simple list: add things from anywhere (the map,
+  Largest files, Search with "Add all", Smart Scan, Duplicates, or the Delete
+  key; Cmd+Delete on a Mac), then review and remove them in one place. The
+  list handles thousands of items: Select all, filter, sort, take items off.
+- Clear results: everything that could not be removed is grouped by cause
+  with what to do, for example "In use by Microsoft Word: close it, then Try
+  again" (Windows names the app holding a file open), too large for the
+  Recycle Bin, needs permission, changed since chosen, cloud app not running.
+  A folder that an app keeps a few files open in can be emptied of
+  everything else. Items that were already gone no longer count as failures.
+- Undo straight after a cleanup puts every moved item back; Open Recycle Bin
+  / Trash; progress with Stop for large cleanups, which are also about four
+  times faster on Windows.
+- Delete permanently, as a separate choice with its own warning, for when
+  the space is needed straight away or the Recycle Bin cannot hold an item.
+  Moving to the Recycle Bin / Trash stays the default.
 - First-run welcome screen: what Tessera does, the privacy promise, and a
   one-click first scan of the main drive or the home folder. Settings >
   Welcome screen shows it again.

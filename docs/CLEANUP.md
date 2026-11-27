@@ -57,18 +57,19 @@ Apple developer forums and support threads on Full Disk Access protecting
 
 **One place, three steps: Add, Review, Remove.**
 
-1. *Add* from anywhere: map menu, Largest files (+ "Add all shown"),
-   Search (+ "Add all results"), Smart Scan, Duplicates, and the Delete key
-   (Cmd+Delete on a Mac) on a selected item. A short toast confirms "Added to
-   cleanup" with Undo. The sidebar shows the count.
+1. *Add* from anywhere: map menu, Largest files, Search (+ "Add all
+   results"), Smart Scan, Duplicates, and the Delete key
+   (Cmd+Delete on a Mac) on a selected item. A short message confirms "Added
+   to cleanup (N on the list)"; pressing the key again takes it off. The
+   sidebar shows the count.
 2. *Review* on the Cleanup page, a list built for thousands of items:
    checkbox per row (all ticked), Select all / none, filter by name or
    folder, sort (largest, name, folder), "Remove from list" for the selected
    rows, a running total of what is selected. Items Tessera will not touch
    (protected, links, unscanned) are in a collapsed section explaining why.
 3. *Remove* with one clear button: "Move 1,204 items (4.2 GB) to the Recycle
-   Bin". One short confirmation. Then a progress bar (count, size, current
-   item) with Stop.
+   Bin". One short confirmation. Then a progress bar (count and size) with
+   Stop.
 
 **Results that tell you what happened and what to do next.**
 
@@ -93,6 +94,18 @@ undone), also offered for items the Recycle Bin cannot hold. The website's
 "never deletes anything permanently" becomes "never without asking".
 Permanent deletion gets the same protection rules and re-checks as moving,
 its own confirmation, and is recorded on the Restore page as deleted.
+
+## Done and verified (27 Nov 2026 evening)
+
+All five work-plan steps below are done. Verified on the owner laptop (Windows 11, dev build) with a disposable fixture and a hidden program holding two files open: the walkthrough, numbers and screenshots are in STATUS.md (Cleanup row). Measured: 264 items moved in 4.7 s including the re-check and screen updates (was ~50-70 ms per item, now ~18 ms).
+
+## Still open
+
+* macOS on real hardware: Trash moves, permission/locked wording, Full Disk Access hint, permanent deletion, Open Trash.
+* Windows: an item really too large for the Recycle Bin (needs a file bigger than the bin's limit), a real permission refusal (another user's file), a long-path item, OneDrive not running. The causes are mapped and unit-tested; only "in use" was produced for real.
+* Keep the cleanup list across rescans (re-find items by path in the new scan) instead of starting empty.
+* Name the app in the Mac "in use" case if macOS ever refuses a move because of an open file (rare).
+* Microsoft Store (MSIX) build: the Recycle Bin and Restart Manager work there too; to be checked once the package can be installed.
 
 ## Work plan
 
