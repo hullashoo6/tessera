@@ -3,20 +3,16 @@ import { Image } from 'astro:assets'
 import Base from '../layouts/Base.astro'
 import HeroMosaic from '../components/HeroMosaic.astro'
 import Faq from '../components/Faq.astro'
-import { faqs } from '../data/faq'
+import { faqs, homeFaqs } from '../data/faq'
 import { formatPrice, freeFeatures, platforms, pricing, product, proFeatures } from '../data/site'
 import { releaseFor } from '../data/releases'
-import shotDark from '../assets/screens/app-dark.png'
-import shotLight from '../assets/screens/app-light.png'
-import shotFiles from '../assets/screens/app-largest.png'
+import shotMap from '../assets/screens/app-map.png'
 import shotSmart from '../assets/screens/app-smart.png'
-import shotDupes from '../assets/screens/app-duplicates.png'
-import shotRestore from '../assets/screens/app-restore.png'
-import shotHistory from '../assets/screens/app-history.png'
+import shotCleanup from '../assets/screens/app-cleanup.png'
 
 const title = 'Tessera: disk space analyzer for Windows and Mac'
 const description =
-  'See what fills your computer with an interactive storage map. Find your largest files and keep every scan private, on your own machine.'
+  'See what fills your computer, learn what is safe to remove, and clear it away with Undo. For Windows and Mac. Your scans never leave your computer.'
 
 const schema = {
   '@context': 'https://schema.org',
@@ -25,8 +21,11 @@ const schema = {
       '@type': 'SoftwareApplication',
       name: product.name,
       applicationCategory: 'UtilitiesApplication',
-      operatingSystem: 'Windows 11',
+      operatingSystem: 'Windows 11, macOS 12 or later',
       description: product.description,
+      ...(pricing.onSale && {
+        offers: { '@type': 'Offer', price: String(pricing.pro), priceCurrency: pricing.currency },
+      }),
     },
     {
       '@type': 'FAQPage',
@@ -35,13 +34,10 @@ const schema = {
   ],
 }
 
-const features = [
-  ['A map of everything', 'Every folder becomes a tile sized by the space it takes. Open any tile to go deeper, follow the breadcrumbs back, or move through it all with the keyboard.'],
-  ['Your biggest files, ranked', 'The thousand largest files on a drive or in a folder, with where they live and when they last changed. Show any of them in File Explorer or Finder in one click.'],
-  ['Numbers you can trust', 'Files with several names are counted once. Online-only files show as using no space. Estimates are labelled, and folders Tessera could not read are flagged, never silently skipped.'],
-  ['Private by design', 'No account, no uploads, no tracking. Tessera goes online only to check a Pro licence and, if you allow it, to see whether a new version is available.'],
-  ['Careful with your files', 'Tessera never removes anything on its own. Cleanup moves only what you have reviewed to the Recycle Bin or Trash, protects system folders, and can be undone. It will not open programs or scripts for you, and it does not follow links into other places.'],
-  ['Results as it reads', 'The map fills in while the scan runs, so you can start exploring at once, and you can stop a scan the moment you have seen enough.'],
+const trust = [
+  ['Private by design', 'Scans happen on your computer. There is no account, no upload and no tracking.'],
+  ['Careful by default', 'System folders are protected, and anything too big for the Recycle Bin is left where it is, never deleted in its place.'],
+  ['Pay once', `Pro is a single payment of ${formatPrice()} for one computer, with a 14-day refund if it is not for you.`],
 ] as const
 ---
 
@@ -50,150 +46,125 @@ const features = [
     <HeroMosaic />
     <div class="wrap hero-copy">
       <h1 id="hero-title">{product.tagline}</h1>
-      <p class="lede">{product.summary}</p>
+      <p class="lede">Tessera shows what fills your computer, tells you what is safe to remove, and clears it away, with Undo if you change your mind.</p>
       <div class="actions">
         <a class="btn btn-primary" href="#download">Download free</a>
-        <a class="btn btn-quiet" href="#product">See it in action</a>
+        {pricing.onSale && <a class="btn btn-quiet" href="#pricing">Buy Pro for {formatPrice()}</a>}
       </div>
-      <p class="fine">Built for Windows 11, with a Mac version in testing. Scans never leave your computer.</p>
+      <p class="fine">For Windows 11 and macOS. Your scans never leave your computer.</p>
     </div>
   </section>
 
-  <section id="product" class="product" aria-labelledby="product-title">
+  <section id="product" class="showcase" aria-labelledby="product-title">
     <div class="wrap">
-      <div class="section-head">
-        <h2 id="product-title">Your whole drive, in one picture.</h2>
-        <p class="lede">The biggest things are the easiest to see. Large videos, forgotten backups and virtual machines stop hiding in folders you never open.</p>
+      <div class="section-head centred">
+        <h2 id="product-title">See where your space went.</h2>
+        <p class="lede">Every folder becomes a tile, sized by the space it takes. Games, videos and old backups stand out at once, and any tile opens to show what is inside.</p>
       </div>
       <figure class="window">
-        <Image src={shotDark} alt="Tessera's storage map showing a 195 GB library: virtual machines, backups and videos take the most space, with a list of folders and their sizes alongside." widths={[800, 1200, 1602]} sizes="(max-width: 1200px) 100vw, 1160px" loading="eager" />
+        <Image src={shotMap} alt="Tessera's storage map of a demonstration computer: Games take 101 GB, Videos 43 GB and Backups 40 GB, with Apps, Downloads, Photos and Music beside them." widths={[800, 1200, 1600, 2000]} sizes="(max-width: 1200px) 100vw, 1160px" loading="eager" />
       </figure>
-      <p class="caption muted">The real app on Windows 11, exploring a demonstration library.</p>
-      <div class="pair">
-        <figure class="window small">
-          <Image src={shotFiles} alt="The Largest files view listing files by size with their location, date and actions." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Largest files, ranked, with where each one lives.</figcaption>
-        </figure>
-        <figure class="window small">
-          <Image src={shotLight} alt="The same storage map in the light theme." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Light and dark, following your system setting.</figcaption>
+      <p class="caption muted">Tessera on Windows 11, showing a demonstration computer. The Mac version looks and works the same.</p>
+    </div>
+  </section>
+
+  <section id="how" aria-label="How Tessera helps">
+    <div class="wrap rows">
+      <div class="row">
+        <div class="row-copy">
+          <h2>Know what is safe to remove.</h2>
+          <p class="lede">Smart Scan finds the things that quietly fill a computer, and says why each one was found and how safe it is to remove.</p>
+          <ul class="points">
+            <li>Browser caches and temporary files that apps recreate</li>
+            <li>Old installers, phone backups and screen recordings</li>
+            <li>Exact duplicates, compared by their contents</li>
+          </ul>
+        </div>
+        <figure class="window">
+          <Image src={shotSmart} alt="Smart Scan suggesting browser caches, crash reports and old installers, each with why it was found and how safe it is to remove." widths={[600, 900, 1200]} sizes="(max-width: 900px) 100vw, 680px" />
         </figure>
       </div>
-      <div class="pair">
-        <figure class="window small">
-          <Image src={shotSmart} alt="Smart Scan listing node_modules, Rust build output, a Python environment and a web build cache, each with why it was found and how safe it is to remove." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Smart Scan explains every suggestion and how safe it is.</figcaption>
-        </figure>
-        <figure class="window small">
-          <Image src={shotDupes} alt="Duplicates showing two exact copies of a video and three copies of a photo, with buttons to keep the oldest or newest copy." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Exact duplicates, found by comparing contents.</figcaption>
-        </figure>
-      </div>
-      <div class="pair">
-        <figure class="window small">
-          <Image src={shotRestore} alt="The Restore page listing two photos Tessera moved to the Recycle Bin, each with a Put back button." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Put back anything Tessera moved, from inside the app.</figcaption>
-        </figure>
-        <figure class="window small">
-          <Image src={shotHistory} alt="Storage history charting a folder's size over three scans, with the Videos folder grown by 40 MB." widths={[600, 900]} sizes="(max-width: 900px) 100vw, 560px" />
-          <figcaption>Storage history shows what grew, and when.</figcaption>
+      <div class="row flip">
+        <div class="row-copy">
+          <h2>Clear it away, and stay in control.</h2>
+          <p class="lede">Add what you no longer need to one list, check it, and move it all to the Recycle Bin or Trash in one step.</p>
+          <ul class="points">
+            <li>Undo puts everything back in one click</li>
+            <li>Nothing is deleted permanently unless you choose to</li>
+            <li>Plain answers when a file is open in another app</li>
+          </ul>
+        </div>
+        <figure class="window">
+          <Image src={shotCleanup} alt="The cleanup list with browser caches, crash reports and a duplicate video, all selected, and a button to move them to the Recycle Bin." widths={[600, 900, 1200]} sizes="(max-width: 900px) 100vw, 680px" />
         </figure>
       </div>
     </div>
   </section>
 
-  <section id="how" aria-labelledby="how-title">
+  <section id="trust" class="trust" aria-labelledby="trust-title">
     <div class="wrap">
-      <div class="section-head">
-        <h2 id="how-title">From full drive to clear answer.</h2>
-      </div>
-      <ol class="steps">
-        <li><h3>Scan</h3><p>Choose a drive, your home folder or any folder. Tessera reads file sizes only, never their contents.</p></li>
-        <li><h3>Explore</h3><p>Follow the largest tiles, open folders in place, or rank every file by size to see what is worth your attention.</p></li>
-        <li><h3>Decide</h3><p>Open anything, or show it in File Explorer or Finder to deal with it there. Tessera never removes a file on its own.</p></li>
-      </ol>
-    </div>
-  </section>
-
-  <section id="features" aria-labelledby="features-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="features-title">Made to tell you the truth about your storage.</h2>
-      </div>
-      <div class="features">
-        {features.map(([t, d]) => (
-          <article><h3>{t}</h3><p>{d}</p></article>
+      <h2 id="trust-title">Built to be trusted with your files.</h2>
+      <div class="trust-grid">
+        {trust.map(([t, d]) => (
+          <div><h3>{t}</h3><p>{d}</p></div>
         ))}
-      </div>
-    </div>
-  </section>
-
-  <section id="privacy" class="privacy" aria-labelledby="privacy-title">
-    <div class="wrap split">
-      <h2 id="privacy-title">Your files stay yours.</h2>
-      <div class="stack">
-        <p class="lede">Scanning happens entirely on your computer. Tessera does not upload file names, folders or results, and it does not ask you to create an account.</p>
-        <p class="muted">Tessera goes online only to check a Pro licence, sending your licence key and nothing about your files, and, if you allow it, to see whether a new version is available.</p>
       </div>
     </div>
   </section>
 
   <section id="pricing" aria-labelledby="pricing-title">
     <div class="wrap">
-      <div class="section-head">
+      <div class="section-head centred">
         <h2 id="pricing-title">Free to explore. Pro to clean up.</h2>
-        <p class="lede">Scanning is free, with no limits. Pro is a single purchase, with no subscription.</p>
+        <p class="lede">Scanning is free, with no limits. Pro is one payment, with no subscription.</p>
       </div>
       <div class="plans">
         <article class="plan">
           <h3>Free</h3>
           <p class="price num">$0</p>
           <p class="muted">Yours to keep, with no time limit.</p>
-          <ul>{freeFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
+          <ul>{freeFeatures.map((f) => <li>{f.name}</li>)}</ul>
           <a class="btn btn-quiet" href="#download">Download free</a>
         </article>
         <article class="plan pro">
           <h3>Pro</h3>
           <p class="price num">{formatPrice()}{!pricing.onSale && <span class="tag">Not yet on sale</span>}</p>
-          <p class="muted">One payment, tax included. No subscription. For one computer, with no expiry.</p>
-          <ul>{proFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
+          <p class="muted">One payment, tax included. For one computer, with no expiry.</p>
+          <ul>{proFeatures.map((f) => <li>{f.name}</li>)}</ul>
           {pricing.onSale ? (
-            <>
-              <a class="btn btn-primary" href={pricing.checkoutUrl} rel="noopener">Buy Tessera Pro</a>
-              <p class="muted small">Secure checkout by Dodo Payments. Your licence key arrives by email; enter it in Tessera under Settings. Tessera Pro runs on Windows 11 today; the Mac version is still in testing.</p>
-            </>
+            <a class="btn btn-primary" href={pricing.checkoutUrl} rel="noopener">Buy Tessera Pro</a>
           ) : (
             <span class="btn btn-primary" aria-disabled="true">Available at launch</span>
           )}
         </article>
       </div>
+      <p class="plans-note muted">Secure checkout by Dodo Payments. Your licence key arrives by email; enter it in Tessera under Settings. It works on Windows and Mac, and you can ask for a full refund within 14 days.</p>
     </div>
   </section>
 
   <section id="download" aria-labelledby="download-title">
     <div class="wrap">
-      <div class="section-head">
+      <div class="section-head centred">
         <h2 id="download-title">Download Tessera.</h2>
-        <p class="lede">Each installer appears here with its version, size and SHA-256 checksum on the day it passes testing on real machines. Until then, nothing is offered that has not been checked.</p>
+        <p class="lede">Free to download and use. Each download lists its exact size and checksum, so you can check the file.</p>
       </div>
       <ul class="platforms">
         {platforms.map((p) => {
           const r = releaseFor(p.id)
           return (
             <li data-platform={p.id}>
-              <div>
-                <h3>{p.label}<span class="yours tag" hidden>Your system</span></h3>
+              <div class="platform">
+                <h3>{p.label} <span class="yours tag" hidden>This computer</span></h3>
                 <p class="muted">{r ? r.minimumOs : p.requirement}</p>
               </div>
               {r ? (
                 <div class="release">
-                  <a class="btn btn-primary" href={r.url}>Download {r.installer}</a>
-                  <p class="muted num">Version {r.version}, {(r.bytes / 1048576).toFixed(1)} MB</p>
-                  <p class="sha num">SHA-256 {r.sha256}</p>
-                  {p.id === 'windows-x64' && (
-                    <p class="muted small">New apps are not yet known to Windows, so it may say "Windows protected your PC". Choose More info, then Run anyway. A Microsoft Store version, signed by Microsoft, is on its way.</p>
-                  )}
-                  <a href={r.notesUrl}>Release notes</a>
+                  <a class="btn btn-primary" href={r.url}>Download for {p.label}</a>
+                  <p class="muted num">Version {r.version}, {(r.bytes / 1048576).toFixed(1)} MB. <a href={r.notesUrl}>What is new</a></p>
+                  <details class="sum">
+                    <summary>SHA-256 checksum</summary>
+                    <code class="num">{r.sha256}</code>
+                  </details>
                 </div>
               ) : (
                 <span class="state">{p.state}</span>
@@ -202,13 +173,17 @@ const features = [
           )
         })}
       </ul>
+      <p class="install-note muted">The first time you open Tessera, Windows may show “Windows protected your PC”: choose More info, then Run anyway. On a Mac, the download window shows the one-time steps.</p>
     </div>
   </section>
 
   <section id="faq" aria-labelledby="faq-title">
-    <div class="wrap">
-      <div class="section-head"><h2 id="faq-title">Questions, answered.</h2></div>
-      <Faq />
+    <div class="wrap faq-wrap">
+      <h2 id="faq-title">Questions, answered.</h2>
+      <div>
+        <Faq items={homeFaqs} />
+        <p class="more"><a href="/help">More answers in Help</a></p>
+      </div>
     </div>
   </section>
 
@@ -221,62 +196,78 @@ const features = [
 </Base>
 
 <script>
-  // Highlight the visitor's platform. Manual choice always remains.
+  // Mark the visitor's system. The other download stays one click away.
   const ua = navigator.userAgent
-  const id = /Windows/.test(ua) ? 'windows-x64' : /Mac/.test(ua) ? 'mac-arm64' : null
+  const id = /Windows/.test(ua) ? 'windows-x64' : /Mac/.test(ua) ? 'mac-universal' : null
   if (id) document.querySelector(`[data-platform="${id}"] .yours`)?.removeAttribute('hidden')
 </script>
 
 <style>
-  .hero { position: relative; min-height: min(92vh, 900px); display: grid; align-items: center; overflow: hidden; padding: 140px 0 110px; border: 0; }
-  .hero::after { content: ''; position: absolute; inset: auto 0 0 0; height: 160px; background: linear-gradient(180deg, transparent, var(--forest)); pointer-events: none; }
+  .hero { position: relative; min-height: min(88vh, 860px); display: grid; align-items: center; overflow: hidden; padding: 140px 0 120px; border: 0; }
+  .hero::after { content: ''; position: absolute; inset: auto 0 0 0; height: 200px; background: linear-gradient(180deg, transparent, var(--forest)); pointer-events: none; }
   .hero + section { border-top: 0; }
-  .hero-copy { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 26px; }
+  .hero-copy { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 28px; }
   .hero h1 { max-width: 13ch; text-shadow: 0 2px 30px rgba(10, 8, 4, 0.45); }
-  .hero .lede { color: var(--cream); text-shadow: 0 1px 14px rgba(10, 8, 4, 0.6); }
-  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+  .hero .lede { color: var(--cream); max-width: 46ch; text-shadow: 0 1px 14px rgba(10, 8, 4, 0.6); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
   .fine { font-size: 14px; color: var(--mist); }
 
-  .window { margin: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line-strong); box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7); background: var(--night); }
-  /* Keep screenshots in proportion: height follows the scaled width. */
+  .centred { margin-inline: auto; text-align: center; justify-items: center; }
+  .showcase { padding-top: 24px; }
+  .window { margin: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line-strong); box-shadow: 0 50px 110px -40px rgba(0, 0, 0, 0.75); background: var(--night); }
   .window img { display: block; width: 100%; height: auto; }
-  .caption { margin-top: 16px; font-size: 14px; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 56px; }
-  .window.small figcaption { padding: 14px 16px; font-size: 14px; color: var(--mist); border-top: 1px solid var(--line); }
+  .caption { margin-top: 18px; font-size: 14px; text-align: center; }
 
-  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: step; }
-  .steps li { counter-increment: step; padding-top: 22px; border-top: 1px solid var(--line-strong); display: grid; gap: 10px; }
-  .steps li::before { content: counter(step); font-family: var(--serif); font-size: 15px; color: var(--amber); }
-  .steps p, .features p { color: var(--mist); }
+  .rows { display: grid; gap: clamp(96px, 12vw, 160px); }
+  .row { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(40px, 6vw, 88px); align-items: center; }
+  .row.flip { grid-template-columns: 7fr 5fr; }
+  .row.flip .row-copy { order: 2; }
+  .row-copy { display: grid; gap: 22px; align-content: center; }
+  .row-copy h2 { font-size: clamp(30px, 3.4vw, 44px); }
+  .row-copy .lede { font-size: 18px; }
+  .points { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 22px; }
+  .points li, .plan li { position: relative; padding-left: 28px; color: var(--mist); }
+  .points li::before, .plan li::before {
+    content: ''; position: absolute; left: 2px; top: 0.5em; width: 12px; height: 6px;
+    border-left: 1.5px solid var(--amber); border-bottom: 1.5px solid var(--amber); transform: rotate(-45deg);
+  }
 
-  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 36px; }
-  .features article { display: grid; gap: 10px; align-content: start; }
+  .trust { background: linear-gradient(180deg, var(--forest), var(--forest-2)); }
+  .trust h2 { max-width: 16ch; margin-bottom: 56px; }
+  .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; }
+  .trust-grid div { display: grid; gap: 12px; align-content: start; padding-top: 22px; border-top: 1px solid var(--line-strong); }
+  .trust-grid p { color: var(--mist); }
 
-  .privacy { background: linear-gradient(180deg, var(--forest), var(--forest-2)); }
-  .split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: start; }
-  .stack { display: grid; gap: 18px; }
-
-  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 920px; }
-  .plan { display: grid; gap: 12px; align-content: start; padding: 32px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(243, 236, 223, 0.03); }
-  .plan.pro { border-color: rgba(233, 174, 99, 0.35); background: rgba(233, 174, 99, 0.05); }
-  .price { font-family: var(--serif); font-variation-settings: 'SOFT' 100; font-size: 44px; line-height: 1.1; display: flex; align-items: center; gap: 12px; }
-  .plan ul { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 10px; }
-  .plan li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-left: 22px; position: relative; color: var(--mist); }
-  .plan li::before { content: ''; position: absolute; left: 0; top: 0.62em; width: 10px; height: 10px; border-radius: 2px; background: var(--moss); border: 1px solid var(--sage); }
+  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin-inline: auto; }
+  .plan { display: grid; gap: 12px; grid-template-rows: auto auto auto 1fr auto; padding: 36px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(243, 236, 223, 0.03); }
+  .plan.pro { border-color: rgba(233, 174, 99, 0.38); background: rgba(233, 174, 99, 0.05); }
+  .price { font-family: var(--serif); font-variation-settings: 'SOFT' 100; font-size: 48px; line-height: 1.1; display: flex; align-items: center; gap: 12px; }
+  .plan ul { list-style: none; margin: 10px 0 22px; padding: 0; display: grid; gap: 12px; align-content: start; }
   .plan .btn { justify-self: start; }
+  .plans-note { max-width: 64ch; margin: 28px auto 0; text-align: center; font-size: 15px; }
 
-  .platforms { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-  .platforms li { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--line); }
-  .platforms h3 { display: flex; align-items: center; gap: 12px; }
+  .platforms { list-style: none; margin: 0 auto; padding: 0; max-width: 900px; border-top: 1px solid var(--line); }
+  .platforms li { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 30px 0; border-bottom: 1px solid var(--line); }
+  .platform { display: grid; gap: 6px; }
+  .platform h3 { display: flex; align-items: center; gap: 12px; }
+  .yours { white-space: nowrap; font-family: var(--sans); }
   .state { color: var(--sage); font-size: 15px; padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 999px; white-space: nowrap; }
-  .release { display: grid; gap: 6px; justify-items: end; text-align: right; }
-  .sha { font-size: 12px; color: var(--sage); word-break: break-all; max-width: 44ch; }
+  .release { display: grid; gap: 8px; justify-items: end; text-align: right; }
+  .release p { font-size: 14px; }
+  .sum summary { cursor: pointer; font-size: 13px; color: var(--sage); }
+  .sum code { display: block; margin-top: 6px; font-size: 12px; color: var(--sage); word-break: break-all; max-width: 40ch; }
+  .install-note { max-width: 70ch; margin: 28px auto 0; text-align: center; font-size: 14px; }
+
+  .faq-wrap { display: grid; grid-template-columns: 4fr 7fr; gap: 56px; align-items: start; }
+  .more { margin-top: 22px; }
+  .more a { color: var(--amber-soft); }
 
   .closing { text-align: center; }
-  .closing .wrap { display: grid; justify-items: center; gap: 28px; }
+  .closing .wrap { display: grid; justify-items: center; gap: 30px; }
 
   @media (max-width: 900px) {
-    .pair, .steps, .features, .split, .plans { grid-template-columns: 1fr; }
+    .row, .trust-grid, .plans, .faq-wrap { grid-template-columns: 1fr; }
+    .row.flip .row-copy { order: 0; }
     .platforms li { flex-direction: column; align-items: flex-start; }
     .release { justify-items: start; text-align: left; }
   }

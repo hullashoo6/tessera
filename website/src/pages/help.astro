@@ -2,20 +2,43 @@
 import Base from '../layouts/Base.astro'
 import Prose from '../components/Prose.astro'
 import Faq from '../components/Faq.astro'
+import { contact } from '../data/site'
 ---
 
 <Base title="Help and FAQ | Tessera" description="Answers about how Tessera works, privacy, supported systems, and installing or removing it.">
-  <Prose title="Help" intro="How Tessera works, what it can and cannot do yet, and how to get it onto and off your computer.">
+  <Prose title="Help" intro="How Tessera works, and how to install it, move your licence or remove it.">
     <h2>Common questions</h2>
     <Faq />
-    <h2 id="install">Install and uninstall</h2>
-    <p>Installers are still in testing, so there is nothing to install yet. When a version passes testing on real machines it will be listed in the download section with its checksum, and this page will give step-by-step instructions for Windows and Mac.</p>
+
+    <h2 id="install">Install</h2>
+    <h3>Windows</h3>
+    <ol>
+      <li>Download Tessera for Windows and open the file.</li>
+      <li>If Windows shows “Windows protected your PC”, choose More info, then Run anyway. This appears because Tessera is new to Windows; it does not mean anything is wrong.</li>
+      <li>Tessera installs for your account only and opens when it is done. No administrator password is needed.</li>
+    </ol>
+    <h3>Mac</h3>
+    <ol>
+      <li>Download Tessera for Mac and open the file.</li>
+      <li>Drag Tessera into the Applications folder.</li>
+      <li>Open Tessera from Applications. The first time, the download window shows the one-time steps to allow it.</li>
+    </ol>
+
+    <h2 id="pro">Activate Tessera Pro</h2>
+    <p>After you buy Tessera Pro, your licence key arrives by email from Dodo Payments. In Tessera, open Settings, paste the key under Tessera Pro and choose Activate. A licence covers one computer: to move it, choose Deactivate on this computer in Settings first, then activate it on the new one.</p>
+
+    <h2 id="uninstall">Uninstall</h2>
+    <p>On Windows, open Settings, then Apps, find Tessera and choose Uninstall. On a Mac, move Tessera from Applications to the Trash. Your own files are not affected either way, and anything Tessera moved stays in the Recycle Bin or Trash until you empty it.</p>
+
     <h2>Reading the numbers</h2>
     <ul>
       <li><strong>Size on disk</strong> is the space files actually occupy, which is what you get back when you remove them.</li>
       <li><strong>File size</strong> is the amount of data they contain. Compressed, sparse and online-only files can be much smaller on disk.</li>
-      <li><strong>Estimated</strong> means Windows did not report the exact figure, so Tessera calculated it from the drive's allocation size.</li>
+      <li><strong>Estimated</strong> means the system did not report the exact figure, so Tessera calculated it from the drive’s allocation size.</li>
       <li><strong>Not attributed to scanned files</strong> is space the drive reports as used that belongs to the system, other accounts or folders Tessera was not allowed to read.</li>
     </ul>
+
+    <h2>Still stuck?</h2>
+    <p>Email <a href={`mailto:${contact.email}`}>{contact.email}</a>. In Tessera, Settings › Diagnostics › Show log file opens a short log you can attach; it never contains your file names.</p>
   </Prose>
 </Base>

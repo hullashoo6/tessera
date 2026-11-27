@@ -42,6 +42,7 @@
     "longDescription": "Tessera maps every folder on your drive to scale, finds your largest files, and keeps every scan on your computer.",
     "macOS": {
       "signingIdentity": "-",
+      "minimumSystemVersion": "12.0",
       "dmg": {
         "background": "./dmg/background.png",
         "windowSize": { "width": 660, "height": 420 },

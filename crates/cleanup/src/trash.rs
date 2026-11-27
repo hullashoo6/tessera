@@ -264,6 +264,34 @@ mod imp {
         p.strip_prefix(r"\\?\").unwrap_or(p).to_lowercase()
     }
 
+    /// The key for one of our paths, as Windows will report it: the shell
+    /// gives full names, so a path with short 8.3 parts (`C:\Users\RUNNER~1`)
+    /// is expanded first; otherwise its result would not be matched and the
+    /// item would be wrongly reported as already gone.
+    fn path_key(p: &Path) -> String {
+        key(&long_form(p))
+    }
+
+    /// `p` with any short 8.3 parts expanded. Works for an item that no longer
+    /// exists too, through its folder.
+    fn long_form(p: &Path) -> String {
+        use windows::Win32::Storage::FileSystem::GetLongPathNameW;
+        let expand = |p: &Path| -> Option<String> {
+            let w = wide(p);
+            let mut buf = vec![0u16; 1024];
+            // SAFETY: `w` is NUL-terminated; `buf` is a valid buffer of its length.
+            let n = unsafe { GetLongPathNameW(PCWSTR(w.as_ptr()), Some(&mut buf)) } as usize;
+            (n > 0 && n < buf.len()).then(|| String::from_utf16_lossy(&buf[..n]))
+        };
+        expand(p)
+            .or_else(|| {
+                let parent = expand(p.parent()?)?;
+                let name = p.file_name()?.to_string_lossy();
+                Some(format!("{}\\{name}", parent.trim_end_matches('\\')))
+            })
+            .unwrap_or_else(|| p.to_string_lossy().into_owned())
+    }
+
     fn item_path(item: &IShellItem) -> Option<String> {
         // SAFETY: the returned string is freed with CoTaskMemFree.
         unsafe {
@@ -409,6 +437,8 @@ mod imp {
         // Files the Recycle Bin cannot keep never reach Windows, which would
         // delete them permanently without asking.
         let too_big: Vec<bool> = paths.iter().map(|p| file_too_big(p)).collect();
+        // Keys are worked out before the move, while every item still exists.
+        let keys: Vec<String> = paths.iter().map(|p| path_key(p)).collect();
         let fit: Vec<&Path> = paths
             .iter()
             .zip(&too_big)
@@ -423,17 +453,21 @@ mod imp {
         paths
             .iter()
             .zip(too_big)
-            .map(|(p, big)| {
+            .zip(keys)
+            .map(|((p, big), k)| {
                 if big {
                     return Err(super::too_big());
                 }
-                let k = key(&p.to_string_lossy());
+                let gone = std::fs::symlink_metadata(p).is_err();
                 let r = match batch.get(&k) {
                     // Settled by the batch, and really gone from its place.
-                    Some(Ok(landed)) if std::fs::symlink_metadata(p).is_err() => Ok(landed.clone()),
+                    Some(Ok(landed)) if gone => Ok(landed.clone()),
                     // A real failure of this item (not the rest of a batch
                     // being cancelled after a refusal).
                     Some(Err(hr)) if !refused && *hr != E_ABORT => Err(hr_to_io(*hr)),
+                    // Moved by the batch, but not reported under this name:
+                    // find it in the Recycle Bin.
+                    _ if gone => Ok(None),
                     // Not settled (refused, cancelled with the rest, or not
                     // reported): do it on its own.
                     _ => return move_to_trash(p),
@@ -445,11 +479,12 @@ mod imp {
 
     /// Deletes items permanently (no Recycle Bin), in one shell operation.
     pub(super) fn delete_many_permanently(paths: &[&Path]) -> Vec<io::Result<()>> {
+        let keys: Vec<String> = paths.iter().map(|p| path_key(p)).collect();
         let (batch, _) = run_batch(paths, true);
         paths
             .iter()
-            .map(|p| {
-                let k = key(&p.to_string_lossy());
+            .zip(keys)
+            .map(|(p, k)| {
                 let gone = || std::fs::symlink_metadata(p).is_err();
                 match batch.get(&k) {
                     Some(Ok(_)) if gone() => Ok(()),
@@ -552,7 +587,8 @@ mod imp {
         let n = root.iter().position(|&c| c == 0)?;
         let bin =
             std::path::PathBuf::from(String::from_utf16_lossy(&root[..n])).join("$Recycle.Bin");
-        let want = original.to_string_lossy().to_lowercase();
+        // The bin records full names; compare like with like.
+        let want = path_key(original);
         let mut best: Option<(i64, std::path::PathBuf)> = None;
         for user in std::fs::read_dir(bin).ok()?.flatten() {
             let Ok(entries) = std::fs::read_dir(user.path()) else {
@@ -585,7 +621,7 @@ mod imp {
                     .map(|c| u16::from_le_bytes(*c))
                     .collect();
                 let from = String::from_utf16_lossy(&units);
-                if from.trim_end_matches('\0').to_lowercase() != want {
+                if key(from.trim_end_matches('\0')) != want {
                     continue;
                 }
                 let item = user.path().join(format!("$R{rest}"));

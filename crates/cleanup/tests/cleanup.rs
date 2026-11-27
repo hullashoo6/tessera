@@ -676,6 +676,58 @@ fn too_big_for_the_recycle_bin_is_left_in_place() {
     assert!(folder.join("archive.zip").exists(), "folder left in place");
 }
 
+/// A folder reached by its short 8.3 name (as on GitHub's Windows machines,
+/// `C:\Users\RUNNER~1`): Windows reports moved items by their full names,
+/// and Tessera must still match them, so the item counts as moved (with
+/// Undo), not "already gone". cargo test -p tessera-cleanup -- --ignored real_cleanup_run
+#[cfg(windows)]
+#[test]
+#[ignore]
+fn real_cleanup_run_through_a_short_folder_name() {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
+    use windows::core::PCWSTR;
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-run-test-")
+        .tempdir()
+        .unwrap();
+    let long = t.path().join("Folder with a long name");
+    kit::dense_file(&long, "move-me.txt", 4096).unwrap();
+    let w: Vec<u16> = long.as_os_str().encode_wide().chain([0]).collect();
+    let mut buf = vec![0u16; 1024];
+    // SAFETY: `w` is NUL-terminated; `buf` is a valid buffer.
+    let n = unsafe { GetShortPathNameW(PCWSTR(w.as_ptr()), Some(&mut buf)) } as usize;
+    let root = PathBuf::from(std::ffi::OsString::from_wide(&buf[..n]));
+    // Short names may be turned off on a drive; the test still holds then.
+    let (tree, _) = scan(
+        &root,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let plan = build_plan(&tree, &[id(&tree, "move-me.txt")], &open());
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions::default(),
+        &mut |_| {},
+        &mut tessera_cleanup::system_remover(Method::Trash),
+    );
+    assert_eq!(
+        (report.moved, report.gone, report.deleted),
+        (1, 0, 0),
+        "{root:?}: {:?}",
+        report.outcomes
+    );
+    let landed = report.outcomes[0]
+        .recycled()
+        .cloned()
+        .expect("where it landed");
+    tessera_cleanup::put_back(&landed, &long.join("move-me.txt")).unwrap();
+    assert!(long.join("move-me.txt").exists());
+}
+
 /// The cleanup run as the app does it, on the real Recycle Bin / Trash, with
 /// disposable files: moved (with where it landed), put back, and a second
 /// file deleted permanently. cargo test -p tessera-cleanup -- --ignored real_cleanup_run

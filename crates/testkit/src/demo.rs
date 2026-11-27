@@ -1,87 +1,78 @@
-//! A realistic-looking demonstration library for product screenshots.
+//! A demonstration computer for product screenshots: one person's home
+//! folder with plain, easy names (Games, Apps, Videos, Photos, Backups,
+//! browser caches, old installers...), so a buyer understands a screenshot at
+//! a glance.
 //!
-//! Most files are sparse: they report their full size but occupy almost no
-//! disk space, so a ~200 GB library fits on any machine. A few hundred MB
-//! are real, so Smart Scan and Duplicates have something to show.
-//! Screenshots made from it must use the "File size" view and be labelled
-//! as a demonstration.
+//! The big, showy items (games, videos, backups) are sparse: they report
+//! their full size but take almost no disk space, so the ~250 GB library fits
+//! on any machine. Screenshots of the map must use the "File size" view and
+//! be labelled as a demonstration. Smart Scan, Duplicates and History judge
+//! by real disk use, so the items they show are real files (about 3 GB):
+//! browser caches, temporary files, crash reports, old installers, a phone
+//! backup, screen recordings, large old files and a few exact copies.
+//!
+//! For Smart Scan to treat the folder as a home folder, run a development
+//! build with `TESSERA_DEV_HOME` set to it (release builds ignore that).
 
 use crate::{GenStats, MARKER, Rng, make_sparse};
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 
 const KB: u64 = 1 << 10;
 const MB: u64 = 1 << 20;
 const GB: u64 = 1 << 30;
 
-/// (folder, file count, name prefix, extension, min size, max size)
+/// Big items, by name (sparse).
+const SINGLES: &[(&str, u64)] = &[
+    ("Games/Galaxy Racers/Game content.pak", 41 * GB),
+    ("Games/Galaxy Racers/Updates.pak", 7 * GB),
+    ("Games/Kingdom Quest/World.pak", 29 * GB),
+    ("Games/Kingdom Quest/Voices.pak", 6 * GB),
+    ("Games/Ocean Odyssey/Game data.pak", 18 * GB),
+    ("Apps/Video Editor/Effects library.pak", 3200 * MB),
+    ("Apps/Video Editor/Program.bin", 1900 * MB),
+    ("Apps/Photo Studio/Brushes and filters.pak", 2400 * MB),
+    ("Apps/Photo Studio/Program.bin", 1100 * MB),
+    ("Apps/Music Maker/Sound library.pak", 4300 * MB),
+    ("Apps/Office/Program.bin", 2600 * MB),
+    ("Videos/Wedding video.mp4", 16 * GB),
+    ("Videos/Goa holiday.mp4", 8600 * MB),
+    ("Videos/Birthday party.mov", 5100 * MB),
+    ("Videos/Graduation day.mov", 3600 * MB),
+    ("Backups/Old laptop backup.zip", 28 * GB),
+    ("Backups/Photo archive 2023.zip", 12 * GB),
+    ("Downloads/Windows 11 installer.iso", 5800 * MB),
+    ("Downloads/Film - The Long Road.mp4", 3350 * MB),
+];
+
+/// Named family videos (sparse).
+const FAMILY: &[&str] = &[
+    "Sunday lunch",
+    "First steps",
+    "Beach day",
+    "School play",
+    "Grandma's birthday",
+    "Road trip",
+    "Snow day",
+    "New house",
+    "Diwali night",
+    "Football final",
+];
+
+/// (folder, count, name prefix, extension, min, max), sparse.
 const SERIES: &[(&str, u32, &str, &str, u64, u64)] = &[
-    (
-        "Videos/Holiday 2025",
-        7,
-        "Coastline",
-        "mp4",
-        900 * MB,
-        4800 * MB,
-    ),
-    ("Videos/Family", 9, "Family", "mov", 400 * MB, 2600 * MB),
-    (
-        "Videos/Screen recordings",
-        14,
-        "Recording",
-        "mp4",
-        80 * MB,
-        900 * MB,
-    ),
-    ("Photos/2024", 420, "IMG", "jpg", 2 * MB, 9 * MB),
-    ("Photos/2025", 610, "IMG", "jpg", 2 * MB, 9 * MB),
-    ("Photos/RAW", 160, "DSC", "cr3", 22 * MB, 31 * MB),
-    (
-        "Projects/storefront/src",
-        120,
-        "module",
-        "ts",
-        2 * KB,
-        40 * KB,
-    ),
-    (
-        "Projects/mobile-app/build/outputs",
-        6,
-        "app-release",
-        "apk",
-        60 * MB,
-        140 * MB,
-    ),
-    (
-        "Projects/mobile-app/.gradle/caches",
-        300,
-        "cache",
-        "bin",
-        MB,
-        12 * MB,
-    ),
-    ("Projects/design", 14, "Concept", "psd", 180 * MB, 900 * MB),
+    ("Photos/Holiday 2024", 420, "IMG", "jpg", 3 * MB, 9 * MB),
+    ("Photos/Family 2025", 610, "IMG", "jpg", 3 * MB, 9 * MB),
+    ("Photos/Wedding", 380, "IMG", "jpg", 4 * MB, 12 * MB),
     ("Music/Library", 380, "Track", "mp3", 4 * MB, 12 * MB),
     ("Documents/Work", 260, "Report", "docx", 40 * KB, 3 * MB),
     ("Documents/Taxes", 40, "Statement", "pdf", 200 * KB, 4 * MB),
-    ("Downloads", 18, "Setup", "exe", 80 * MB, 1200 * MB),
-    ("Downloads", 34, "Download", "pdf", MB, 40 * MB),
+    ("Documents/School", 80, "Notes", "pdf", 100 * KB, 2 * MB),
 ];
 
-/// Individually named large files.
-const SINGLES: &[(&str, u64)] = &[
-    ("Virtual Machines/ubuntu-24.04.vhdx", 26 * GB),
-    ("Virtual Machines/windows-dev.vhdx", 38 * GB),
-    ("AI models/llama-3.1-8b-q4.gguf", 4900 * MB),
-    ("AI models/mistral-7b-instruct.gguf", 4400 * MB),
-    ("AI models/whisper-large-v3.bin", 3100 * MB),
-    ("Backups/phone-backup-2025-08.zip", 21 * GB),
-    ("Backups/photos-archive-2023.zip", 14 * GB),
-    ("Downloads/ubuntu-24.04-desktop.iso", 5800 * MB),
-];
-
-/// Writes the demonstration library into `root`, which must not exist or be
+/// Writes the demonstration computer into `root`, which must not exist or be
 /// empty. Returns exact totals.
 pub fn generate_demo(root: &Path) -> io::Result<GenStats> {
     if root.exists() && fs::read_dir(root)?.next().is_some() {
@@ -98,8 +89,10 @@ pub fn generate_demo(root: &Path) -> io::Result<GenStats> {
         logical_bytes: 29,
     };
     let mut rng = Rng::new(0x0DE5_10DE);
+    let now = SystemTime::now();
+    let days_ago = |d: u64| now - Duration::from_secs(d * 86_400);
 
-    let add = |rel: &str, size: u64, stats: &mut GenStats| -> io::Result<()> {
+    let sparse = |rel: &str, size: u64, stats: &mut GenStats| -> io::Result<()> {
         let p = root.join(rel);
         if let Some(parent) = p.parent() {
             fs::create_dir_all(parent)?;
@@ -109,88 +102,153 @@ pub fn generate_demo(root: &Path) -> io::Result<GenStats> {
         stats.logical_bytes += size;
         Ok(())
     };
-
-    for &(dir, count, prefix, ext, min, max) in SERIES {
-        for n in 1..=count {
-            let size = rng.range(min, max);
-            add(&format!("{dir}/{prefix}_{n:04}.{ext}"), size, &mut stats)?;
+    // Real content; `age` in days sets when it last changed.
+    let real = |rel: &str, size: u64, age: Option<u64>, stats: &mut GenStats| -> io::Result<()> {
+        let p = crate::dense_file(root, rel, size as usize)?;
+        if let Some(d) = age {
+            fs::File::options()
+                .write(true)
+                .open(&p)?
+                .set_modified(days_ago(d))?;
         }
-    }
-    for &(rel, size) in SINGLES {
-        add(rel, size, &mut stats)?;
-    }
-
-    // Real (not sparse) content where Tessera judges by the space actually
-    // used: Smart Scan suggests developer folders that sit beside their
-    // evidence (package.json, Cargo.toml, pyvenv.cfg), and Duplicates
-    // compares the contents of real files. About 370 MB on disk.
-    let dense = |rel: &str, size: u64, stats: &mut GenStats| -> io::Result<()> {
-        crate::dense_file(root, rel, size as usize)?;
         stats.files += 1;
         stats.logical_bytes += size;
         Ok(())
     };
-    dense("Projects/storefront/package.json", 1_200, &mut stats)?;
-    dense(
-        "Projects/storefront/package-lock.json",
-        180 * KB,
-        &mut stats,
-    )?;
-    for pkg in 0..60 {
-        for f in 0..24 {
-            let size = rng.range(KB, 90 * KB);
-            dense(
-                &format!("Projects/storefront/node_modules/package-{pkg:02}/lib/file-{f:02}.js"),
+
+    for &(rel, size) in SINGLES {
+        sparse(rel, size, &mut stats)?;
+    }
+    for name in FAMILY {
+        let size = rng.range(400 * MB, 1600 * MB);
+        sparse(&format!("Videos/Family/{name}.mov"), size, &mut stats)?;
+    }
+    for &(dir, count, prefix, ext, min, max) in SERIES {
+        for n in 1..=count {
+            let size = rng.range(min, max);
+            sparse(&format!("{dir}/{prefix}_{n:04}.{ext}"), size, &mut stats)?;
+        }
+    }
+
+    // Browser caches (Smart Scan: Browser cache).
+    let chrome = "AppData/Local/Google/Chrome/User Data/Default";
+    for (folder, files, min, max) in [
+        ("Cache/Cache_Data", 150, MB, 4 * MB),
+        ("Code Cache/js", 60, MB, 3 * MB),
+        ("GPUCache", 20, MB, 4 * MB),
+    ] {
+        for n in 0..files {
+            let size = rng.range(min, max);
+            real(
+                &format!("{chrome}/{folder}/f_{n:06x}"),
                 size,
+                None,
                 &mut stats,
             )?;
         }
     }
-    for n in 0..18 {
-        let size = rng.range(400 * KB, 2600 * KB);
-        dense(
-            &format!("Projects/storefront/.next/cache/webpack/chunk-{n:02}.pack"),
+    for n in 0..90 {
+        let size = rng.range(MB, 4 * MB);
+        real(
+            &format!("AppData/Local/Microsoft/Edge/User Data/Default/Cache/Cache_Data/f_{n:06x}"),
             size,
+            None,
             &mut stats,
         )?;
     }
-    dense("Projects/engine/Cargo.toml", 640, &mut stats)?;
-    dense("Projects/engine/target/CACHEDIR.TAG", 177, &mut stats)?;
-    for n in 0..36 {
-        let size = rng.range(300 * KB, 3 * MB);
-        dense(
-            &format!("Projects/engine/target/debug/deps/libengine-{n:02}.rlib"),
+    // Temporary files, untouched for weeks (Smart Scan: Temporary files).
+    for n in 0..120 {
+        let size = rng.range(512 * KB, 5 * MB);
+        real(
+            &format!("AppData/Local/Temp/tmp{:04X}.tmp", 0x1A2B + n),
             size,
+            Some(20 + n % 30),
             &mut stats,
         )?;
     }
-    dense("Projects/notebooks/requirements.txt", 420, &mut stats)?;
-    dense("Projects/notebooks/.venv/pyvenv.cfg", 140, &mut stats)?;
-    for n in 0..160 {
-        let size = rng.range(40 * KB, 400 * KB);
-        dense(
+    // Crash reports.
+    for (n, app) in [
+        "Video Editor",
+        "Photo Studio",
+        "Music Maker",
+        "Galaxy Racers",
+        "Video Editor",
+        "Office",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let size = rng.range(10 * MB, 25 * MB);
+        real(
+            &format!("AppData/Local/CrashDumps/{app}.exe.{}.dmp", 4100 + n * 37),
+            size,
+            Some(40),
+            &mut stats,
+        )?;
+    }
+    // A phone backup.
+    for n in 0..250 {
+        let size = rng.range(MB, 3 * MB);
+        real(
             &format!(
-                "Projects/notebooks/.venv/Lib/site-packages/package-{:02}/module-{n:03}.py",
-                n / 8
+                "AppData/Roaming/Apple Computer/MobileSync/Backup/Alex's iPhone/{:02x}/{n:08x}",
+                n % 64
             ),
             size,
+            Some(210),
             &mut stats,
         )?;
     }
-    // Exact copies kept in several places.
-    for rel in [
-        "Videos/Holiday 2025/holiday final.mp4",
-        "Downloads/holiday final.mp4",
-        "Backups/Old laptop/holiday final.mp4",
+    // Installers downloaded months ago (Smart Scan: Old installer).
+    for (name, size, age) in [
+        ("Video Editor Setup.exe", 180 * MB, 140),
+        ("Photo Studio Setup.exe", 145 * MB, 95),
+        ("Music Maker Installer.msi", 120 * MB, 200),
+        ("Printer driver.exe", 60 * MB, 320),
     ] {
-        dense(rel, 48 * MB, &mut stats)?;
+        real(&format!("Downloads/{name}"), size, Some(age), &mut stats)?;
+    }
+    // Screen recordings (Smart Scan: Screen recording).
+    for (name, size) in [
+        ("Screen recording - team meeting.mp4", 140 * MB),
+        ("Screen recording - game highlights.mp4", 90 * MB),
+        ("Screen recording - how-to video.mp4", 70 * MB),
+    ] {
+        real(
+            &format!("Videos/Captures/{name}"),
+            size,
+            Some(60),
+            &mut stats,
+        )?;
+    }
+    // Large files nobody has opened in years (Smart Scan: Large old file).
+    real(
+        "Documents/Old projects/Conference talk 2023.mp4",
+        320 * MB,
+        Some(800),
+        &mut stats,
+    )?;
+    real(
+        "Documents/Old projects/Holiday slideshow 2022.mp4",
+        280 * MB,
+        Some(1100),
+        &mut stats,
+    )?;
+    // Exact copies kept in several places (Duplicates). Every other real or
+    // sparse size above is different, so nothing else counts as a copy.
+    for rel in [
+        "Videos/Goa holiday - highlights.mp4",
+        "Downloads/Goa holiday - highlights.mp4",
+        "Documents/Shared/Goa holiday - highlights.mp4",
+    ] {
+        real(rel, 64 * MB, Some(30), &mut stats)?;
     }
     for rel in [
-        "Photos/2025/sunset at the lake.jpg",
-        "Downloads/sunset at the lake.jpg",
-        "Documents/Shared/sunset at the lake.jpg",
+        "Photos/Holiday 2024/Sunset at the beach.jpg",
+        "Downloads/Sunset at the beach.jpg",
+        "Documents/Shared/Sunset at the beach.jpg",
     ] {
-        dense(rel, 9 * MB, &mut stats)?;
+        real(rel, 8 * MB, Some(300), &mut stats)?;
     }
 
     stats.dirs = count_dirs(root)?;

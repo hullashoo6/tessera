@@ -6,11 +6,11 @@ export const faqs: [string, string][] = [
   ],
   [
     'Which computers does it run on?',
-    'Windows 11 (64-bit) and Macs. One Mac download works on both Apple silicon and Intel Macs. Each version is listed in the download section only after it passes testing on real machines.',
+    'Windows 11 (64-bit), and Macs with macOS 12 or later. One Mac download works on both Apple silicon and Intel Macs. Windows and Mac have the same features, and one Pro licence works on either.',
   ],
   [
     'What is free, and what does Pro add?',
-    'Free, with no limits: scanning, the storage map, largest files, search, Smart Scan suggestions, the duplicate finder, the list of installed apps and Restore. Tessera Pro adds the actions: cleaning up to the Recycle Bin or Trash in a few clicks, freeing space from OneDrive and iCloud files, uninstalling apps from Tessera, CSV reports and storage history.',
+    'Free, with no limits: scanning, the storage map, largest files, search, Smart Scan suggestions, the duplicate finder, the list of installed apps and Restore. Tessera Pro adds the actions: cleaning up to the Recycle Bin or Trash in a few clicks, freeing space from OneDrive and iCloud files, uninstalling apps from Tessera, storage history and reports.',
   ],
   [
     'Is my data private?',
@@ -22,7 +22,7 @@ export const faqs: [string, string][] = [
   ],
   [
     'Can Tessera delete my files?',
-    'Never by itself. You add items to a cleanup list and review it first, and Tessera then moves them to the Recycle Bin or Trash. It deletes something permanently only if you choose Delete permanently and confirm a separate warning. System folders are protected.',
+    'Never by itself. You add items to a cleanup list and review it first, and Tessera then moves them to the Recycle Bin or Trash. Anything too big for the Recycle Bin is left where it is, never deleted in its place. Tessera deletes something permanently only if you choose Delete permanently and confirm a separate warning. System folders are protected.',
   ],
   [
     'Can I undo a cleanup?',
@@ -54,6 +54,18 @@ export const faqs: [string, string][] = [
   ],
   [
     'How do I install and uninstall it?',
-    'Run the installer for your system. To uninstall on Windows, use Settings > Apps; on a Mac, move Tessera from Applications to the Trash. Your files are not affected either way.',
+    'On Windows, run the installer; on a Mac, open the download and drag Tessera to Applications. To uninstall on Windows, use Settings > Apps; on a Mac, move Tessera from Applications to the Trash. Your files are not affected either way.',
   ],
 ]
+
+/** The questions shown on the home page; the Help page shows them all. */
+export const homeFaqs = faqs.filter(([q]) =>
+  [
+    'How does Tessera work?',
+    'Which computers does it run on?',
+    'What is free, and what does Pro add?',
+    'Is my data private?',
+    'Can I undo a cleanup?',
+    'Can I get a refund?',
+  ].includes(q),
+)

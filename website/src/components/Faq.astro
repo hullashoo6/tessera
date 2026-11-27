@@ -1,10 +1,15 @@
 ---
 import { faqs } from '../data/faq'
 
+interface Props {
+  /** Which questions to show; all of them by default. */
+  items?: [string, string][]
+}
+const { items = faqs } = Astro.props
 ---
 
 <div class="faq">
-  {faqs.map(([q, a]) => (
+  {items.map(([q, a]) => (
     <details>
       <summary>{q}</summary>
       <p>{a}</p>

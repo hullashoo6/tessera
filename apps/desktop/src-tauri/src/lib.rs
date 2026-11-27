@@ -500,14 +500,20 @@ fn smart_scan(state: State<'_, AppState>, scan_id: u64) -> CmdResult<Vec<Suggest
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
-    let found = tessera_insights::analyse(
-        &tree,
-        &tessera_insights::Places {
-            cloud_roots: tessera_cleanup::cloud::sync_roots(),
-            ..tessera_insights::Places::for_this_user()
-        },
-        now,
-    );
+    #[cfg_attr(not(debug_assertions), allow(unused_mut))]
+    let mut places = tessera_insights::Places {
+        cloud_roots: tessera_cleanup::cloud::sync_roots(),
+        ..tessera_insights::Places::for_this_user()
+    };
+    // Development builds only (screenshots): treat a demonstration folder as
+    // the home folder, so Smart Scan finds its caches and downloads.
+    #[cfg(debug_assertions)]
+    if let Some(home) = std::env::var_os("TESSERA_DEV_HOME").map(PathBuf::from) {
+        places.temp = Some(home.join("AppData/Local/Temp"));
+        places.local_app_data = Some(home.join("AppData/Local"));
+        places.home = Some(home);
+    }
+    let found = tessera_insights::analyse(&tree, &places, now);
     Ok(found
         .into_iter()
         .take(2000)

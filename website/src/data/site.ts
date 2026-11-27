@@ -31,28 +31,21 @@ export interface Feature {
 
 export const freeFeatures: Feature[] = [
   { name: 'Unlimited scans of any drive or folder', status: 'available' },
-  { name: 'Interactive storage map', status: 'available' },
-  { name: 'Largest files, ranked', status: 'available' },
-  { name: 'Open, reveal and copy the path of any item', status: 'available' },
-  { name: 'Search and filters', status: 'available' },
-  { name: 'Smart Scan suggestions and duplicate finder', status: 'available' },
-  { name: 'Scan any folder from its right-click menu, or drop it on the window', status: 'available' },
+  { name: 'The storage map, largest files and search', status: 'available' },
+  { name: 'Smart Scan suggestions, each with its reason', status: 'available' },
+  { name: 'An exact duplicate finder', status: 'available' },
 ]
 
 export const proFeatures: Feature[] = [
   { name: 'Everything in Free', status: 'available' },
-  { name: 'Review-first cleanup to the Recycle Bin or Trash', status: 'available' },
-  { name: 'Clean up Smart Scan suggestions and duplicates in a few clicks', status: 'available' },
-  { name: 'Uninstall apps, including leftover files on Mac and Store apps on Windows', status: 'available' },
-  { name: 'Put back anything Tessera moved, from inside the app', status: 'available' },
-  { name: 'Plain answers when a file is in use, with Try again and one-click Undo', status: 'available' },
-  { name: 'Free up space from OneDrive and iCloud files, keeping them in the cloud', status: 'available' },
-  { name: 'Storage history and growth between scans', status: 'in development' },
-  { name: 'Exportable reports (CSV)', status: 'available' },
-  { name: 'Printable reports you can save as PDF', status: 'available' },
+  { name: 'One-step cleanup to the Recycle Bin or Trash, with Undo', status: 'available' },
+  { name: 'Plain answers when something can’t be removed', status: 'available' },
+  { name: 'Uninstall apps, with their leftover files', status: 'available' },
+  { name: 'Free up space from OneDrive and iCloud, keeping files in the cloud', status: 'available' },
+  { name: 'Storage history and printable reports', status: 'available' },
 ]
 
-export type PlatformId = 'windows-x64' | 'mac-arm64' | 'mac-x64'
+export type PlatformId = 'windows-x64' | 'mac-universal'
 
 export interface Platform {
   id: PlatformId
@@ -63,9 +56,8 @@ export interface Platform {
 }
 
 export const platforms: Platform[] = [
-  { id: 'windows-x64', label: 'Windows', requirement: 'Windows 11, 64-bit', state: 'In testing' },
-  { id: 'mac-arm64', label: 'Mac with Apple silicon', requirement: 'macOS version to be confirmed', state: 'In testing' },
-  { id: 'mac-x64', label: 'Mac with Intel', requirement: 'Not yet verified', state: 'Planned' },
+  { id: 'windows-x64', label: 'Windows', requirement: 'Windows 11, 64-bit', state: 'Available soon' },
+  { id: 'mac-universal', label: 'Mac', requirement: 'macOS 12 or later, Apple silicon and Intel', state: 'Available soon' },
 ]
 
 export function formatPrice(): string {
