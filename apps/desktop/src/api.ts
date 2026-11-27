@@ -145,20 +145,75 @@ export interface ReviewItem {
 export interface Review {
   reviewId: number
   items: ReviewItem[]
-  rejected: { path: string; reason: string }[]
+  rejected: { id: number; path: string; reason: string }[]
   merged: number
   totalLogical: number
   totalAllocated: number
 }
 
+export type FailKind =
+  | 'inUse'
+  | 'permission'
+  | 'tooLarge'
+  | 'changed'
+  | 'protected'
+  | 'pathTooLong'
+  | 'cloudOffline'
+  | 'locked'
+  | 'other'
+
+export interface Failure {
+  kind: FailKind
+  /** The system's own wording, for small print. */
+  detail: string
+  /** Apps holding it open, when Windows can tell. */
+  apps: string[]
+  /** For a folder: a few files inside it that are in use. */
+  inUseFiles: string[]
+}
+
+export interface FailedItem {
+  id: number
+  path: string
+  logical: number
+  allocated: number
+  failure: Failure
+}
+
 export interface CleanupReport {
+  runId: number
+  method: 'trash' | 'permanent'
   moved: number
+  deleted: number
+  /** Already gone before Tessera got to them. */
+  gone: number
   failed: number
-  movedLogical: number
-  movedAllocated: number
-  outcomes: { id: number; path: string; logical: number; allocated: number; ok: boolean; reason: string | null }[]
+  removedLogical: number
+  removedAllocated: number
+  stopped: boolean
+  notStarted: number
+  /** No longer in the cleanup list: moved, deleted or already gone. */
+  doneIds: number[]
+  failures: FailedItem[]
   freeBefore: number | null
   freeAfter: number | null
+}
+
+export interface CleanupProgress {
+  done: number
+  total: number
+  bytes: number
+}
+
+export interface PartialResult {
+  checked: boolean
+  removed: number
+  removedLogical: number
+  removedAllocated: number
+  failed: number
+  inUseCount: number
+  inUseFiles: string[]
+  apps: string[]
 }
 
 /** Settings > Background (kept by the backend, which needs them before the window opens). */
@@ -202,7 +257,7 @@ export interface MovedItem {
   name: string
   bytes: number
   movedAt: number
-  state: 'inBin' | 'restored' | 'gone' | 'finder'
+  state: 'inBin' | 'restored' | 'gone' | 'finder' | 'deleted'
 }
 
 export interface AppItem {
@@ -241,7 +296,7 @@ export interface Entitlement {
   lastValidated: number | null
 }
 
-export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' }
+export type ScanTarget = { kind: 'volume'; mount: string } | { kind: 'home' } | { kind: 'folder' } | { kind: 'again' }
 
 export const api = {
   /** `storeManaged`: installed from the Microsoft Store, which handles updates. */
@@ -285,7 +340,17 @@ export const api = {
   onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>
     listen<number>('dupes-progress', (e) => cb(e.payload)),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
-  confirmCleanup: (reviewId: number) => invoke<CleanupReport>('confirm_cleanup', { reviewId }),
+  /** Removes the chosen reviewed items: to the Recycle Bin / Trash, or permanently once confirmed. */
+  confirmCleanup: (reviewId: number, ids: number[] | null, permanent: boolean) =>
+    invoke<CleanupReport>('confirm_cleanup', { reviewId, ids, permanent }),
+  stopCleanup: () => invoke<void>('stop_cleanup'),
+  undoCleanup: (runId: number) =>
+    invoke<{ restored: number; failed: { path: string; reason: string }[] }>('undo_cleanup', { runId }),
+  cleanupExceptInUse: (scanId: number, id: number) => invoke<PartialResult>('cleanup_except_in_use', { scanId, id }),
+  openRecycleBin: () => invoke<void>('open_recycle_bin'),
+  revealInScan: (scanId: number, path: string) => invoke<void>('reveal_in_scan', { scanId, path }),
+  onCleanupProgress: (cb: (p: CleanupProgress) => void): Promise<UnlistenFn> =>
+    listen<CleanupProgress>('cleanup-progress', (e) => cb(e.payload)),
   licenseStatus: () => invoke<Entitlement>('license_status'),
   refreshLicense: (force = false) => invoke<Entitlement>('refresh_license', { force }),
   activateLicense: (key: string) => invoke<Entitlement>('activate_license', { key }),

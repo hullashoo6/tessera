@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, errorText, type Crumb, type Entitlement, type ScanTarget, type Status, type Tile, type Volume } from './api'
 import { Apps } from './components/Apps'
 import { Cleanup } from './components/Cleanup'
@@ -68,6 +68,12 @@ export function App() {
       for (const id of ids) next.add(id)
       return next
     })
+  const unmarkMany = (ids: number[]) =>
+    setMarked((m) => {
+      const next = new Set(m)
+      for (const id of ids) next.delete(id)
+      return next
+    })
   const toggleMark = (id: number) =>
     setMarked((m) => {
       const next = new Set(m)
@@ -75,6 +81,7 @@ export function App() {
       else next.add(id)
       return next
     })
+  const markedList = useMemo(() => [...marked], [marked])
   const lastRefresh = useRef(0)
 
   const scanId = status?.scanId ?? null
@@ -580,23 +587,26 @@ export function App() {
           {view === 'cleanup' && scanId !== null && (
             <Cleanup
               scanId={scanId}
-              marked={[...marked]}
+              marked={markedList}
               metric={settings.metric}
               os={info.os}
               pro={entitlement?.pro ?? false}
               onOpenSettings={() => setView('settings')}
-              onUnmark={toggleMark}
+              onUnmark={unmarkMany}
               onFinished={(r) => {
-                setMarked((m) => {
-                  const next = new Set(m)
-                  for (const o of r.outcomes) if (o.ok) next.delete(o.id)
-                  return next
-                })
+                unmarkMany(r.doneIds)
                 setSelected(null)
                 setVersion((v) => v + 1)
                 refreshDrives()
                 api.scanStatus().then(setStatus).catch((e) => onError(errorText(e)))
               }}
+              onChanged={() => {
+                setVersion((v) => v + 1)
+                refreshDrives()
+                api.scanStatus().then(setStatus).catch((e) => onError(errorText(e)))
+              }}
+              onRescan={() => startScan({ kind: 'again' })}
+              onDone={setToast}
               onError={onError}
             />
           )}

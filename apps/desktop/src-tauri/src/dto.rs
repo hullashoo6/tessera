@@ -22,6 +22,8 @@ pub enum ScanTarget {
     Volume { mount: String },
     Home,
     Folder,
+    /// The location of the current scan, again (for example after Undo).
+    Again,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -438,6 +440,9 @@ pub struct ReviewItemDto {
 
 #[derive(Serialize)]
 pub struct RejectedDto {
+    /// The chosen item (review only), so it can be taken off the list.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<NodeId>,
     pub path: String,
     pub reason: String,
 }
@@ -478,6 +483,7 @@ impl ReviewDto {
                 .rejected
                 .iter()
                 .map(|r| RejectedDto {
+                    id: Some(r.id),
                     path: r.path.to_string_lossy().into_owned(),
                     reason: r.reason.clone(),
                 })
@@ -489,26 +495,108 @@ impl ReviewDto {
     }
 }
 
+/// Why an item was left in place, for the interface to explain.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FailureDto {
+    /// inUse, permission, tooLarge, changed, protected, pathTooLong,
+    /// cloudOffline, locked, other
+    pub kind: &'static str,
+    /// The system's own wording (shown in small print).
+    pub detail: String,
+    /// Apps holding it open, when Windows can tell.
+    pub apps: Vec<String>,
+    /// For a folder: a few of the files inside it that are in use.
+    pub in_use_files: Vec<String>,
+}
+
+impl From<&tessera_cleanup::Failure> for FailureDto {
+    fn from(f: &tessera_cleanup::Failure) -> Self {
+        use tessera_cleanup::FailKind as K;
+        FailureDto {
+            kind: match f.kind {
+                K::InUse => "inUse",
+                K::Permission => "permission",
+                K::TooLargeForBin => "tooLarge",
+                K::Changed => "changed",
+                K::Protected => "protected",
+                K::PathTooLong => "pathTooLong",
+                K::CloudOffline => "cloudOffline",
+                K::Locked => "locked",
+                K::Other => "other",
+            },
+            detail: f.detail.clone(),
+            apps: f.apps.clone(),
+            in_use_files: f
+                .in_use_files
+                .iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect(),
+        }
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OutcomeDto {
+pub struct FailedDto {
     pub id: NodeId,
     pub path: String,
     pub logical: u64,
     pub allocated: u64,
-    pub ok: bool,
-    pub reason: Option<String>,
+    pub failure: FailureDto,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupReportDto {
+    /// Identifies this cleanup for Undo.
+    pub run_id: u64,
+    /// "trash" or "permanent".
+    pub method: &'static str,
     pub moved: u32,
+    pub deleted: u32,
+    /// Already gone before Tessera got to them (nothing to do).
+    pub gone: u32,
     pub failed: u32,
-    pub moved_logical: u64,
-    pub moved_allocated: u64,
-    pub outcomes: Vec<OutcomeDto>,
-    /// Free space reported by the OS before and after the move.
+    pub removed_logical: u64,
+    pub removed_allocated: u64,
+    /// Stop was pressed; `not_started` items were left untouched.
+    pub stopped: bool,
+    pub not_started: u32,
+    /// Items no longer in the list: moved, deleted or already gone.
+    pub done_ids: Vec<NodeId>,
+    pub failures: Vec<FailedDto>,
+    /// Free space reported by the OS before and after.
     pub free_before: Option<u64>,
     pub free_after: Option<u64>,
+}
+
+#[derive(Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupProgressDto {
+    pub done: u32,
+    pub total: u32,
+    pub bytes: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UndoDto {
+    pub restored: u32,
+    pub failed: Vec<RejectedDto>,
+}
+
+/// "Move everything except the files in use" for one folder.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialDto {
+    /// False when the folder was too big to check in time (nothing moved).
+    pub checked: bool,
+    pub removed: u32,
+    pub removed_logical: u64,
+    pub removed_allocated: u64,
+    pub failed: u32,
+    pub in_use_count: u32,
+    pub in_use_files: Vec<String>,
+    pub apps: Vec<String>,
 }

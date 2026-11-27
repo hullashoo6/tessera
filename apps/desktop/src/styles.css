@@ -353,6 +353,55 @@ button, input, select { font: inherit; color: inherit; }
 .review-list .btn-quiet { min-width: 116px; }
 .safety-staysInCloud { background: var(--accent-soft); color: var(--accent); }
 
+/* Cleanup list: built for thousands of items. */
+.cleanup .muted { color: var(--ink-2); }
+.cleanup-page { display: flex; flex-direction: column; min-height: 100%; }
+.cleanup-page .lede { margin-bottom: 16px; }
+.clean-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-bottom: none; border-radius: var(--r-l) var(--r-l) 0 0; background: var(--surface); }
+.clean-all { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.clean-all input, .clean-row input[type='checkbox'], .confirm-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.clean-filter { flex: 0 1 220px; min-width: 140px; height: 30px; }
+.clean-toolbar select { height: 30px; padding: 0 8px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+.clean-hint { margin: 6px 0; font-size: var(--t-meta); }
+.clean-list { height: min(52vh, 560px); min-height: 200px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 0 0 var(--r-l) var(--r-l); background: var(--surface); }
+.clean-list .vlist { flex: 1; }
+.clean-row { position: absolute; left: 0; right: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 0 10px 0 12px; border-bottom: 1px solid var(--line); cursor: default; }
+.clean-row:hover { background: var(--sunken); }
+.clean-row[aria-selected='true'] { background: var(--accent-soft); }
+.clean-row .review-name, .clean-row .review-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kind-tag, .clean-warn { margin-left: 8px; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 9px; background: var(--sunken); color: var(--ink-2); }
+.clean-warn { background: var(--notice-soft); color: var(--ink); }
+.btn-x { width: 28px; min-width: 28px; padding: 0; font-size: 16px; line-height: 1; }
+.rejected { margin-top: 12px; }
+.rejected .review-list { margin-top: 6px; }
+.clean-footer { position: sticky; bottom: 0; margin-top: 16px; padding: 12px 0 4px; background: var(--bg); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.clean-footer p { margin: 0; flex: 1 1 260px; font-size: var(--t-meta); }
+.clean-footer .actions { margin-top: 0; }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: var(--surface); font-weight: 600; }
+.btn-danger:hover { filter: brightness(1.08); }
+.btn-danger-quiet { border-color: transparent; background: transparent; color: var(--danger); }
+.btn-danger-quiet:hover { background: var(--danger-soft); border-color: transparent; }
+.confirm-check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-weight: 600; }
+.meter { height: 10px; margin: 18px 0 10px; border-radius: 5px; background: var(--sunken); overflow: hidden; border: 1px solid var(--line); }
+.meter-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s ease; }
+.result-actions { margin: -14px 0 18px; }
+.notice { padding: 10px 12px; border-radius: var(--r); background: var(--accent-soft); color: var(--ink); }
+.inline-btn { height: 24px; padding: 0 8px; color: var(--accent); font-weight: 600; }
+.fail-group { margin: 0 0 18px; }
+.fail-group h3 { margin: 0 0 4px; font-size: var(--t-title); }
+.fail-group > p { margin: 0 0 8px; color: var(--ink-2); max-width: 70ch; }
+.fail-group .review-list li { grid-template-columns: minmax(0, 1fr) auto auto; }
+.row-actions { display: inline-flex; gap: 4px; }
+.row-actions .btn-quiet { min-width: 0; }
+@media (forced-colors: active) {
+  .btn-danger, .btn-danger-quiet { border: 1px solid ButtonText; }
+  .meter-fill { background: Highlight; }
+  .clean-row[aria-selected='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill { transition: none; }
+}
+
 /* ---------- Settings checkboxes ---------- */
 .checks { display: grid; gap: 8px; margin-top: 4px; }
 .checks label { display: flex; align-items: center; gap: 8px; cursor: pointer; }

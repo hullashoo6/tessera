@@ -52,7 +52,17 @@ struct AppState {
     scan: Mutex<Option<Arc<ActiveScan>>>,
     review: Mutex<Option<PendingReview>>,
     dupes_cancel: Mutex<Option<Arc<std::sync::atomic::AtomicBool>>>,
+    /// Stop button of the cleanup that is running.
+    cleanup_stop: Arc<std::sync::atomic::AtomicBool>,
+    /// What the last cleanup moved to the Recycle Bin / Trash, for Undo.
+    last_run: Mutex<Option<LastRun>>,
     next_id: AtomicU64,
+}
+
+struct LastRun {
+    run_id: u64,
+    /// (original place, where it sits in the Recycle Bin / Trash)
+    moved: Vec<(PathBuf, PathBuf)>,
 }
 
 type CmdResult<T> = Result<T, String>;
@@ -109,6 +119,13 @@ async fn start_scan(
             .path()
             .home_dir()
             .map_err(|_| "Your home folder could not be found.")?,
+        ScanTarget::Again => state
+            .scan
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(|s| s.root.clone())
+            .ok_or("There is no scan to repeat.")?,
         ScanTarget::Folder => {
             let handle = app.clone();
             let picked = tauri::async_runtime::spawn_blocking(move || {
@@ -629,7 +646,8 @@ struct MovedDto {
     name: String,
     bytes: u64,
     moved_at: i64,
-    /// "inBin", "restored", "gone" (no longer in the bin) or "finder" (macOS).
+    /// "inBin", "restored", "gone" (no longer in the bin), "finder" (macOS,
+    /// put back from the Trash in Finder) or "deleted" (deleted permanently).
     state: &'static str,
 }
 
@@ -651,7 +669,9 @@ fn moved_list(app: &AppHandle) -> Vec<MovedDto> {
                 .unwrap_or_default(),
             bytes: m.bytes,
             moved_at: m.moved_at,
-            state: if m.restored {
+            state: if m.deleted {
+                "deleted"
+            } else if m.restored {
                 "restored"
             } else {
                 match &m.recycled {
@@ -817,6 +837,7 @@ async fn uninstall_app(app: AppHandle, id: String) -> CmdResult<UninstallDto> {
                     bytes,
                     moved_at: unix_now(),
                     restored: false,
+                    deleted: false,
                 }],
             );
             UninstallDto {
@@ -855,6 +876,7 @@ async fn move_leftovers(app: AppHandle, bundle_id: String) -> CmdResult<(usize, 
                     bytes: 0,
                     moved_at: unix_now(),
                     restored: false,
+                    deleted: false,
                 });
             }
         }
@@ -1120,6 +1142,11 @@ async fn confirm_cleanup(
     app: AppHandle,
     state: State<'_, AppState>,
     review_id: u64,
+    // The reviewed items to remove (all of them when absent).
+    ids: Option<Vec<NodeId>>,
+    // Delete permanently instead of moving to the Recycle Bin / Trash. Only
+    // sent after the person confirmed the separate permanent warning.
+    permanent: bool,
 ) -> CmdResult<CleanupReportDto> {
     if !is_pro() {
         return Err(
@@ -1139,67 +1166,324 @@ async fn confirm_cleanup(
     let scan = active(&state, pending.scan_id)?;
     let root = scan.root.clone();
     let plan = pending.plan;
+    let method = if permanent {
+        tessera_cleanup::Method::Permanent
+    } else {
+        tessera_cleanup::Method::Trash
+    };
+    let only: Option<std::collections::HashSet<NodeId>> = ids.map(|v| v.into_iter().collect());
+    let stop = state.cleanup_stop.clone();
+    stop.store(false, Ordering::Relaxed);
+    let progress_app = app.clone();
     let (report, before, after) = tauri::async_runtime::spawn_blocking(move || {
         let before = volume_space(&root).ok().map(|s| s.available);
         let protection = tessera_cleanup::Protection::for_this_system();
-        let report = tessera_cleanup::execute(&plan, &protection, &mut |p| {
-            tessera_cleanup::move_to_trash(p)
-        });
+        let opts = tessera_cleanup::RunOptions {
+            only: only.as_ref(),
+            method,
+            batch: 25,
+            stop: Some(&stop),
+        };
+        let report = tessera_cleanup::run(
+            &plan,
+            &protection,
+            &opts,
+            &mut |p| {
+                let _ = progress_app.emit(
+                    "cleanup-progress",
+                    dto::CleanupProgressDto {
+                        done: p.done as u32,
+                        total: p.total as u32,
+                        bytes: p.bytes,
+                    },
+                );
+            },
+            &mut tessera_cleanup::system_remover(method),
+        );
         let after = volume_space(&root).ok().map(|s| s.available);
         (report, before, after)
     })
     .await
     .map_err(|_| "The cleanup stopped unexpectedly. Check the Recycle Bin before trying again.")?;
-    // Remember what was moved so it can be put back from the Restore page.
-    if let Some(file) = history_file(&app) {
-        let now = unix_now();
-        let _ = tessera_cleanup::history::append(
-            &file,
-            report
-                .outcomes
-                .iter()
-                .filter(|o| o.result.is_ok())
-                .map(|o| tessera_cleanup::history::Moved {
-                    original: o.path.clone(),
-                    recycled: o.recycled.clone(),
-                    bytes: o.allocated,
-                    moved_at: now,
-                    restored: false,
-                }),
-            now,
-        );
-    }
-
-    let moved: Vec<NodeId> = report
+    diagnostics::record(
+        "cleanup",
+        &format!(
+            "({}) {} moved, {} deleted, {} already gone, {} left in place{}",
+            if permanent { "permanent" } else { "trash" },
+            report.moved,
+            report.deleted,
+            report.gone,
+            report.failed,
+            if report.stopped { ", stopped" } else { "" }
+        ),
+    );
+    // Remember what was removed: moved items can be put back from Restore.
+    let now = unix_now();
+    let removed: Vec<tessera_cleanup::history::Moved> = report
         .outcomes
         .iter()
-        .filter(|o| o.result.is_ok())
+        .filter_map(|o| match &o.status {
+            tessera_cleanup::Status::Moved(recycled) => Some(tessera_cleanup::history::Moved {
+                original: o.path.clone(),
+                recycled: recycled.clone(),
+                bytes: o.allocated,
+                moved_at: now,
+                restored: false,
+                deleted: false,
+            }),
+            tessera_cleanup::Status::Deleted => Some(tessera_cleanup::history::Moved {
+                original: o.path.clone(),
+                recycled: None,
+                bytes: o.allocated,
+                moved_at: now,
+                restored: false,
+                deleted: true,
+            }),
+            _ => None,
+        })
+        .collect();
+    record_moved(&app, removed);
+    let run_id = state.next_id.fetch_add(1, Ordering::Relaxed) + 1;
+    *state.last_run.lock().unwrap_or_else(|e| e.into_inner()) = Some(LastRun {
+        run_id,
+        moved: report
+            .outcomes
+            .iter()
+            .filter_map(|o| o.recycled().map(|r| (o.path.clone(), r.clone())))
+            .collect(),
+    });
+
+    let done: Vec<NodeId> = report
+        .outcomes
+        .iter()
+        .filter(|o| o.done())
         .map(|o| o.id)
         .collect();
     scan.tree
         .write()
         .unwrap_or_else(|e| e.into_inner())
-        .detach_many(&moved);
+        .detach_many(&done);
     Ok(CleanupReportDto {
+        run_id,
+        method: if permanent { "permanent" } else { "trash" },
         moved: report.moved as u32,
+        deleted: report.deleted as u32,
+        gone: report.gone as u32,
         failed: report.failed as u32,
-        moved_logical: report.moved_logical,
-        moved_allocated: report.moved_allocated,
-        outcomes: report
+        removed_logical: report.removed_logical,
+        removed_allocated: report.removed_allocated,
+        stopped: report.stopped,
+        not_started: report.not_started as u32,
+        done_ids: done,
+        failures: report
             .outcomes
             .iter()
-            .map(|o| OutcomeDto {
-                id: o.id,
-                path: o.path.to_string_lossy().into_owned(),
-                logical: o.logical,
-                allocated: o.allocated,
-                ok: o.result.is_ok(),
-                reason: o.result.as_ref().err().cloned(),
+            .filter_map(|o| match &o.status {
+                tessera_cleanup::Status::Failed(f) => Some(FailedDto {
+                    id: o.id,
+                    path: o.path.to_string_lossy().into_owned(),
+                    logical: o.logical,
+                    allocated: o.allocated,
+                    failure: f.into(),
+                }),
+                _ => None,
             })
             .collect(),
         free_before: before,
         free_after: after,
     })
+}
+
+/// Stops the running cleanup after the batch in progress.
+#[tauri::command]
+fn stop_cleanup(state: State<'_, AppState>) {
+    state.cleanup_stop.store(true, Ordering::Relaxed);
+}
+
+/// Puts back everything the last cleanup moved to the Recycle Bin / Trash.
+/// Available without Pro: a person must always be able to get files back.
+#[tauri::command]
+async fn undo_cleanup(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    run_id: u64,
+) -> CmdResult<dto::UndoDto> {
+    let last = {
+        let mut guard = state.last_run.lock().unwrap_or_else(|e| e.into_inner());
+        match guard.take() {
+            Some(l) if l.run_id == run_id => l,
+            other => {
+                *guard = other;
+                return Err("Only the most recent cleanup can be undone here. Use the Restore page for earlier ones.".into());
+            }
+        }
+    };
+    let results = tauri::async_runtime::spawn_blocking(move || {
+        last.moved
+            .into_iter()
+            .map(|(original, recycled)| {
+                let r = tessera_cleanup::put_back(&recycled, &original);
+                (original, recycled, r)
+            })
+            .collect::<Vec<_>>()
+    })
+    .await
+    .map_err(|_| "Undo stopped unexpectedly. Check the Restore page.".to_string())?;
+    // Mark them restored on the Restore page.
+    if let Some(file) = history_file(&app) {
+        let mut items = tessera_cleanup::history::load(&file);
+        for (_, recycled, r) in &results {
+            if r.is_ok()
+                && let Some(m) = items
+                    .iter_mut()
+                    .find(|m| m.recycled.as_ref() == Some(recycled))
+            {
+                m.restored = true;
+            }
+        }
+        let _ = tessera_cleanup::history::save(&file, &items);
+    }
+    let mut out = dto::UndoDto {
+        restored: 0,
+        failed: Vec::new(),
+    };
+    for (original, _, r) in results {
+        match r {
+            Ok(()) => out.restored += 1,
+            Err(e) => out.failed.push(RejectedDto {
+                id: None,
+                path: original.to_string_lossy().into_owned(),
+                reason: match e.kind() {
+                    std::io::ErrorKind::AlreadyExists => {
+                        "Something with that name is already in its old place.".into()
+                    }
+                    std::io::ErrorKind::NotFound => "It is no longer in the Recycle Bin.".into(),
+                    _ => e.to_string(),
+                },
+            }),
+        }
+    }
+    Ok(out)
+}
+
+/// For a folder that could not be moved because files in it are open: moves
+/// everything inside it except those files (and the folders leading to them).
+#[tauri::command]
+async fn cleanup_except_in_use(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan_id: u64,
+    id: NodeId,
+) -> CmdResult<dto::PartialDto> {
+    if !is_pro() {
+        return Err(
+            "Cleanup is part of Tessera Pro. Enter your licence key in Settings to use it.".into(),
+        );
+    }
+    let scan = active(&state, scan_id)?;
+    let dir = {
+        let tree = read(&scan);
+        check_id(&tree, id)?;
+        if tree.node(id).kind != NodeKind::Dir {
+            return Err("This works for folders only.".into());
+        }
+        tree.path_of(id)
+    };
+    let report = tauri::async_runtime::spawn_blocking(move || {
+        let protection = tessera_cleanup::Protection::for_this_system();
+        tessera_cleanup::remove_except_in_use(
+            &dir,
+            &protection,
+            &mut tessera_cleanup::system_remover(tessera_cleanup::Method::Trash),
+        )
+    })
+    .await
+    .map_err(|_| "The cleanup stopped unexpectedly. Check the Recycle Bin.".to_string())?;
+    // Sizes from the scan, then take the removed items off the map.
+    let (mut logical, mut allocated, mut ids) = (0u64, 0u64, Vec::new());
+    let mut history = Vec::new();
+    {
+        let tree = read(&scan);
+        for (path, recycled) in &report.removed {
+            let bytes = tessera_scan::query::find_by_path(&tree, path)
+                .map(|nid| {
+                    ids.push(nid);
+                    tree.node(nid).counted()
+                })
+                .unwrap_or((0, 0));
+            logical += bytes.0;
+            allocated += bytes.1;
+            history.push(tessera_cleanup::history::Moved {
+                original: path.clone(),
+                recycled: recycled.clone(),
+                bytes: bytes.1,
+                moved_at: unix_now(),
+                restored: false,
+                deleted: false,
+            });
+        }
+    }
+    scan.tree
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .detach_many(&ids);
+    record_moved(&app, history);
+    let apps = tessera_cleanup::inuse::apps_using(&report.in_use);
+    Ok(dto::PartialDto {
+        checked: report.checked,
+        removed: report.removed.len() as u32,
+        removed_logical: logical,
+        removed_allocated: allocated,
+        failed: report.failed.len() as u32,
+        in_use_count: report.in_use.len() as u32,
+        in_use_files: report
+            .in_use
+            .iter()
+            .take(5)
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect(),
+        apps,
+    })
+}
+
+/// Opens the Recycle Bin (Windows) or the Trash (macOS).
+#[tauri::command(async)]
+fn open_recycle_bin() -> CmdResult<()> {
+    #[cfg(windows)]
+    let r = std::process::Command::new("explorer.exe")
+        .arg("shell:RecycleBinFolder")
+        .spawn();
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open")
+        .arg(
+            std::env::var_os("HOME")
+                .map(|h| PathBuf::from(h).join(".Trash"))
+                .unwrap_or_default(),
+        )
+        .spawn();
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let r: std::io::Result<std::process::Child> = Err(std::io::Error::other("unsupported"));
+    r.map(|_| ())
+        .map_err(|_| "The Recycle Bin could not be opened.".to_string())
+}
+
+/// Shows a file inside the scanned location (for example a file in use
+/// inside a folder) in File Explorer / Finder.
+#[tauri::command(async)]
+fn reveal_in_scan(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan_id: u64,
+    path: String,
+) -> CmdResult<()> {
+    let scan = active(&state, scan_id)?;
+    let path = PathBuf::from(path);
+    if !path.starts_with(&scan.root) || std::fs::symlink_metadata(&path).is_err() {
+        return Err("The item could not be shown.".into());
+    }
+    app.opener()
+        .reveal_item_in_dir(&path)
+        .map_err(|_| "The item could not be shown.".to_string())
 }
 
 fn existing_path(state: &AppState, scan_id: u64, id: NodeId) -> CmdResult<(PathBuf, NodeKind)> {
@@ -1387,6 +1671,11 @@ pub fn run() {
             update::open_download_page,
             review_cleanup,
             confirm_cleanup,
+            stop_cleanup,
+            undo_cleanup,
+            cleanup_except_in_use,
+            open_recycle_bin,
+            reveal_in_scan,
             license_status,
             refresh_license,
             activate_license,

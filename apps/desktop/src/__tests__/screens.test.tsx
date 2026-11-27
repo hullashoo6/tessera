@@ -61,7 +61,22 @@ const sug = (id: number, safety: string, group = 'developer') => ({
 describe('Cleanup', () => {
   it('is locked without Pro and offers the licence screen', () => {
     const open = vi.fn()
-    render(<Cleanup scanId={1} marked={[3]} metric="allocated" os="windows" pro={false} onOpenSettings={open} onUnmark={noop} onFinished={noop} onError={noop} />)
+    render(
+      <Cleanup
+        scanId={1}
+        marked={[3]}
+        metric="allocated"
+        os="windows"
+        pro={false}
+        onOpenSettings={open}
+        onUnmark={noop}
+        onFinished={noop}
+        onChanged={noop}
+        onRescan={noop}
+        onDone={noop}
+        onError={noop}
+      />,
+    )
     expect(screen.getByText('Cleanup is part of Tessera Pro')).toBeTruthy()
     fireEvent.click(screen.getByText('Enter licence key'))
     expect(open).toHaveBeenCalled()

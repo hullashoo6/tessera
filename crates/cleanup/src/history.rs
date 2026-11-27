@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub const KEEP_DAYS: i64 = 30;
-pub const KEEP_MAX: usize = 500;
+pub const KEEP_MAX: usize = 2000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Moved {
@@ -18,6 +18,10 @@ pub struct Moved {
     pub moved_at: i64,
     #[serde(default)]
     pub restored: bool,
+    /// Deleted permanently at the person's request (cannot be put back);
+    /// listed so the record of what Tessera removed is complete.
+    #[serde(default)]
+    pub deleted: bool,
 }
 
 pub fn load(file: &Path) -> Vec<Moved> {
@@ -64,6 +68,7 @@ mod tests {
             bytes: 1,
             moved_at: t,
             restored: false,
+            deleted: false,
         }
     }
 
