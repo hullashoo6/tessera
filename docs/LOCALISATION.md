@@ -1,17 +1,23 @@
-# Localisation plan (not started)
+# Localisation plan (languages chosen; work not started)
 
 Roadmap Phase 2 asks for at least Hindi, Spanish, German, French, Portuguese
 and Japanese (DissectMac offers seven languages). Measured on 27 Nov 2026:
 about 450 interface texts in `apps/desktop/src` and about 140 sentences sent
 by the backend (Smart Scan labels and reasons, error messages).
 
-## Owner decisions needed first
+## Decided (owner, 27 Nov 2026: "see as you fit")
 
-1. Which languages, in which order (suggestion: Spanish, German, French,
-   Portuguese (Brazil), Japanese, Hindi).
-2. Who reviews translations. Machine-quality text in a paid app hurts more
-   than English does; each language should be read by a fluent speaker before
-   it is offered.
+1. Order: **Hindi** first (the owner's home market, and the owner can judge
+   it), then **Spanish**, **Portuguese (Brazil)**, **German**, **French**,
+   **Japanese**. Reasons: large Windows and Mac desktop markets; Hindi and
+   Spanish cover the most people per language; Japanese last because its
+   text length and line breaking need the most layout checking.
+2. Review: every language is drafted by Claude and stays hidden (not listed
+   in Settings) until a fluent speaker has read it. The owner reads Hindi;
+   for the others the owner finds reviewers (paid review needs the owner's
+   OK). Machine-quality text in a paid app hurts more than English does.
+3. Cleanup first: the framework starts after the cleanup work
+   (docs/CLEANUP.md) ships, because it touches every screen's text.
 
 ## Approach
 

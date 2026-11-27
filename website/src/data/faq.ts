@@ -22,11 +22,15 @@ export const faqs: [string, string][] = [
   ],
   [
     'Can Tessera delete my files?',
-    'Never by itself. You choose items and review them first, and Tessera then moves them to the Recycle Bin or Trash. It never deletes anything permanently, and system folders are protected.',
+    'Never by itself. You add items to a cleanup list and review it first, and Tessera then moves them to the Recycle Bin or Trash. It deletes something permanently only if you choose Delete permanently and confirm a separate warning. System folders are protected.',
   ],
   [
     'Can I undo a cleanup?',
-    'Yes. The Restore page lists everything Tessera moved in the last 30 days, and Put back returns an item to where it was. It never replaces anything that is already there.',
+    'Yes. Right after a cleanup, Undo puts everything back in one click. The Restore page lists everything Tessera moved in the last 30 days, and Put back returns an item to where it was. It never replaces anything that is already there.',
+  ],
+  [
+    'What if a file cannot be removed?',
+    'Tessera tells you why in plain words and what to do: for example which app has the file open, so you can close it and choose Try again, or that it needs administrator permission. For a folder where an app keeps a few files open, such as a browser cache, it can move everything else and leave just the open files.',
   ],
   [
     'Will freeing space from cloud files delete them?',

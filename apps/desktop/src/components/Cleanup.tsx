@@ -599,7 +599,10 @@ export function Cleanup(props: Props) {
             label="Cleanup list. Space selects or clears an item, Delete takes it off the list."
             selectedIndex={Math.min(focus, shown.length - 1)}
             onSelectIndex={setFocus}
-            onActivate={(i) => toggle(shown[i].id)}
+            onActivate={(i) => {
+              const it = shown[i]
+              if (it) toggle(it.id)
+            }}
             rowClassName="clean-row"
             renderRow={(it) => (
               <>

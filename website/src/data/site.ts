@@ -42,6 +42,7 @@ export const proFeatures: Feature[] = [
   { name: 'Clean up Smart Scan suggestions and duplicates in a few clicks', status: 'available' },
   { name: 'Uninstall apps, including leftover files on Mac and Store apps on Windows', status: 'available' },
   { name: 'Put back anything Tessera moved, from inside the app', status: 'available' },
+  { name: 'Plain answers when a file is in use, with Try again and one-click Undo', status: 'available' },
   { name: 'Free up space from OneDrive and iCloud files, keeping them in the cloud', status: 'available' },
   { name: 'Storage history and growth between scans', status: 'in development' },
   { name: 'Exportable reports (CSV)', status: 'available' },

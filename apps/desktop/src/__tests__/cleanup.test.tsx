@@ -15,7 +15,9 @@ const api = vi.hoisted(() => ({
   cleanupExceptInUse: vi.fn(),
   openRecycleBin: vi.fn(() => Promise.resolve()),
   revealItem: vi.fn(() => Promise.resolve()),
-  onCleanupProgress: vi.fn(() => Promise.resolve(() => undefined)),
+  onCleanupProgress: vi.fn((_cb: (p: { done: number; total: number; bytes: number }) => void) =>
+    Promise.resolve(() => undefined),
+  ),
 }))
 vi.mock('../api', () => ({ api, errorText: (e: unknown) => String(e) }))
 
@@ -32,6 +34,11 @@ beforeAll(() => {
 beforeEach(() => {
   // Reset queued test answers too, so one test's data never leaks into the next.
   vi.resetAllMocks()
+  // Defaults once a test's own answers run out (the list is checked again
+  // after every cleanup).
+  api.reviewCleanup.mockResolvedValue(review([]))
+  api.confirmCleanup.mockResolvedValue(report())
+  api.undoCleanup.mockResolvedValue({ restored: 0, failed: [] })
   api.stopCleanup.mockResolvedValue(undefined)
   api.openRecycleBin.mockResolvedValue(undefined)
   api.revealItem.mockResolvedValue(undefined)
