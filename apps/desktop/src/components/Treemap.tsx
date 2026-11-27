@@ -32,6 +32,8 @@ interface Props {
   onZoom: (id: number) => void
   onUp: () => void
   onMenu: (tile: Tile, x: number, y: number) => void
+  /** Delete (Cmd+Delete on a Mac): add the selected item to cleanup, or take it off. */
+  onMarkKey?: (id: number) => void
   onError: (message: string) => void
 }
 
@@ -301,6 +303,12 @@ export function Treemap(props: Props) {
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const arrows: Record<string, Direction> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
+    // Delete, or Cmd+Delete on a Mac (where the Delete key is Backspace and goes up a level).
+    if ((e.key === 'Delete' || (e.metaKey && e.key === 'Backspace')) && selectedTile) {
+      e.preventDefault()
+      props.onMarkKey?.(selectedTile.id)
+      return
+    }
     if (e.key === 'Backspace' || (e.altKey && e.key === 'ArrowUp')) {
       e.preventDefault()
       onUp()

@@ -19,7 +19,9 @@ pub struct AppInfoDto {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ScanTarget {
-    Volume { mount: String },
+    Volume {
+        mount: String,
+    },
     Home,
     Folder,
     /// The location of the current scan, again (for example after Undo).

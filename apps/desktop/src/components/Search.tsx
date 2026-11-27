@@ -15,6 +15,11 @@ interface Props {
   onHighlight: (matches: number[], containing: number[], label: string) => void
   marked: Set<number>
   onToggleMark: (id: number) => void
+  /** Adds every result shown to the cleanup list. */
+  onMarkMany?: (ids: number[]) => void
+  /** Delete (Cmd+Delete on a Mac) on the selected row. */
+  onKeyMark?: (id: number) => void
+  onDone?: (message: string) => void
   onError: (message: string) => void
 }
 
@@ -155,8 +160,31 @@ export function Search(props: Props) {
         >
           Show on map
         </button>
+        {props.onMarkMany && (
+          <button
+            className="btn"
+            disabled={rows.length === 0 || rows.every((r) => marked.has(r.node.id))}
+            title="Adds them to your cleanup list. Nothing is removed until you review the list."
+            onClick={() => {
+              const ids = rows.map((r) => r.node.id).filter((id) => !marked.has(id))
+              props.onMarkMany?.(ids)
+              props.onDone?.(`Added ${plural(ids.length, 'item', 'items')} to cleanup`)
+            }}
+          >
+            {total > rows.length ? `Add the ${rows.length.toLocaleString()} shown to cleanup` : `Add all ${rows.length.toLocaleString()} to cleanup`}
+          </button>
+        )}
       </div>
-      <div className="map-pane">
+      <div
+        className="map-pane"
+        onKeyDown={(e) => {
+          const r = rows[selected]
+          if (r && (e.key === 'Delete' || (e.metaKey && e.key === 'Backspace'))) {
+            e.preventDefault()
+            ;(props.onKeyMark ?? onToggleMark)(r.node.id)
+          }
+        }}
+      >
         <div className="table-head" role="presentation">
           <span>{metric === 'allocated' ? 'On disk' : 'Size'}</span>
           <span>Name</span>

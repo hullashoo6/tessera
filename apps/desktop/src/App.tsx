@@ -82,6 +82,13 @@ export function App() {
       return next
     })
   const markedList = useMemo(() => [...marked], [marked])
+  // The Delete key (Cmd+Delete on a Mac) on a selected item: on or off the
+  // cleanup list. Nothing is removed until the list is reviewed.
+  const keyMark = (id: number) => {
+    const was = marked.has(id)
+    toggleMark(id)
+    setToast(was ? 'Taken off the cleanup list' : `Added to cleanup (${marked.size + 1} on the list)`)
+  }
   const lastRefresh = useRef(0)
 
   const scanId = status?.scanId ?? null
@@ -490,6 +497,7 @@ export function App() {
                   onZoom={zoom}
                   onUp={up}
                   onMenu={(tile, x, y) => setMenu({ tile, x, y })}
+                  onMarkKey={keyMark}
                   onError={onError}
                 />
               </div>
@@ -520,6 +528,7 @@ export function App() {
               onCommand={command}
               marked={marked}
               onToggleMark={toggleMark}
+              onKeyMark={keyMark}
               onError={onError}
               onDone={setToast}
             />
@@ -539,6 +548,9 @@ export function App() {
               }}
               marked={marked}
               onToggleMark={toggleMark}
+              onMarkMany={markMany}
+              onKeyMark={keyMark}
+              onDone={setToast}
               onError={onError}
             />
           )}

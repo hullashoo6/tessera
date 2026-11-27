@@ -14,8 +14,15 @@ interface Props {
   onCommand: (command: ItemCommand, id: number) => void
   marked: Set<number>
   onToggleMark: (id: number) => void
+  /** Delete (Cmd+Delete on a Mac) on the selected row. */
+  onKeyMark?: (id: number) => void
   onError: (message: string) => void
   onDone: (message: string) => void
+}
+
+/** Delete, or Cmd+Delete on a Mac, toggles the selected row on the cleanup list. */
+function isMarkKey(e: { key: string; metaKey: boolean }): boolean {
+  return e.key === 'Delete' || (e.metaKey && e.key === 'Backspace')
 }
 
 const LIMIT = 1000
@@ -25,7 +32,7 @@ function location(row: FileRow): string {
   return cut > 0 ? row.path.slice(0, cut) : row.path
 }
 
-export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, marked, onToggleMark, onError, onDone }: Props) {
+export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, version, onCommand, marked, onToggleMark, onKeyMark, onError, onDone }: Props) {
   const [scope, setScope] = useState<'all' | 'folder'>('all')
   const [rows, setRows] = useState<FileRow[] | null>(null)
   const [selected, setSelected] = useState(-1)
@@ -74,7 +81,16 @@ export function LargestFiles({ scanId, viewRoot, viewRootName, metric, os, versi
           Export CSV
         </button>
       </div>
-      <div className="map-pane">
+      <div
+        className="map-pane"
+        onKeyDown={(e) => {
+          const r = rows?.[selected]
+          if (r && isMarkKey(e)) {
+            e.preventDefault()
+            ;(onKeyMark ?? onToggleMark)(r.node.id)
+          }
+        }}
+      >
         <div className="table-head" role="presentation">
           <span>{metric === 'allocated' ? 'On disk' : 'Size'}</span>
           <span>Name</span>

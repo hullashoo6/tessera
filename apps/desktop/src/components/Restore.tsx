@@ -8,12 +8,14 @@ interface Props {
   onError: (message: string) => void
 }
 
-const STATE_TEXT: Record<MovedItem['state'], string> = {
-  inBin: '',
-  restored: 'Restored',
-  gone: 'No longer in the Recycle Bin',
-  finder: 'Use Put Back in the Finder’s Trash',
-}
+const stateText = (state: MovedItem['state'], bin: string): string =>
+  ({
+    inBin: '',
+    restored: 'Restored',
+    gone: `No longer in the ${bin}`,
+    finder: 'Use Put Back in the Finder’s Trash',
+    deleted: 'Deleted permanently',
+  })[state]
 
 /** Items Tessera moved, with Put back. Never requires Pro. */
 export function Restore({ os, onDone, onError }: Props) {
@@ -44,8 +46,8 @@ export function Restore({ os, onDone, onError }: Props) {
     <div className="overview suggestions">
       <h2>Restore</h2>
       <p className="lede">
-        Items Tessera moved to the {bin} in the last 30 days. Put back returns an item to where it was. It never replaces
-        anything already there.
+        Items Tessera moved to the {bin} in the last 30 days, and anything you chose to delete permanently. Put back
+        returns an item to where it was. It never replaces anything already there.
       </p>
       {items && items.length === 0 && <p className="target-meta">Nothing moved by Tessera yet.</p>}
       {items && items.length > 0 && (
@@ -56,7 +58,9 @@ export function Restore({ os, onDone, onError }: Props) {
                 <div className="review-main">
                   <span className="review-name">{m.name}</span>
                   <span className="selectable review-path">{m.path}</span>
-                  <span className="target-meta">Moved {formatDate(m.movedAt)}</span>
+                  <span className="target-meta">
+                    {m.state === 'deleted' ? 'Deleted' : 'Moved'} {formatDate(m.movedAt)}
+                  </span>
                 </div>
                 <span className="num">{formatBytes(m.bytes)}</span>
                 {m.state === 'inBin' ? (
@@ -64,7 +68,7 @@ export function Restore({ os, onDone, onError }: Props) {
                     {busy === m.index ? 'Putting back…' : 'Put back'}
                   </button>
                 ) : (
-                  <span className="target-meta">{STATE_TEXT[m.state]}</span>
+                  <span className="target-meta">{stateText(m.state, bin)}</span>
                 )}
               </li>
             ))}
