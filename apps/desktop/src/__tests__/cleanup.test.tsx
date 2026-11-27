@@ -4,7 +4,7 @@
 // backend is replaced by test data.
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { explain, filterItems, groupFailures, sortItems } from '../cleanupText'
+import { REVIEW_EXPIRED, explain, filterItems, groupFailures, sortItems } from '../cleanupText'
 import type { CleanupReport, FailedItem, ReviewItem } from '../api'
 
 const api = vi.hoisted(() => ({
@@ -183,6 +183,20 @@ describe('removing', () => {
     expect(api.undoCleanup).toHaveBeenCalledWith(11)
     fireEvent.click(screen.getByText('Scan again'))
     expect(onRescan).toHaveBeenCalled()
+  })
+
+  it('if the list changed since it was checked, checks again and finishes by itself', async () => {
+    api.reviewCleanup.mockResolvedValueOnce(review([item(1, G), item(2, 2 * G)], 7))
+    api.reviewCleanup.mockResolvedValueOnce(review([item(1, G), item(2, 2 * G)], 8))
+    api.confirmCleanup.mockRejectedValueOnce(REVIEW_EXPIRED)
+    api.confirmCleanup.mockResolvedValueOnce(report())
+    const { onError } = renderCleanup({ marked: [1, 2] })
+    fireEvent.click(await screen.findByText('Move 2 items (3.00 GB) to the Recycle Bin'))
+    moveDialog()
+    expect(await screen.findByText('Moved 2 items to the Recycle Bin')).toBeTruthy()
+    expect(api.confirmCleanup).toHaveBeenNthCalledWith(1, 7, [2, 1], false)
+    expect(api.confirmCleanup).toHaveBeenNthCalledWith(2, 8, [2, 1], false)
+    expect(onError).not.toHaveBeenCalled()
   })
 
   it('deletes permanently only after the person ticks that it cannot be undone', async () => {

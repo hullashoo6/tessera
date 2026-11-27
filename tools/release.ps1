@@ -36,12 +36,21 @@ if (-not $SkipChecks) {
 
 Write-Host "== 2. Build the Windows installer ($version)" -ForegroundColor Cyan
 Push-Location apps\desktop
+# A release must be built in production mode. NODE_ENV=development (set
+# above for the test tools) makes Vite bundle React's development version,
+# which is slower and deliberately runs every screen's effects twice; all
+# local installers from 27 Nov ~03:50 to ~20:30 IST shipped it.
+$env:NODE_ENV = 'production'
 # Through cmd: Windows PowerShell 5.1 turns a redirected program's progress
 # messages on stderr into errors, which would stop this script.
 cmd /c "npx tauri build --bundles nsis > ""$root\target\release-build.log"" 2>&1"
 $built = $LASTEXITCODE
+$env:NODE_ENV = 'development'
 Pop-Location
 if ($built -ne 0) { Fail 'the build failed (see target\release-build.log)' }
+powershell -NoProfile -File (Join-Path $PSScriptRoot 'check-production-bundle.ps1')
+if ($LASTEXITCODE -ne 0) { Fail 'the interface was built in development mode' }
+Ok 'interface built in production mode'
 $setup = Get-ChildItem 'target\release\bundle\nsis' -Filter "Tessera_$($version)_x64-setup.exe" | Select-Object -First 1
 if (-not $setup) { Fail 'installer not found' }
 Ok ("{0} ({1:N2} MB)" -f $setup.Name, ($setup.Length / 1MB))

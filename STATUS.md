@@ -126,11 +126,11 @@ Republished 27 Nov 2026 ~19:40 IST with the owner's OK: guides, FAQ (deletion "n
 
 Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and History (from a disposable C:\Demo folder; no personal paths), FAQ rewritten, latest.json for the update check, stretched-screenshot bug fixed. Lighthouse on the live site: mobile 98/100/100/100, desktop 100/100/100/100 (performance/accessibility/best practices/SEO).
 
-## Local release candidate, 27 Nov 2026 ~19:40 IST (tools/release.ps1 -SkipChecks right after a full check, code at commit c8219e5)
+## Local release candidate, 27 Nov 2026 ~20:30 IST (tools/release.ps1 with its checks)
 
 | Installer | Size | SHA-256 | Verified |
 |---|---|---|---|
-| Tessera_0.1.0_x64-setup.exe (local build, new cleanup) | 3.6 MB | b687a0ab8b102eed89c7ed52fc7deb4273a61fd11a42831bcb2daaf81e1a0ee7 | `tools/check.ps1` passed (interface step re-run after two test fixes: lint, 34 screen tests, build). Automated smoke test on the owner laptop: silent install over the previous build (the installer now also tells File Explorer to refresh its menus), right-click entries present, window appeared and never took over 28 ms to respond over 10 s, log records the start with no crash, closing quit. **This build is the one now installed.** Unsigned. No macOS build (GitHub Actions minutes used up). Previous: 77a55028... (06:15), d762cfbd... (03:50), 825feb1d... (04:45) |
+| Tessera_0.1.0_x64-setup.exe (local build, **production interface**) | 3.6 MB | 4daf989de5b92dd3cead15254a8f06b3d50966d05e9db850ad9f560d73243338 | Quick checks passed (lint, 35 screen tests, production-bundle check, Rust format/clippy/tests incl. the command and shared-message tests, macOS compile check, website build). Interface 331 KB, production React (was 575 KB development React). Smoke test on the owner laptop: silent install, right-click entries, window responsive (slowest 45 ms over 10 s), log start, no crash, closing quit. **Now installed.** Store package `Tessera_0.1.0.0_x64.msix` built from the same program, test-installed (Developer Mode), cleanup of 6 disposable files to the Recycle Bin and Undo worked, Settings showed the Store texts; then removed. Unsigned. No macOS build. **Earlier local builds tonight (b687a0ab..., 77a55028..., d762cfbd..., 825feb1d...) bundled React's development version** (NODE_ENV leak; see HANDOFF lessons) |
 
 ## Release candidate, 27 Nov 2026 (built by the release workflow from commit 3802247)
 

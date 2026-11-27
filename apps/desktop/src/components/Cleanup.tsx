@@ -10,7 +10,7 @@ import {
   type Review,
 } from '../api'
 import { baseName, formatBytes, formatCount, plural } from '../format'
-import { filterItems, groupFailures, parentPath, sortItems, warningLabel, type SortKey } from '../cleanupText'
+import { REVIEW_EXPIRED, filterItems, groupFailures, parentPath, sortItems, warningLabel, type SortKey } from '../cleanupText'
 import { VirtualList } from './VirtualList'
 
 interface Props {
@@ -43,6 +43,13 @@ interface Running {
   stopping: boolean
 }
 
+interface Queued {
+  permanent: boolean
+  ids: number[]
+  /** Already retried once after the list changed. */
+  retried?: boolean
+}
+
 const ROW = 52
 const SHOW_PER_GROUP = 100
 
@@ -68,7 +75,7 @@ export function Cleanup(props: Props) {
   const [undo, setUndo] = useState<null | 'busy' | { restored: number; failed: number }>(null)
   // A run waiting for the list to be checked again (Try again, or Delete
   // permanently from the results page).
-  const queued = useRef<{ permanent: boolean; ids: number[] } | null>(null)
+  const queued = useRef<Queued | null>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const markedSet = useMemo(() => new Set(marked), [marked])
   const size = (logical: number, allocated: number) => formatBytes(metric === 'allocated' ? allocated : logical)
@@ -109,7 +116,7 @@ export function Cleanup(props: Props) {
       return next
     })
 
-  const run = (permanent: boolean, ids: number[], rv: Review | null = review) => {
+  const run = (permanent: boolean, ids: number[], rv: Review | null = review, retried = false) => {
     if (!rv || ids.length === 0) return
     setConfirm(null)
     setReport(null)
@@ -129,7 +136,16 @@ export function Cleanup(props: Props) {
         setReport(r)
         props.onFinished(r)
       })
-      .catch((e) => onError(errorText(e)))
+      .catch((e) => {
+        // Whatever went wrong, the engine has used up this check of the
+        // list, so check it again rather than leave a dead button.
+        setReviewState(null)
+        const message = errorText(e)
+        if (message === REVIEW_EXPIRED && !retried) {
+          // The person already confirmed: run again once the list is checked.
+          queued.current = { permanent, ids, retried: true }
+        } else onError(message)
+      })
       .finally(() => {
         unlisten?.()
         setRunning(null)
@@ -137,10 +153,10 @@ export function Cleanup(props: Props) {
   }
 
   // A run queued from the results page, once the list has been checked again.
-  const startQueued = (q: { permanent: boolean; ids: number[] }, rv: Review) => {
+  const startQueued = (q: Queued, rv: Review) => {
     const available = new Set(rv.items.map((it) => it.id))
     const ids = q.ids.filter((id) => available.has(id))
-    if (ids.length > 0) run(q.permanent, ids, rv)
+    if (ids.length > 0) run(q.permanent, ids, rv, q.retried ?? false)
     else props.onDone('Nothing left to try again: those items changed or are gone.')
   }
   const queue = (permanent: boolean, ids: number[]) => {

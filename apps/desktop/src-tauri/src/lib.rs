@@ -50,7 +50,7 @@ struct ActiveScan {
 #[derive(Default)]
 struct AppState {
     scan: Mutex<Option<Arc<ActiveScan>>>,
-    review: Mutex<Option<PendingReview>>,
+    review: Mutex<Vec<PendingReview>>,
     dupes_cancel: Mutex<Option<Arc<std::sync::atomic::AtomicBool>>>,
     /// Stop button of the cleanup that is running.
     cleanup_stop: Arc<std::sync::atomic::AtomicBool>,
@@ -1132,10 +1132,23 @@ fn review_cleanup(
     };
     let id = state.next_id.fetch_add(1, Ordering::Relaxed) + 1;
     let dto = ReviewDto::new(id, &plan);
-    *state.review.lock().unwrap_or_else(|e| e.into_inner()) =
-        Some(PendingReview { id, scan_id, plan });
+    // Keep the last few reviews, not just one: if the screen asked twice and
+    // the answers arrived in the opposite order, the one it kept must still
+    // be here.
+    let mut reviews = state.review.lock().unwrap_or_else(|e| e.into_inner());
+    reviews.retain(|r| r.scan_id == scan_id);
+    reviews.push(PendingReview { id, scan_id, plan });
+    let extra = reviews.len().saturating_sub(MAX_PENDING_REVIEWS);
+    reviews.drain(..extra);
     Ok(dto)
 }
+
+/// Reviews kept at once (each holds its item list).
+const MAX_PENDING_REVIEWS: usize = 3;
+/// The interface recognises this exact text (REVIEW_EXPIRED in Cleanup.tsx)
+/// and quietly checks the list again.
+const REVIEW_EXPIRED: &str =
+    "The list changed since it was checked. Check it again, then try once more.";
 
 #[tauri::command]
 async fn confirm_cleanup(
@@ -1153,15 +1166,20 @@ async fn confirm_cleanup(
             "Cleanup is part of Tessera Pro. Enter your licence key in Settings to use it.".into(),
         );
     }
-    // Taking the plan out of the state means a review can run only once.
-    let pending = state
-        .review
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .take();
-    let pending = match pending {
-        Some(p) if p.id == review_id => p,
-        _ => return Err("This review has expired. Review the items again.".into()),
+    // Taking the plan out of the state means a review can run only once;
+    // the other kept reviews are dropped too, since this cleanup changes
+    // what they describe.
+    let pending = {
+        let mut reviews = state.review.lock().unwrap_or_else(|e| e.into_inner());
+        let found = reviews
+            .iter()
+            .position(|r| r.id == review_id)
+            .map(|i| reviews.swap_remove(i));
+        reviews.clear();
+        found
+    };
+    let Some(pending) = pending else {
+        return Err(REVIEW_EXPIRED.into());
     };
     let scan = active(&state, pending.scan_id)?;
     let root = scan.root.clone();

@@ -23,6 +23,10 @@ How far each item has been verified is recorded in STATUS.md.
 - Delete permanently, as a separate choice with its own warning, for when
   the space is needed straight away or the Recycle Bin cannot hold an item.
   Moving to the Recycle Bin / Trash stays the default.
+- Fixed: a cleanup could stop with "This review has expired" and stay
+  stuck; it now checks the list again and finishes by itself. Fixed: test
+  builds made on our own machine bundled a slower development version of
+  the interface.
 - First-run welcome screen: what Tessera does, the privacy promise, and a
   one-click first scan of the main drive or the home folder. Settings >
   Welcome screen shows it again.

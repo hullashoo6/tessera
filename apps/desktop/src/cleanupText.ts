@@ -6,6 +6,13 @@ import type { FailKind, FailedItem, Metric, ReviewItem } from './api'
 
 export type SortKey = 'size' | 'name' | 'folder'
 
+/**
+ * Sent by the backend when the list checked on screen is no longer the one
+ * it holds; the screen then checks again and retries once by itself. Must
+ * match REVIEW_EXPIRED in src-tauri/src/lib.rs (a Rust test compares them).
+ */
+export const REVIEW_EXPIRED = 'The list changed since it was checked. Check it again, then try once more.'
+
 export interface FailGroup {
   key: string
   kind: FailKind

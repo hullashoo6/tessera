@@ -18,20 +18,30 @@
 //   text:FILE        the page text, to a file
 //   sleep:MS
 //   eval:JS          run JavaScript in the page and print the result
+//   net:on           start recording requests to the app's backend
+//   net:FILE         write the recorded requests to FILE
 import { writeFileSync } from 'node:fs'
 
 const steps = process.argv.slice(2)
 const pages = await (await fetch('http://127.0.0.1:9333/json')).json()
-const page = pages.find((p) => p.type === 'page' && p.url.startsWith('http://localhost:5173'))
-if (!page) throw new Error('Tessera dev page not found on port 9333')
+// The dev server page, or a release build's page (tauri.localhost).
+const page = pages.find((p) => p.type === 'page' && /^http:\/\/(localhost:5173|tauri\.localhost)/.test(p.url))
+if (!page) throw new Error('Tessera page not found on port 9333')
 const ws = new WebSocket(page.webSocketDebuggerUrl)
 let next = 1
 const pending = new Map()
+// Requests the page sends to the app's backend (Tauri's ipc:// protocol),
+// recorded between "net:on" and "net:FILE".
+const net = []
+const t0 = Date.now()
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data)
   if (msg.id && pending.has(msg.id)) {
     pending.get(msg.id)(msg)
     pending.delete(msg.id)
+  } else if (msg.method === 'Network.requestWillBeSent') {
+    const url = msg.params.request.url
+    if (/ipc/.test(url)) net.push({ at: Date.now() - t0, url: url.replace(/^.*?\/\/[^/]+\//, ''), body: msg.params.request.postData?.slice(0, 120) })
   }
 }
 const send = (method, params = {}) =>
@@ -108,6 +118,12 @@ for (const step of steps) {
     console.log(`saved ${arg}`)
   } else if (kind === 'sleep') {
     await sleep(Number(arg))
+  } else if (kind === 'net') {
+    if (arg === 'on') await send('Network.enable')
+    else {
+      writeFileSync(arg, net.map((n) => `${n.at}ms ${n.url} ${n.body ?? ''}`).join('\n'))
+      console.log(`saved ${arg} (${net.length} requests)`)
+    }
   } else if (kind === 'eval') {
     console.log(JSON.stringify(await evaluate(arg)))
   } else {

@@ -46,6 +46,22 @@ fn allowed() -> BTreeSet<String> {
         .collect()
 }
 
+/// Messages the interface recognises by their exact text.
+#[test]
+fn shared_messages_match_the_interface() {
+    let lib = read("src/lib.rs");
+    let decl = lib
+        .find("const REVIEW_EXPIRED: &str =")
+        .expect("REVIEW_EXPIRED in lib.rs");
+    let start = decl + lib[decl..].find('"').unwrap() + 1;
+    let text = &lib[start..start + lib[start..].find('"').unwrap()];
+    let ts = read("../src/cleanupText.ts");
+    assert!(
+        ts.contains(&format!("REVIEW_EXPIRED = '{text}'")),
+        "cleanupText.ts REVIEW_EXPIRED must be: {text}"
+    );
+}
+
 #[test]
 fn every_registered_command_is_declared_and_allowed() {
     let registered = registered();

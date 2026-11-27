@@ -17,7 +17,7 @@ function Step([string]$name, [scriptblock]$run) {
   & $run
   if ($LASTEXITCODE -ne 0) { $script:failed += $name; Write-Host "FAILED: $name" -ForegroundColor Red }
 }
-Step 'Interface: lint, tests, build' { Push-Location apps\desktop; npx oxlint src; if ($LASTEXITCODE -eq 0) { npm test }; if ($LASTEXITCODE -eq 0) { npm run build }; Pop-Location }
+Step 'Interface: lint, tests, build' { Push-Location apps\desktop; npx oxlint src; if ($LASTEXITCODE -eq 0) { npm test }; if ($LASTEXITCODE -eq 0) { $env:NODE_ENV = 'production'; npm run build; $env:NODE_ENV = 'development' }; Pop-Location; if ($LASTEXITCODE -eq 0) { powershell -NoProfile -File tools\check-production-bundle.ps1 } }
 Step 'Format' { cargo fmt --all -- --check }
 Step 'Clippy' { cargo clippy --workspace --all-targets --locked -- -D warnings }
 Step 'Tests' { cargo test --workspace --locked }
