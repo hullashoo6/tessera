@@ -58,6 +58,17 @@ export function ProLicence({ entitlement, onChange }: Props) {
               ? entitlement.summary
               : 'Pro adds cleanup to the Recycle Bin or Trash. Enter the licence key from your purchase email.'}
           </p>
+          {!entitlement?.testMode && (
+            <div className="actions">
+              <button
+                className="btn btn-primary"
+                onClick={() => api.openPurchasePage().catch((e) => setMessage(errorText(e)))}
+              >
+                Buy Tessera Pro (US$9.78, one-time)
+              </button>
+              <span className="target-meta">Opens the secure checkout by Dodo Payments; your key arrives by email.</span>
+            </div>
+          )}
           <form
             className="licence-form"
             onSubmit={(e) => {

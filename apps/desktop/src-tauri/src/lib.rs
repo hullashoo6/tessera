@@ -1698,6 +1698,7 @@ pub fn run() {
             refresh_license,
             activate_license,
             deactivate_license,
+            licence::open_purchase_page,
             reveal_item,
             open_item,
             diagnostics::log_error,

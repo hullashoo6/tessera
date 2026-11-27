@@ -355,6 +355,8 @@ export const api = {
   refreshLicense: (force = false) => invoke<Entitlement>('refresh_license', { force }),
   activateLicense: (key: string) => invoke<Entitlement>('activate_license', { key }),
   deactivateLicense: () => invoke<Entitlement>('deactivate_license'),
+  /** Opens Dodo Payments' checkout for Tessera Pro in the browser (address fixed by the backend). */
+  openPurchasePage: () => invoke<void>('open_purchase_page'),
   revealItem: (scanId: number, id: number) => invoke<void>('reveal_item', { scanId, id }),
   openItem: (scanId: number, id: number) => invoke<void>('open_item', { scanId, id }),
   /** Adds a screen error to the local log (file and folder names are removed by the backend). */

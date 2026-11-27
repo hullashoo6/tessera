@@ -216,6 +216,7 @@ button, input, select { font: inherit; color: inherit; }
 .notes { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .notes li { padding: 7px 9px; border-radius: var(--r); background: var(--notice-soft); font-size: var(--t-meta); color: var(--ink); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.actions.centred { justify-content: center; }
 
 .list-head { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 16px 6px; color: var(--ink-2); font-size: var(--t-meta); font-weight: 600; }
 .vlist { position: relative; overflow-y: auto; min-height: 0; }

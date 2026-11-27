@@ -4,7 +4,11 @@ Everything listed works the same on Windows and Mac unless a line says how
 the two differ in wording only (Recycle Bin / Trash, File Explorer / Finder).
 How far each item has been verified is recorded in STATUS.md.
 
-## Unreleased
+## 1.0.0 (27 Nov 2026), first public release
+
+Windows 11. Tessera Pro is on sale (USD 9.78, one-time, one computer):
+Buy Tessera Pro in Settings or on the cleanup screen opens the secure
+checkout by Dodo Payments. The Mac version is still in testing.
 
 ### Added
 - Cleanup rebuilt around a simple list: add things from anywhere (the map,

@@ -308,9 +308,17 @@ export function Cleanup(props: Props) {
             {marked.length > 0 ? `You have chosen ${plural(marked.length, 'item', 'items')}. ` : ''}
             Activate a licence key to review items and move them to the {bin}. Scanning, the map and search stay free.
           </p>
-          <button className="btn btn-primary" onClick={props.onOpenSettings}>
-            Enter licence key
-          </button>
+          <div className="actions centred">
+            <button
+              className="btn btn-primary"
+              onClick={() => api.openPurchasePage().catch((e) => onError(errorText(e)))}
+            >
+              Buy Tessera Pro (US$9.78)
+            </button>
+            <button className="btn" onClick={props.onOpenSettings}>
+              Enter licence key
+            </button>
+          </div>
         </div>
       </div>
     )

@@ -37,6 +37,7 @@ const COMMANDS: &[&str] = &[
     "refresh_license",
     "activate_license",
     "deactivate_license",
+    "open_purchase_page",
     "reveal_item",
     "open_item",
     "log_error",

@@ -8,7 +8,8 @@
 //! * Pro stays active offline for `GRACE_SECONDS` after the last successful
 //!   check. A licence problem only switches Pro features off; scanning and
 //!   access to files never depend on it.
-//! * Test mode only until the owner approves live checkout.
+//! * Live mode since the owner approved live sales (27 Nov 2026); test
+//!   mode remains for development by switching `LIVE_MODE_APPROVED`.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -34,13 +35,17 @@ pub struct ModeConfig {
     /// The only Dodo product whose keys unlock Tessera Pro in this mode.
     /// `None` means licensing is not configured: activation is refused.
     pub pro_product_id: Option<&'static str>,
+    /// Dodo's hosted checkout for that product (a static payment link).
+    pub checkout_url: &'static str,
 }
 
-/// Test mode: Tessera Pro test product. Licence entitlement`n/// `ent_0NsmgeTrxozGfeC4KvhR9` (dashboard reference only).
+/// Test mode: Tessera Pro test product. Licence entitlement
+/// `ent_0NsmgeTrxozGfeC4KvhR9` (dashboard reference only).
 pub const TEST: ModeConfig = ModeConfig {
     mode: Mode::Test,
     base_url: "https://test.dodopayments.com",
     pro_product_id: Some("pdt_0Nsmh1XPpX4NRvbkO8N7C"),
+    checkout_url: "https://test.checkout.dodopayments.com/buy/pdt_0Nsmh1XPpX4NRvbkO8N7C?quantity=1",
 };
 
 /// Live mode: Tessera Pro, USD 9.78 one-time (tax included), one device,
@@ -50,11 +55,19 @@ pub const LIVE: ModeConfig = ModeConfig {
     mode: Mode::Live,
     base_url: "https://live.dodopayments.com",
     pro_product_id: Some("pdt_0Nsmg4vQiRrOCZ4yTeDEk"),
+    checkout_url: "https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1",
 };
 
-/// Live licensing stays off until the owner approves it, which requires a
-/// deliverable app and a passing real test-mode licence check first.
-pub const LIVE_MODE_APPROVED: bool = false;
+/// Live licensing: approved by the owner on 27 Nov 2026 ~20:46 IST ("make
+/// sales live"), after the live checkout was seen working (it opened a
+/// checkout session for Tessera at USD 9.78) and the live licence server
+/// answered. Test keys stop working in builds made from here on.
+pub const LIVE_MODE_APPROVED: bool = true;
+
+/// Where to buy Tessera Pro in this build's mode.
+pub const fn purchase_url() -> &'static str {
+    active().checkout_url
+}
 
 /// The configuration this build uses.
 pub const fn active() -> ModeConfig {
@@ -451,6 +464,7 @@ mod tests {
         mode: Mode::Test,
         base_url: TEST.base_url,
         pro_product_id: Some("pdt_FAKE_TEST_ONLY"),
+        checkout_url: TEST.checkout_url,
     };
 
     fn ok_activation() -> Result<(u16, Value), String> {
@@ -619,6 +633,17 @@ mod tests {
             TEST.pro_product_id, LIVE.pro_product_id,
             "live product must not be used in test mode"
         );
+        // Each mode sells its own product, on its own checkout.
+        assert!(
+            LIVE.checkout_url
+                .starts_with("https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk")
+        );
+        assert!(
+            TEST.checkout_url.starts_with(
+                "https://test.checkout.dodopayments.com/buy/pdt_0Nsmh1XPpX4NRvbkO8N7C"
+            )
+        );
+        assert_eq!(purchase_url(), active().checkout_url);
         assert_eq!(
             active().mode,
             if LIVE_MODE_APPROVED {

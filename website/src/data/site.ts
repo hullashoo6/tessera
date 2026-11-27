@@ -12,11 +12,14 @@ export const product = {
 /**
  * Set by the owner: USD 9.78 one-time, tax included, one device, no expiry.
  * While `onSale` is false there is no purchase link anywhere on the site.
+ * On sale since 27 Nov 2026 (owner: "make sales live"); the link is Dodo's
+ * live static payment link for the live Pro product.
  */
 export const pricing = {
-  onSale: false,
+  onSale: true,
   currency: 'USD',
   pro: 9.78,
+  checkoutUrl: 'https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1',
 }
 
 export type Status = 'available' | 'in development'
@@ -75,4 +78,4 @@ export const contact = {
 }
 
 /** Newest released app version, read by the app's update check. */
-export const latest = { version: '0.1.0' }
+export const latest = { version: '1.0.0' }

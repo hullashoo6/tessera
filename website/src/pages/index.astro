@@ -142,7 +142,7 @@ const features = [
     <div class="wrap">
       <div class="section-head">
         <h2 id="pricing-title">Free to explore. Pro to clean up.</h2>
-        <p class="lede">Scanning is free, with no limits. Pro will be a single purchase, with no subscription.</p>
+        <p class="lede">Scanning is free, with no limits. Pro is a single purchase, with no subscription.</p>
       </div>
       <div class="plans">
         <article class="plan">
@@ -157,7 +157,14 @@ const features = [
           <p class="price num">{formatPrice()}{!pricing.onSale && <span class="tag">Not yet on sale</span>}</p>
           <p class="muted">One payment, tax included. No subscription. For one computer, with no expiry.</p>
           <ul>{proFeatures.map((f) => <li>{f.name}{f.status !== 'available' && <span class="tag">In development</span>}</li>)}</ul>
-          <span class="btn btn-primary" aria-disabled="true">Available at launch</span>
+          {pricing.onSale ? (
+            <>
+              <a class="btn btn-primary" href={pricing.checkoutUrl} rel="noopener">Buy Tessera Pro</a>
+              <p class="muted small">Secure checkout by Dodo Payments. Your licence key arrives by email; enter it in Tessera under Settings. Tessera Pro runs on Windows 11 today; the Mac version is still in testing.</p>
+            </>
+          ) : (
+            <span class="btn btn-primary" aria-disabled="true">Available at launch</span>
+          )}
         </article>
       </div>
     </div>
@@ -183,6 +190,9 @@ const features = [
                   <a class="btn btn-primary" href={r.url}>Download {r.installer}</a>
                   <p class="muted num">Version {r.version}, {(r.bytes / 1048576).toFixed(1)} MB</p>
                   <p class="sha num">SHA-256 {r.sha256}</p>
+                  {p.id === 'windows-x64' && (
+                    <p class="muted small">New apps are not yet known to Windows, so it may say "Windows protected your PC". Choose More info, then Run anyway. A Microsoft Store version, signed by Microsoft, is on its way.</p>
+                  )}
                   <a href={r.notesUrl}>Release notes</a>
                 </div>
               ) : (

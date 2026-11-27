@@ -41,6 +41,7 @@
     "allow-refresh-license",
     "allow-activate-license",
     "allow-deactivate-license",
+    "allow-open-purchase-page",
     "allow-reveal-item",
     "allow-open-item",
     "allow-log-error",

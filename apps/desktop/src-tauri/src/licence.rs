@@ -72,3 +72,14 @@ pub async fn deactivate_license() -> Result<Entitlement, String> {
     .await
     .map_err(|_| "Deactivation stopped unexpectedly. Please try again.".to_string())?
 }
+
+/// Opens Dodo Payments' checkout for Tessera Pro in the browser. The address
+/// is fixed in the licensing crate for this build's mode; the interface
+/// cannot choose it.
+#[tauri::command]
+pub fn open_purchase_page(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(tessera_licensing::purchase_url(), None::<&str>)
+        .map_err(|_| "The purchase page could not be opened.".to_string())
+}

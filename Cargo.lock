@@ -4344,7 +4344,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-apps"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "plist",
  "tessera-cleanup",
@@ -4356,7 +4356,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-cleanup"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "libc",
  "objc2-foundation",
@@ -4371,7 +4371,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "libc",
  "tessera-insights",
@@ -4383,7 +4383,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-desktop"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4405,7 +4405,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-dupes"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "blake3",
  "tessera-scan",
@@ -4414,7 +4414,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-insights"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "tessera-scan",
  "tessera-testkit",
@@ -4422,7 +4422,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-licensing"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "keyring",
  "serde",
@@ -4432,7 +4432,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-scan"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
  "libc",
@@ -4443,7 +4443,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-testkit"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "libc",
  "tempfile",
@@ -4452,7 +4452,7 @@ dependencies = [
 
 [[package]]
 name = "tessera-treemap"
-version = "0.1.0"
+version = "1.0.0"
 
 [[package]]
 name = "thiserror"

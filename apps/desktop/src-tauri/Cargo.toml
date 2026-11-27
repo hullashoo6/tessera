@@ -23,10 +23,10 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
-tessera-apps = { version = "0.1.0", path = "../../../crates/apps" }
-tessera-cleanup = { version = "0.1.0", path = "../../../crates/cleanup" }
-tessera-dupes = { version = "0.1.0", path = "../../../crates/dupes" }
-tessera-insights = { version = "0.1.0", path = "../../../crates/insights" }
-tessera-licensing = { version = "0.1.0", path = "../../../crates/licensing" }
+tessera-apps = { version = "1.0.0", path = "../../../crates/apps" }
+tessera-cleanup = { version = "1.0.0", path = "../../../crates/cleanup" }
+tessera-dupes = { version = "1.0.0", path = "../../../crates/dupes" }
+tessera-insights = { version = "1.0.0", path = "../../../crates/insights" }
+tessera-licensing = { version = "1.0.0", path = "../../../crates/licensing" }
 tessera-scan = { path = "../../../crates/scan" }
 tessera-treemap = { path = "../../../crates/treemap" }
