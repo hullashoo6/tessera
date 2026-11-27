@@ -1,22 +1,29 @@
 //! Review-first cleanup.
 //!
-//! Discover → Select → Review (`build_plan`) → Confirm → Move to Trash
-//! (`execute`) → Verify (`Report`). There is no permanent deletion. Every
-//! item is re-validated immediately before it is moved; anything that cannot
-//! be verified is refused rather than guessed.
+//! Discover → Select → Review (`build_plan`) → Confirm → Remove (`run`) →
+//! Verify (`Report`). Items go to the Recycle Bin / Trash, or, only when the
+//! person explicitly chooses it, are deleted permanently. Every item is
+//! re-validated immediately before it is removed; anything that cannot be
+//! verified is refused rather than guessed. Failures carry a plain cause
+//! (`Failure`), including which app holds a file open where Windows can tell.
 
+mod failure;
+pub mod inuse;
 pub mod protect;
 mod trash;
 
+pub use failure::{FailKind, Failure, classify};
 pub use protect::Protection;
 pub mod cloud;
 pub mod history;
-pub use trash::{move_to_trash, put_back};
+pub use trash::{delete_many_permanently, move_many_to_trash, move_to_trash, put_back};
 
+use std::collections::{HashMap, HashSet};
 use std::fs::Metadata;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, SystemTime};
 use tessera_scan::{NodeId, NodeKind, ROOT, Tree, flags};
 
 /// What an item looked like when the user reviewed it.
@@ -236,61 +243,305 @@ pub fn revalidate(c: &Candidate, root: &Path, protection: &Protection) -> Result
     Ok(())
 }
 
+/// How the chosen items are removed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Method {
+    /// To the Recycle Bin / Trash, from where they can be put back.
+    #[default]
+    Trash,
+    /// Deleted permanently. Only when the person chose it explicitly.
+    Permanent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Status {
+    /// Now in the Recycle Bin / Trash (where, when the system says).
+    Moved(Option<PathBuf>),
+    /// Deleted permanently.
+    Deleted,
+    /// It was no longer there: nothing left to do.
+    Gone,
+    /// Left in place, and why.
+    Failed(Failure),
+}
+
 #[derive(Debug, Clone)]
 pub struct Outcome {
     pub id: NodeId,
     pub path: PathBuf,
     pub logical: u64,
     pub allocated: u64,
-    /// `Err` holds the reason the item was left in place.
-    pub result: Result<(), String>,
-    /// Where the item now sits in the Recycle Bin, when the system says.
-    pub recycled: Option<PathBuf>,
+    pub status: Status,
+}
+
+impl Outcome {
+    /// Moved, deleted or already gone: no longer needs to be in the list.
+    pub fn done(&self) -> bool {
+        !matches!(self.status, Status::Failed(_))
+    }
+
+    /// Where it sits in the Recycle Bin / Trash, if it was moved there.
+    pub fn recycled(&self) -> Option<&PathBuf> {
+        match &self.status {
+            Status::Moved(p) => p.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Report {
     pub outcomes: Vec<Outcome>,
     pub moved: usize,
+    pub deleted: usize,
+    pub gone: usize,
     pub failed: usize,
-    pub moved_logical: u64,
-    pub moved_allocated: u64,
+    /// Bytes counted in the scan for the items moved or deleted.
+    pub removed_logical: u64,
+    pub removed_allocated: u64,
+    /// The person pressed Stop; `not_started` items were left untouched.
+    pub stopped: bool,
+    pub not_started: usize,
 }
 
-/// Moves every planned item with `mover`, re-validating each one first.
-/// Items that fail are reported and never retried another way.
+/// Where a cleanup run has got to.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Progress {
+    pub done: usize,
+    pub total: usize,
+    /// Bytes on disk of the items removed so far.
+    pub bytes: u64,
+}
+
+pub struct RunOptions<'a> {
+    /// Remove only these planned items (the rest of the review is kept).
+    pub only: Option<&'a HashSet<NodeId>>,
+    pub method: Method,
+    /// Items per operation (Windows moves many items far faster together).
+    pub batch: usize,
+    /// Checked between batches: stop early, leaving the rest untouched.
+    pub stop: Option<&'a AtomicBool>,
+}
+
+impl Default for RunOptions<'_> {
+    fn default() -> Self {
+        RunOptions {
+            only: None,
+            method: Method::Trash,
+            batch: 25,
+            stop: None,
+        }
+    }
+}
+
+/// Removes items, one result per path in order: `Ok(where it landed)`.
+pub type Remover<'a> = dyn FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> + 'a;
+
+/// The system remover for `method`.
+pub fn system_remover(method: Method) -> impl FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> {
+    move |paths: &[&Path]| match method {
+        Method::Trash => move_many_to_trash(paths),
+        Method::Permanent => delete_many_permanently(paths)
+            .into_iter()
+            .map(|r| r.map(|()| None))
+            .collect(),
+    }
+}
+
+/// Removes the planned items (or `opts.only` of them) in batches,
+/// re-validating each just before its batch. Failures are explained, never
+/// retried another way; items already gone count as done.
+pub fn run(
+    plan: &Plan,
+    protection: &Protection,
+    opts: &RunOptions,
+    progress: &mut dyn FnMut(&Progress),
+    remover: &mut Remover,
+) -> Report {
+    let chosen: Vec<&Candidate> = plan
+        .items
+        .iter()
+        .filter(|c| opts.only.is_none_or(|o| o.contains(&c.id)))
+        .collect();
+    let mut report = Report::default();
+    let mut p = Progress {
+        total: chosen.len(),
+        ..Progress::default()
+    };
+    progress(&p);
+    for (i, chunk) in chosen.chunks(opts.batch.max(1)).enumerate() {
+        if opts.stop.is_some_and(|s| s.load(Ordering::Relaxed)) {
+            report.stopped = true;
+            report.not_started = chosen.len() - i * opts.batch.max(1);
+            break;
+        }
+        let mut ready: Vec<&Candidate> = Vec::new();
+        for c in chunk {
+            if std::fs::symlink_metadata(&c.path).is_err() {
+                record(&mut report, c, Status::Gone);
+            } else if let Err(reason) = revalidate(c, &plan.root, protection) {
+                let kind = if protection.check(&c.path).is_err() {
+                    FailKind::Protected
+                } else {
+                    FailKind::Changed
+                };
+                record(&mut report, c, Status::Failed(Failure::new(kind, reason)));
+            } else {
+                ready.push(c);
+            }
+        }
+        let paths: Vec<&Path> = ready.iter().map(|c| c.path.as_path()).collect();
+        let results = if paths.is_empty() {
+            Vec::new()
+        } else {
+            remover(&paths)
+        };
+        for (c, r) in ready
+            .iter()
+            .zip(results.into_iter().chain(std::iter::repeat_with(|| {
+                Err(io::Error::other("no result was reported"))
+            })))
+        {
+            let status = match r {
+                Ok(_) if std::fs::symlink_metadata(&c.path).is_ok() => Status::Failed(
+                    Failure::new(FailKind::Other, "It is still in place after the move."),
+                ),
+                Ok(landed) => match opts.method {
+                    Method::Trash => Status::Moved(landed),
+                    Method::Permanent => Status::Deleted,
+                },
+                Err(e) if e.kind() == io::ErrorKind::NotFound => Status::Gone,
+                Err(e) => Status::Failed(classify(&e, &c.path)),
+            };
+            record(&mut report, c, status);
+        }
+        p.done = report.outcomes.len();
+        p.bytes = report.removed_allocated;
+        progress(&p);
+    }
+    report
+}
+
+fn record(report: &mut Report, c: &Candidate, status: Status) {
+    match &status {
+        Status::Moved(_) => report.moved += 1,
+        Status::Deleted => report.deleted += 1,
+        Status::Gone => report.gone += 1,
+        Status::Failed(_) => report.failed += 1,
+    }
+    if matches!(status, Status::Moved(_) | Status::Deleted) {
+        report.removed_logical += c.logical;
+        report.removed_allocated += c.allocated;
+    }
+    report.outcomes.push(Outcome {
+        id: c.id,
+        path: c.path.clone(),
+        logical: c.logical,
+        allocated: c.allocated,
+        status,
+    });
+}
+
+/// Moves every planned item with a one-item `mover`, one at a time, to the
+/// Recycle Bin / Trash. (Kept for callers and tests that move single items.)
 pub fn execute(
     plan: &Plan,
     protection: &Protection,
     mover: &mut dyn FnMut(&Path) -> io::Result<Option<PathBuf>>,
 ) -> Report {
-    let mut report = Report::default();
-    for c in &plan.items {
-        let mut recycled = None;
-        let mut result = revalidate(c, &plan.root, protection).and_then(|()| {
-            mover(&c.path)
-                .map(|r| recycled = r)
-                .map_err(|e| format!("It could not be moved to the Trash: {e}"))
-        });
-        if result.is_ok() && std::fs::symlink_metadata(&c.path).is_ok() {
-            result = Err("It is still in place after the move.".into());
-        }
-        match &result {
-            Ok(()) => {
-                report.moved += 1;
-                report.moved_logical += c.logical;
-                report.moved_allocated += c.allocated;
-            }
-            Err(_) => report.failed += 1,
-        }
-        report.outcomes.push(Outcome {
-            id: c.id,
-            path: c.path.clone(),
-            logical: c.logical,
-            allocated: c.allocated,
-            result,
-            recycled,
-        });
+    let opts = RunOptions {
+        batch: 1,
+        ..RunOptions::default()
+    };
+    run(
+        plan,
+        protection,
+        &opts,
+        &mut |_| {},
+        &mut |paths: &[&Path]| paths.iter().map(|p| mover(p)).collect(),
+    )
+}
+
+/// What `remove_except_in_use` did with a folder that could not be removed
+/// whole because files in it are open.
+#[derive(Debug, Clone, Default)]
+pub struct PartialReport {
+    /// Items inside the folder that were removed (with where each landed).
+    pub removed: Vec<(PathBuf, Option<PathBuf>)>,
+    pub failed: Vec<(PathBuf, Failure)>,
+    /// Files left because they are in use.
+    pub in_use: Vec<PathBuf>,
+    /// False when the folder was too big to check for open files in time,
+    /// in which case nothing was removed.
+    pub checked: bool,
+}
+
+/// Removes everything inside `dir` except the files in use and the folders
+/// that lead to them. For caches and similar folders that an open app keeps
+/// a few files of. `dir` must pass the protection rules, as must everything
+/// removed.
+pub fn remove_except_in_use(
+    dir: &Path,
+    protection: &Protection,
+    remover: &mut Remover,
+) -> PartialReport {
+    let mut out = PartialReport::default();
+    if protection.check(dir).is_err() || !dir.is_dir() {
+        return out;
     }
-    report
+    let locked = inuse::locked_files_in(dir, 10_000, 500_000, Duration::from_secs(5));
+    if !locked.complete {
+        return out;
+    }
+    out.checked = true;
+    // Folders that contain an open file, up to `dir` itself.
+    let mut keep: HashSet<PathBuf> = HashSet::new();
+    for f in &locked.files {
+        let mut p = f.parent();
+        while let Some(d) = p {
+            if !keep.insert(d.to_path_buf()) || d == dir {
+                break;
+            }
+            p = d.parent();
+        }
+    }
+    let open: HashSet<&PathBuf> = locked.files.iter().collect();
+    let mut movable: Vec<PathBuf> = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let path = e.path();
+            let Ok(ft) = e.file_type() else { continue };
+            if open.contains(&path) {
+                out.in_use.push(path);
+            } else if ft.is_dir() && !ft.is_symlink() && keep.contains(&path) {
+                stack.push(path);
+            } else if protection.check(&path).is_ok() {
+                movable.push(path);
+            }
+        }
+    }
+    let mut landed: HashMap<PathBuf, Option<PathBuf>> = HashMap::new();
+    for chunk in movable.chunks(50) {
+        let refs: Vec<&Path> = chunk.iter().map(|p| p.as_path()).collect();
+        for (p, r) in chunk.iter().zip(remover(&refs)) {
+            match r {
+                Ok(l) if std::fs::symlink_metadata(p).is_err() => {
+                    landed.insert(p.clone(), l);
+                }
+                Ok(_) => out.failed.push((
+                    p.clone(),
+                    Failure::new(FailKind::Other, "It is still in place after the move."),
+                )),
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(e) => out.failed.push((p.clone(), classify(&e, p))),
+            }
+        }
+    }
+    out.removed = landed.into_iter().collect();
+    out.removed.sort();
+    out
 }

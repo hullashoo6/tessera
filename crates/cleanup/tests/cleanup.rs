@@ -3,10 +3,17 @@
 //! nothing is ever deleted. Only `real_recycle_bin` (ignored by default)
 //! uses the operating system's Recycle Bin, with one disposable file.
 
+use std::collections::HashSet;
 use std::fs;
 use std::io;
+#[cfg(windows)]
+use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use tessera_cleanup::{Protection, build_plan, execute};
+use std::sync::atomic::{AtomicBool, Ordering};
+use tessera_cleanup::{
+    FailKind, Method, Progress, Protection, RunOptions, Status, build_plan, classify, execute,
+    remove_except_in_use, run,
+};
 use tessera_scan::query::find_by_path;
 use tessera_scan::{CancelToken, ROOT, ScanOptions, Tree, scan};
 use tessera_testkit as kit;
@@ -97,7 +104,7 @@ fn moves_reviewed_items_and_reports_exact_totals() {
     );
     let report = execute(&plan, &open(), &mut holding_mover(t.path().join("hold")));
     assert_eq!((report.moved, report.failed), (2, 0));
-    assert_eq!(report.moved_logical, 9000);
+    assert_eq!(report.removed_logical, 9000);
     assert!(!tree.root_path().join("cache").exists());
     assert!(
         tree.root_path().join("a/keep.txt").exists(),
@@ -106,7 +113,7 @@ fn moves_reviewed_items_and_reports_exact_totals() {
 }
 
 #[test]
-fn changed_and_missing_items_are_refused() {
+fn changed_items_are_refused_and_missing_ones_count_as_gone() {
     let (t, tree) = fixture();
     let plan = build_plan(
         &tree,
@@ -116,11 +123,239 @@ fn changed_and_missing_items_are_refused() {
     fs::write(tree.root_path().join("cache/x.bin"), b"different contents").unwrap();
     fs::remove_file(tree.root_path().join("cache/y.bin")).unwrap();
     let report = execute(&plan, &open(), &mut holding_mover(t.path().join("hold")));
-    assert_eq!((report.moved, report.failed), (0, 2));
+    assert_eq!((report.moved, report.failed, report.gone), (0, 1, 1));
     assert!(
         tree.root_path().join("cache/x.bin").exists(),
         "changed file left in place"
     );
+    let changed = report.outcomes.iter().find(|o| !o.done()).unwrap();
+    assert!(matches!(&changed.status, Status::Failed(f) if f.kind == FailKind::Changed));
+}
+
+/// Simulated batch remover over a holding folder; counts calls.
+fn holding_batch(
+    hold: PathBuf,
+    calls: &mut usize,
+) -> impl FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> + '_ {
+    fs::create_dir_all(&hold).unwrap();
+    let mut n = 0;
+    move |paths: &[&Path]| {
+        *calls += 1;
+        paths
+            .iter()
+            .map(|p| {
+                n += 1;
+                let to = hold.join(format!("{n}"));
+                fs::rename(p, &to).map(|()| Some(to))
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn runs_in_batches_with_progress_and_only_the_chosen_items() {
+    let (t, tree) = fixture();
+    let ids = [
+        id(&tree, "cache/x.bin"),
+        id(&tree, "cache/y.bin"),
+        id(&tree, "a/b/old.log"),
+        id(&tree, "a/keep.txt"),
+    ];
+    let plan = build_plan(&tree, &ids, &open());
+    let only: HashSet<u32> = ids[..3].iter().copied().collect();
+    let mut calls = 0;
+    let mut seen = Vec::new();
+    let report = {
+        let mut remover = holding_batch(t.path().join("hold"), &mut calls);
+        run(
+            &plan,
+            &open(),
+            &RunOptions {
+                only: Some(&only),
+                batch: 2,
+                ..RunOptions::default()
+            },
+            &mut |p: &Progress| seen.push((p.done, p.total)),
+            &mut remover,
+        )
+    };
+    assert_eq!(calls, 2, "3 items in batches of 2");
+    assert_eq!((report.moved, report.failed), (3, 0));
+    assert_eq!(seen.first(), Some(&(0, 3)));
+    assert_eq!(seen.last(), Some(&(3, 3)));
+    assert!(
+        tree.root_path().join("a/keep.txt").exists(),
+        "not chosen, untouched"
+    );
+    assert!(
+        report.outcomes.iter().all(|o| o.recycled().is_some()),
+        "landing places kept for Put back"
+    );
+}
+
+#[test]
+fn stop_leaves_the_rest_untouched() {
+    let (t, tree) = fixture();
+    let ids = [
+        id(&tree, "cache/x.bin"),
+        id(&tree, "cache/y.bin"),
+        id(&tree, "a/keep.txt"),
+    ];
+    let plan = build_plan(&tree, &ids, &open());
+    let stop = AtomicBool::new(false);
+    let mut calls = 0;
+    let report = {
+        let mut remover = holding_batch(t.path().join("hold"), &mut calls);
+        run(
+            &plan,
+            &open(),
+            &RunOptions {
+                batch: 1,
+                stop: Some(&stop),
+                ..RunOptions::default()
+            },
+            // Press Stop as soon as the first item is done.
+            &mut |p: &Progress| {
+                if p.done == 1 {
+                    stop.store(true, Ordering::Relaxed)
+                }
+            },
+            &mut remover,
+        )
+    };
+    assert!(report.stopped);
+    assert_eq!((report.moved, report.not_started), (1, 2));
+}
+
+#[test]
+fn permanent_deletion_is_reported_as_deleted() {
+    let (t, tree) = fixture();
+    let plan = build_plan(&tree, &[id(&tree, "cache")], &open());
+    let mut calls = 0;
+    let report = {
+        let mut remover = holding_batch(t.path().join("hold"), &mut calls);
+        run(
+            &plan,
+            &open(),
+            &RunOptions {
+                method: Method::Permanent,
+                ..RunOptions::default()
+            },
+            &mut |_| {},
+            &mut remover,
+        )
+    };
+    assert_eq!((report.deleted, report.moved), (1, 0));
+    assert_eq!(report.removed_allocated, plan.total_allocated);
+}
+
+/// A file held open by another process (a PowerShell child of the test):
+/// detected, named, explained, and a folder holding it can still be emptied
+/// of everything else.
+#[cfg(windows)]
+#[test]
+fn files_in_use_are_found_named_and_worked_around() {
+    use std::process::{Command, Stdio};
+    use tessera_cleanup::inuse;
+    let (t, tree) = fixture();
+    let locked = tree.root_path().join("cache/x.bin");
+    // Opens the file without sharing and waits until told to stop.
+    let ps = format!(
+        "$f=[IO.File]::Open('{}','Open','Read','None'); [Console]::Out.WriteLine('open'); [Console]::In.ReadLine() | Out-Null; $f.Close()",
+        locked.display()
+    );
+    let mut child = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &ps])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("powershell");
+    let mut line = String::new();
+    std::io::BufRead::read_line(
+        &mut std::io::BufReader::new(child.stdout.take().unwrap()),
+        &mut line,
+    )
+    .unwrap();
+    assert_eq!(line.trim(), "open");
+
+    assert!(inuse::is_locked(&locked));
+    assert!(!inuse::is_locked(&tree.root_path().join("cache/y.bin")));
+    let inside = inuse::locked_files_in(
+        &tree.root_path().join("cache"),
+        10,
+        1000,
+        std::time::Duration::from_secs(2),
+    );
+    assert!(inside.complete && inside.files == vec![locked.clone()]);
+    let apps = inuse::apps_using(std::slice::from_ref(&locked));
+    eprintln!("held open by: {apps:?}");
+    assert!(!apps.is_empty(), "Restart Manager names the holder");
+
+    let f = classify(&io::Error::from_raw_os_error(32), &locked);
+    assert_eq!(f.kind, FailKind::InUse);
+    assert!(!f.apps.is_empty());
+    // A folder whose move fails with "access denied" because of the open file.
+    let f = classify(
+        &io::Error::from_raw_os_error(5),
+        &tree.root_path().join("cache"),
+    );
+    assert_eq!(f.kind, FailKind::InUse, "not a permission problem");
+    assert_eq!(f.in_use_files, vec![locked.clone()]);
+
+    let mut calls = 0;
+    let partial = {
+        let mut remover = holding_batch(t.path().join("hold"), &mut calls);
+        remove_except_in_use(&tree.root_path().join("cache"), &open(), &mut remover)
+    };
+    assert!(partial.checked);
+    assert_eq!(partial.in_use, vec![locked.clone()]);
+    assert_eq!(partial.removed.len(), 1, "y.bin removed");
+    assert!(locked.exists() && !tree.root_path().join("cache/y.bin").exists());
+
+    use std::io::Write;
+    writeln!(child.stdin.take().unwrap()).unwrap();
+    child.wait().unwrap();
+}
+
+/// Real Recycle Bin: a batch of disposable files with one held open. The
+/// open one is explained, the others move, and everything moved is taken
+/// out of the Recycle Bin again afterwards.
+/// cargo test -p tessera-cleanup -- --ignored real_batch
+#[cfg(windows)]
+#[test]
+#[ignore]
+fn real_batch_with_a_file_in_use() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-batch-test-")
+        .tempdir()
+        .unwrap();
+    let files: Vec<PathBuf> = (0..5)
+        .map(|i| {
+            let p = t.path().join(format!("batch-{i}.txt"));
+            fs::write(&p, b"disposable").unwrap();
+            p
+        })
+        .collect();
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&files[2])
+        .unwrap();
+    let refs: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
+    let results = tessera_cleanup::move_many_to_trash(&refs);
+    drop(held);
+    for (i, r) in results.iter().enumerate() {
+        if i == 2 {
+            let e = r.as_ref().unwrap_err();
+            assert_eq!(classify(e, &files[2]).kind, FailKind::InUse, "{e}");
+            assert!(files[2].exists());
+        } else {
+            let landed = r.as_ref().unwrap().clone().expect("landed");
+            assert!(!files[i].exists());
+            // Take it out of the Recycle Bin again.
+            tessera_cleanup::put_back(&landed, &files[i]).unwrap();
+        }
+    }
 }
 
 #[test]
