@@ -72,7 +72,7 @@ screen re-checks and retries once by itself.
 | Scanning, map, cleanup, Recycle Bin, Restore, licence (Credential Manager) | Same (full-trust desktop app, `runFullTrust`) |
 | Update check | Off; the Store updates the app; Settings says so (`update::store_managed()`) |
 | Right-click "Scan with Tessera" | **Not available**: added by the .exe installer only. A Store version needs a File Explorer command handler (COM, `desktop4:FileExplorerContextMenus`) - not built |
-| Start at sign-in | **Not available yet**: Windows keeps a packaged app's registry writes private, so the Run entry would do nothing. Settings shows the option as not available in the Store version, and the backend refuses it. Needs the package's `windows.startupTask` extension - not built |
+| Start at sign-in | Removed from every version in 1.0.1 (owner: people open Tessera about once a week), so there is no difference here |
 | Settings > Diagnostics > Show log file | Fine for Store-only users (new files go to the normal folder). If the .exe version was used before, the Store copy writes to a private copy of the old log, which File Explorer can't show |
 | Settings and history files | Same folders as the .exe version for new files; files that existed before are copied privately when changed (see the test install below) |
 
@@ -84,8 +84,8 @@ Installing an unsigned package locally needs **Developer Mode** (on since
 next to the .exe version, and `Remove-AppxPackage` removes it. Close the
 .exe version first: both share the single-instance identity.
 Checklist: starts; scans a disposable folder; cleanup to the Recycle Bin and
-Undo; licence activates; Settings shows "updates come from the Store" and
-start at sign-in as not available; Show log file; uninstall leaves nothing.
+Undo; licence activates; Settings shows "updates come from the Store";
+Show log file; uninstall leaves nothing.
 The Windows App Certification Kit (`appcert.exe`, installed) also needs an
 installed package and administrator rights; the Store runs the same tests
 during certification anyway.

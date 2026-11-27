@@ -85,9 +85,8 @@ Both systems:
 7. Export CSV through the save dialog and open the file.
 8. Settings > Background: turn on keep-running; close the window; the icon
    is in the notification area / menu bar with free space; Open, Scan main
-   drive and Quit work. The first close shows a one-time notification. Turn on
-   "Start Tessera there when I sign in", sign out and in: Tessera is in the
-   notification area / menu bar with no window. Turn both off again.
+   drive and Quit work. The first close shows a one-time notification. Turn it
+   off again. (There is no start-at-sign-in option since 1.0.1.)
 9. Settings > Diagnostics > Show log file: the log opens; it contains no file
    or folder names.
 10. Uninstall; on Windows the right-click entries are gone.
