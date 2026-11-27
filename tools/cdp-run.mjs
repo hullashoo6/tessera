@@ -118,6 +118,18 @@ for (const step of steps) {
     console.log(`saved ${arg}`)
   } else if (kind === 'sleep') {
     await sleep(Number(arg))
+  } else if (kind === 'viewport') {
+    // viewport:WIDTH,HEIGHT,SCALE (e.g. 1600,1000,1.25) or viewport:off
+    if (arg === 'off') await send('Emulation.clearDeviceMetricsOverride')
+    else {
+      const [width, height, scale = '1'] = arg.split(',')
+      await send('Emulation.setDeviceMetricsOverride', { width: Number(width), height: Number(height), deviceScaleFactor: Number(scale), mobile: false })
+    }
+    await sleep(500)
+  } else if (kind === 'media') {
+    // media:dark, media:light, or media:off
+    await send('Emulation.setEmulatedMedia', { features: arg === 'off' ? [] : [{ name: 'prefers-color-scheme', value: arg }] })
+    await sleep(600)
   } else if (kind === 'net') {
     if (arg === 'on') await send('Network.enable')
     else {

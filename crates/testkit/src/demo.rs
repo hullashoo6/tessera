@@ -1,8 +1,10 @@
 //! A realistic-looking demonstration library for product screenshots.
 //!
-//! Every file is sparse: it reports its full size but occupies almost no
-//! disk space, so a ~200 GB library fits on any machine. Screenshots made
-//! from it must use the "File size" view and be labelled as a demonstration.
+//! Most files are sparse: they report their full size but occupy almost no
+//! disk space, so a ~200 GB library fits on any machine. A few hundred MB
+//! are real, so Smart Scan and Duplicates have something to show.
+//! Screenshots made from it must use the "File size" view and be labelled
+//! as a demonstration.
 
 use crate::{GenStats, MARKER, Rng, make_sparse};
 use std::fs;
@@ -114,19 +116,81 @@ pub fn generate_demo(root: &Path) -> io::Result<GenStats> {
             add(&format!("{dir}/{prefix}_{n:04}.{ext}"), size, &mut stats)?;
         }
     }
-    // node_modules: many packages of small files, as in a real project.
+    for &(rel, size) in SINGLES {
+        add(rel, size, &mut stats)?;
+    }
+
+    // Real (not sparse) content where Tessera judges by the space actually
+    // used: Smart Scan suggests developer folders that sit beside their
+    // evidence (package.json, Cargo.toml, pyvenv.cfg), and Duplicates
+    // compares the contents of real files. About 370 MB on disk.
+    let dense = |rel: &str, size: u64, stats: &mut GenStats| -> io::Result<()> {
+        crate::dense_file(root, rel, size as usize)?;
+        stats.files += 1;
+        stats.logical_bytes += size;
+        Ok(())
+    };
+    dense("Projects/storefront/package.json", 1_200, &mut stats)?;
+    dense(
+        "Projects/storefront/package-lock.json",
+        180 * KB,
+        &mut stats,
+    )?;
     for pkg in 0..60 {
         for f in 0..24 {
-            let size = rng.range(KB, 380 * KB);
-            add(
+            let size = rng.range(KB, 90 * KB);
+            dense(
                 &format!("Projects/storefront/node_modules/package-{pkg:02}/lib/file-{f:02}.js"),
                 size,
                 &mut stats,
             )?;
         }
     }
-    for &(rel, size) in SINGLES {
-        add(rel, size, &mut stats)?;
+    for n in 0..18 {
+        let size = rng.range(400 * KB, 2600 * KB);
+        dense(
+            &format!("Projects/storefront/.next/cache/webpack/chunk-{n:02}.pack"),
+            size,
+            &mut stats,
+        )?;
+    }
+    dense("Projects/engine/Cargo.toml", 640, &mut stats)?;
+    dense("Projects/engine/target/CACHEDIR.TAG", 177, &mut stats)?;
+    for n in 0..36 {
+        let size = rng.range(300 * KB, 3 * MB);
+        dense(
+            &format!("Projects/engine/target/debug/deps/libengine-{n:02}.rlib"),
+            size,
+            &mut stats,
+        )?;
+    }
+    dense("Projects/notebooks/requirements.txt", 420, &mut stats)?;
+    dense("Projects/notebooks/.venv/pyvenv.cfg", 140, &mut stats)?;
+    for n in 0..160 {
+        let size = rng.range(40 * KB, 400 * KB);
+        dense(
+            &format!(
+                "Projects/notebooks/.venv/Lib/site-packages/package-{:02}/module-{n:03}.py",
+                n / 8
+            ),
+            size,
+            &mut stats,
+        )?;
+    }
+    // Exact copies kept in several places.
+    for rel in [
+        "Videos/Holiday 2025/holiday final.mp4",
+        "Downloads/holiday final.mp4",
+        "Backups/Old laptop/holiday final.mp4",
+    ] {
+        dense(rel, 48 * MB, &mut stats)?;
+    }
+    for rel in [
+        "Photos/2025/sunset at the lake.jpg",
+        "Downloads/sunset at the lake.jpg",
+        "Documents/Shared/sunset at the lake.jpg",
+    ] {
+        dense(rel, 9 * MB, &mut stats)?;
     }
 
     stats.dirs = count_dirs(root)?;

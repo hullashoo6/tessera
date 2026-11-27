@@ -185,6 +185,17 @@ describe('removing', () => {
     expect(onRescan).toHaveBeenCalled()
   })
 
+  it('never calls something Windows deleted "moved": says so, and offers Undo only for what is in the bin', async () => {
+    api.reviewCleanup.mockResolvedValue(review([item(1, G), item(2, 2 * G)]))
+    api.confirmCleanup.mockResolvedValue(report({ moved: 1, deleted: 1, doneIds: [1, 2] }))
+    renderCleanup({ marked: [1, 2] })
+    fireEvent.click(await screen.findByText('Move 2 items (3.00 GB) to the Recycle Bin'))
+    moveDialog()
+    expect(await screen.findByText('Moved 1 item to the Recycle Bin')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toMatch(/Windows deleted 1 item permanently.*cannot be put back/)
+    expect(screen.getByText('Undo: put it back')).toBeTruthy()
+  })
+
   it('if the list changed since it was checked, checks again and finishes by itself', async () => {
     api.reviewCleanup.mockResolvedValueOnce(review([item(1, G), item(2, 2 * G)], 7))
     api.reviewCleanup.mockResolvedValueOnce(review([item(1, G), item(2, 2 * G)], 8))

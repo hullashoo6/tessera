@@ -65,12 +65,18 @@ pub const LIVE: ModeConfig = ModeConfig {
 pub const LIVE_MODE_APPROVED: bool = true;
 
 /// Where to buy Tessera Pro in this build's mode.
-pub const fn purchase_url() -> &'static str {
+pub fn purchase_url() -> &'static str {
     active().checkout_url
 }
 
-/// The configuration this build uses.
-pub const fn active() -> ModeConfig {
+/// The configuration this build uses. Development builds only (never a
+/// release build): `TESSERA_DEV_TEST_LICENSING=1` uses test mode, so test
+/// keys work for screenshots and testing.
+pub fn active() -> ModeConfig {
+    #[cfg(debug_assertions)]
+    if std::env::var_os("TESSERA_DEV_TEST_LICENSING").is_some() {
+        return TEST;
+    }
     if LIVE_MODE_APPROVED { LIVE } else { TEST }
 }
 

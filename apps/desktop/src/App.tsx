@@ -399,8 +399,9 @@ export function App() {
               </button>
             </div>
           )}
-        </div>
-
+        {/* Notices stay in this top area: the window's grid has exactly three
+            rows (top area, page, status bar), so anything placed between them
+            would take the page's stretchy row. */}
         {update && (
           <div className="info-strip" role="status">
             <span className="spacer">Tessera {update} is available.</span>
@@ -424,6 +425,7 @@ export function App() {
             </button>
           </div>
         )}
+        </div>
         <div className={view === 'map' || view === 'largest' || view === 'search' ? 'content fill' : 'content'}>
           {view === 'overview' && !settings.welcomed && (
             <Welcome

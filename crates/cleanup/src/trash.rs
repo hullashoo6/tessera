@@ -30,6 +30,36 @@ pub fn move_many_to_trash(paths: &[&Path]) -> Vec<io::Result<Option<std::path::P
     }
 }
 
+/// The largest item, in bytes of full length, that the Recycle Bin of
+/// `path`'s drive keeps. Windows deletes anything bigger permanently, and
+/// with no confirmation shown it does so without asking (27 Nov 2026: a
+/// 38 GB file went that way on a drive whose limit was 14 GB). `Some(0)`:
+/// the drive has no Recycle Bin, or it is set to delete at once. `None`: no
+/// such limit (the macOS Trash) or it could not be read.
+pub fn recycle_limit(path: &Path) -> Option<u64> {
+    imp::recycle_limit(path)
+}
+
+/// True when the Recycle Bin / Trash can keep an item of `bytes` (its full
+/// length) at `path`.
+pub fn fits_in_trash(path: &Path, bytes: u64) -> bool {
+    match recycle_limit(path) {
+        Some(0) => false,
+        Some(limit) => bytes < limit,
+        None => true,
+    }
+}
+
+/// The error for an item the Recycle Bin cannot keep (shown as "Too large for
+/// the Recycle Bin", with a separately warned Delete permanently).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn too_big() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::StorageFull,
+        "the Recycle Bin cannot hold it (too large, or the drive has no Recycle Bin), so it was left in place",
+    )
+}
+
 /// Deletes items permanently, skipping the Recycle Bin / Trash. Only used
 /// when the person explicitly chose "Delete permanently". One result per
 /// item, in order; an item that is already gone counts as deleted.
@@ -376,12 +406,29 @@ mod imp {
     pub(super) fn move_many_to_trash(
         paths: &[&Path],
     ) -> Vec<io::Result<Option<std::path::PathBuf>>> {
-        let (batch, refused) = run_batch(paths, false);
+        // Files the Recycle Bin cannot keep never reach Windows, which would
+        // delete them permanently without asking.
+        let too_big: Vec<bool> = paths.iter().map(|p| file_too_big(p)).collect();
+        let fit: Vec<&Path> = paths
+            .iter()
+            .zip(&too_big)
+            .filter(|(_, big)| !**big)
+            .map(|(p, _)| *p)
+            .collect();
+        let (batch, refused) = if fit.is_empty() {
+            Default::default()
+        } else {
+            run_batch(&fit, false)
+        };
         paths
             .iter()
-            .map(|p| {
+            .zip(too_big)
+            .map(|(p, big)| {
+                if big {
+                    return Err(super::too_big());
+                }
                 let k = key(&p.to_string_lossy());
-                match batch.get(&k) {
+                let r = match batch.get(&k) {
                     // Settled by the batch, and really gone from its place.
                     Some(Ok(landed)) if std::fs::symlink_metadata(p).is_err() => Ok(landed.clone()),
                     // A real failure of this item (not the rest of a batch
@@ -389,8 +436,9 @@ mod imp {
                     Some(Err(hr)) if !refused && *hr != E_ABORT => Err(hr_to_io(*hr)),
                     // Not settled (refused, cancelled with the rest, or not
                     // reported): do it on its own.
-                    _ => move_to_trash(p),
-                }
+                    _ => return move_to_trash(p),
+                };
+                confirm_landed(p, r)
             })
             .collect()
     }
@@ -471,7 +519,157 @@ mod imp {
         .unwrap_or_default()
     }
 
+    /// A file the Recycle Bin of its drive cannot keep (folders are checked
+    /// by `run` with the sizes from the scan).
+    fn file_too_big(p: &Path) -> bool {
+        match std::fs::symlink_metadata(p) {
+            Ok(m) if m.is_file() => !super::fits_in_trash(p, m.len()),
+            Ok(_) => matches!(super::recycle_limit(p), Some(0)),
+            Err(_) => false,
+        }
+    }
+
+    /// After a move that reported no place in the Recycle Bin: find where it
+    /// is there, or `None` when it is not there at all (Windows deleted it).
+    fn confirm_landed(
+        p: &Path,
+        r: io::Result<Option<std::path::PathBuf>>,
+    ) -> io::Result<Option<std::path::PathBuf>> {
+        match r {
+            Ok(None) if std::fs::symlink_metadata(p).is_err() => Ok(find_in_bin(p)),
+            other => other,
+        }
+    }
+
+    /// The newest item in the Recycle Bin of `original`'s drive that came
+    /// from `original` (read from the bin's $I index files).
+    pub(super) fn find_in_bin(original: &Path) -> Option<std::path::PathBuf> {
+        use windows::Win32::Storage::FileSystem::GetVolumePathNameW;
+        let w = wide(original);
+        let mut root = [0u16; 512];
+        // SAFETY: `w` is NUL-terminated and `root` is a valid buffer.
+        unsafe { GetVolumePathNameW(PCWSTR(w.as_ptr()), &mut root) }.ok()?;
+        let n = root.iter().position(|&c| c == 0)?;
+        let bin =
+            std::path::PathBuf::from(String::from_utf16_lossy(&root[..n])).join("$Recycle.Bin");
+        let want = original.to_string_lossy().to_lowercase();
+        let mut best: Option<(i64, std::path::PathBuf)> = None;
+        for user in std::fs::read_dir(bin).ok()?.flatten() {
+            let Ok(entries) = std::fs::read_dir(user.path()) else {
+                continue;
+            };
+            for e in entries.flatten() {
+                let name = e.file_name().to_string_lossy().to_string();
+                let Some(rest) = name.strip_prefix("$I") else {
+                    continue;
+                };
+                let Ok(b) = std::fs::read(e.path()) else {
+                    continue;
+                };
+                if b.len() < 28 {
+                    continue;
+                }
+                let at = i64::from_le_bytes(b[16..24].try_into().ok()?);
+                // Version 2 (Windows 10 and later): length, then the path.
+                // Version 1: a fixed 260-character path.
+                let raw = if b[0] == 2 {
+                    let len = u32::from_le_bytes(b[24..28].try_into().ok()?) as usize;
+                    b.get(28..28 + len * 2).unwrap_or(&[])
+                } else {
+                    b.get(24..24 + 520).unwrap_or(&[])
+                };
+                let units: Vec<u16> = raw
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|c| u16::from_le_bytes(*c))
+                    .collect();
+                let from = String::from_utf16_lossy(&units);
+                if from.trim_end_matches('\0').to_lowercase() != want {
+                    continue;
+                }
+                let item = user.path().join(format!("$R{rest}"));
+                if std::fs::symlink_metadata(&item).is_ok()
+                    && best.as_ref().is_none_or(|(t, _)| at > *t)
+                {
+                    best = Some((at, item));
+                }
+            }
+        }
+        best.map(|(_, p)| p)
+    }
+
+    /// See `super::recycle_limit`.
+    pub(super) fn recycle_limit(path: &Path) -> Option<u64> {
+        use windows::Win32::Storage::FileSystem::{
+            GetDiskFreeSpaceExW, GetDriveTypeW, GetVolumeNameForVolumeMountPointW,
+            GetVolumePathNameW,
+        };
+        use winreg::RegKey;
+        use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+        const DRIVE_FIXED: u32 = 3;
+        let w = wide(path);
+        let mut root = [0u16; 512];
+        // SAFETY: `w` is NUL-terminated; `root` is a valid, zeroed buffer
+        // that stays alive for every call below that reads it.
+        unsafe { GetVolumePathNameW(PCWSTR(w.as_ptr()), &mut root) }.ok()?;
+        let root_p = PCWSTR(root.as_ptr());
+        // Only fixed drives keep a Recycle Bin: USB sticks, memory cards,
+        // network and optical drives delete at once.
+        if unsafe { GetDriveTypeW(root_p) } != DRIVE_FIXED {
+            return Some(0);
+        }
+        let policy = |name: &str| -> Option<u32> {
+            [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
+                .into_iter()
+                .find_map(|hive| {
+                    RegKey::predef(hive)
+                        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer")
+                        .ok()?
+                        .get_value::<u32, _>(name)
+                        .ok()
+                })
+        };
+        if policy("NoRecycleFiles") == Some(1) {
+            return Some(0);
+        }
+        let mut total = 0u64;
+        unsafe { GetDiskFreeSpaceExW(root_p, None, Some(&mut total as *mut u64), None) }.ok()?;
+        if let Some(percent) = policy("RecycleBinSize") {
+            return Some(total / 100 * u64::from(percent.min(100)));
+        }
+        let mut volume = [0u16; 64];
+        if unsafe { GetVolumeNameForVolumeMountPointW(root_p, &mut volume) }.is_ok() {
+            let v = String::from_utf16_lossy(&volume);
+            if let (Some(a), Some(b)) = (v.find('{'), v.find('}'))
+                && let Ok(k) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(format!(
+                    r"Software\Microsoft\Windows\CurrentVersion\Explorer\BitBucket\Volume\{}",
+                    &v[a..=b]
+                ))
+            {
+                if k.get_value::<u32, _>("NukeOnDelete").ok() == Some(1) {
+                    return Some(0);
+                }
+                if let Ok(mb) = k.get_value::<u32, _>("MaxCapacity") {
+                    return Some(u64::from(mb) << 20);
+                }
+            }
+        }
+        // Windows' default size: 10% of the first 40 GB plus 5% of the rest.
+        let first = total.min(40 << 30);
+        Some(first / 10 + (total - first) / 20)
+    }
+
+    /// Moves `path` to the Recycle Bin, but never something it cannot keep
+    /// (Windows would delete that permanently), and reports where it went.
     pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
+        if file_too_big(path) {
+            return Err(super::too_big());
+        }
+        confirm_landed(path, move_one(path))
+    }
+
+    fn move_one(path: &Path) -> io::Result<Option<std::path::PathBuf>> {
         let wide: Vec<u16> = path
             .as_os_str()
             .encode_wide()
@@ -595,6 +793,12 @@ mod imp {
         io::Error::new(kind, text)
     }
 
+    /// The Trash has no size limit, and trashItemAtURL fails (never deletes)
+    /// on a volume without one.
+    pub(super) fn recycle_limit(_path: &Path) -> Option<u64> {
+        None
+    }
+
     pub(super) fn move_to_trash(path: &Path) -> io::Result<Option<PathBuf>> {
         // NSFileManager trashItemAtURL: moves to the Trash or fails; it never
         // deletes permanently, and it reports where the item landed.
@@ -667,6 +871,10 @@ mod imp {
             io::ErrorKind::Unsupported,
             "not supported on this system",
         ))
+    }
+
+    pub(super) fn recycle_limit(_path: &Path) -> Option<u64> {
+        None
     }
 
     pub(super) fn move_to_trash(_path: &Path) -> io::Result<Option<std::path::PathBuf>> {

@@ -43,13 +43,15 @@ fn id(tree: &Tree, rel: &str) -> u32 {
     find_by_path(tree, &tree.root_path().join(rel)).unwrap_or_else(|| panic!("{rel} not in tree"))
 }
 
-/// Simulated Trash: moves items into a holding folder beside the scan root.
+/// Simulated Trash: moves items into a holding folder beside the scan root
+/// and, like the real Recycle Bin, reports where each one went.
 fn holding_mover(hold: PathBuf) -> impl FnMut(&Path) -> io::Result<Option<PathBuf>> {
     fs::create_dir_all(&hold).unwrap();
     let mut n = 0;
     move |p: &Path| {
         n += 1;
-        fs::rename(p, hold.join(format!("{n}"))).map(|()| None)
+        let to = hold.join(format!("{n}"));
+        fs::rename(p, &to).map(|()| Some(to))
     }
 }
 
@@ -397,7 +399,7 @@ fn mover_failures_are_reported_not_retried() {
         if p.ends_with("x.bin") {
             Err(io::Error::other("simulated failure"))
         } else {
-            fs::rename(p, hold.join("k")).map(|()| None)
+            fs::rename(p, hold.join("k")).map(|()| Some(hold.join("k")))
         }
     });
     assert_eq!(calls, 2, "one attempt per item");
@@ -561,6 +563,117 @@ fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
     fs::remove_file(&second).unwrap(); // the test's own file
     tessera_cleanup::put_back(&recycled2, &second).unwrap();
     assert_eq!(fs::read(&second).unwrap(), b"old");
+}
+
+/// The drive's Recycle Bin limit is read (fixed drives keep a bin), and
+/// small items fit.
+#[cfg(windows)]
+#[test]
+fn the_recycle_bin_limit_is_known_for_this_drive() {
+    let t = kit::tempfile::tempdir().unwrap();
+    let limit = tessera_cleanup::recycle_limit(t.path()).expect("a limit on a fixed drive");
+    assert!(limit > 64 << 20, "implausibly small limit: {limit}");
+    assert!(tessera_cleanup::fits_in_trash(t.path(), 4096));
+    assert!(!tessera_cleanup::fits_in_trash(t.path(), limit));
+}
+
+/// The bug of 27 Nov 2026: Windows permanently deleted a 38 GB file that was
+/// bigger than the Recycle Bin allows, while Tessera reported it as moved.
+/// A sparse (space-free) file just over the limit must be left in place,
+/// whichever way it is moved, with the "too large" explanation. The file
+/// never enters the Recycle Bin, so the bin is not touched.
+/// cargo test -p tessera-cleanup -- --ignored too_big
+#[cfg(windows)]
+#[test]
+#[ignore]
+fn too_big_for_the_recycle_bin_is_left_in_place() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-too-big-")
+        .tempdir()
+        .unwrap();
+    let r = t.path().join("root");
+    fs::create_dir_all(&r).unwrap();
+    let limit = tessera_cleanup::recycle_limit(&r).expect("limit");
+    let big = r.join("virtual-machine.vhdx");
+    kit::make_sparse(&big, limit + (1 << 30)).unwrap();
+    kit::dense_file(&r, "small.txt", 4096).unwrap();
+
+    // 1. The single move refuses it.
+    let e = tessera_cleanup::move_to_trash(&big).unwrap_err();
+    assert_eq!(classify(&e, &big).kind, FailKind::TooLargeForBin);
+    assert!(big.exists(), "still in place after move_to_trash");
+    // 2. The batch move refuses it.
+    let rs = tessera_cleanup::move_many_to_trash(&[big.as_path()]);
+    assert_eq!(
+        classify(rs[0].as_ref().unwrap_err(), &big).kind,
+        FailKind::TooLargeForBin
+    );
+    assert!(big.exists(), "still in place after move_many_to_trash");
+    // 3. A cleanup run refuses it and moves the small file as usual.
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let plan = build_plan(
+        &tree,
+        &[id(&tree, "virtual-machine.vhdx"), id(&tree, "small.txt")],
+        &open(),
+    );
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions::default(),
+        &mut |_| {},
+        &mut tessera_cleanup::system_remover(Method::Trash),
+    );
+    assert!(big.exists(), "still in place after a cleanup run");
+    assert_eq!(
+        (report.moved, report.failed, report.deleted),
+        (1, 1, 0),
+        "{:?}",
+        report.outcomes
+    );
+    let failed = report
+        .outcomes
+        .iter()
+        .find_map(|o| match &o.status {
+            Status::Failed(f) => Some(f.kind),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(failed, FailKind::TooLargeForBin);
+    // Put the small one back (the test's own file).
+    let landed = report
+        .outcomes
+        .iter()
+        .find_map(|o| o.recycled().cloned())
+        .expect("the small file is in the Recycle Bin");
+    tessera_cleanup::put_back(&landed, &r.join("small.txt")).unwrap();
+    // 4. A folder bigger than the limit is refused too (checked with the
+    // scan's sizes).
+    let folder = r.join("Old projects");
+    fs::create_dir_all(&folder).unwrap();
+    kit::make_sparse(&folder.join("archive.zip"), limit + (1 << 30)).unwrap();
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let plan = build_plan(&tree, &[id(&tree, "Old projects")], &open());
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions::default(),
+        &mut |_| {},
+        &mut tessera_cleanup::system_remover(Method::Trash),
+    );
+    assert_eq!((report.moved, report.failed), (0, 1));
+    assert!(folder.join("archive.zip").exists(), "folder left in place");
 }
 
 /// The cleanup run as the app does it, on the real Recycle Bin / Trash, with

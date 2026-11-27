@@ -16,7 +16,10 @@ pub use failure::{FailKind, Failure, classify};
 pub use protect::Protection;
 pub mod cloud;
 pub mod history;
-pub use trash::{delete_many_permanently, move_many_to_trash, move_to_trash, put_back};
+pub use trash::{
+    delete_many_permanently, fits_in_trash, move_many_to_trash, move_to_trash, put_back,
+    recycle_limit,
+};
 
 use std::collections::{HashMap, HashSet};
 use std::fs::Metadata;
@@ -386,6 +389,14 @@ pub fn run(
                     FailKind::Changed
                 };
                 record(&mut report, c, Status::Failed(Failure::new(kind, reason)));
+            } else if opts.method == Method::Trash && !trash::fits_in_trash(&c.path, c.logical) {
+                // Windows would delete it permanently, without asking, rather
+                // than keep it in the Recycle Bin: it is never handed over.
+                record(
+                    &mut report,
+                    c,
+                    Status::Failed(classify(&trash::too_big(), &c.path)),
+                );
             } else {
                 ready.push(c);
             }
@@ -407,6 +418,10 @@ pub fn run(
                     Failure::new(FailKind::Other, "It is still in place after the move."),
                 ),
                 Ok(landed) => match opts.method {
+                    // On Windows the Recycle Bin always reports (or Tessera
+                    // finds) where a moved item is. Gone but not there means
+                    // Windows deleted it: say so, and never offer Undo.
+                    Method::Trash if landed.is_none() && cfg!(windows) => Status::Deleted,
                     Method::Trash => Status::Moved(landed),
                     Method::Permanent => Status::Deleted,
                 },

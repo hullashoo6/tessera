@@ -386,8 +386,18 @@ export function Cleanup(props: Props) {
               : 'Nothing was removed'
             : permanent
               ? `Deleted ${plural(removed, 'item', 'items')}`
-              : `Moved ${plural(removed, 'item', 'items')} to the ${bin}`}
+              : report.moved === 0
+                ? 'Nothing was moved to the ' + bin
+                : `Moved ${plural(report.moved, 'item', 'items')} to the ${bin}`}
         </h2>
+        {!permanent && report.deleted > 0 && (
+          <p className="review-reason" role="alert">
+            Windows deleted {plural(report.deleted, 'item', 'items')} permanently instead of keeping{' '}
+            {report.deleted === 1 ? 'it' : 'them'} in the {bin}, so {report.deleted === 1 ? 'it' : 'they'} cannot be put
+            back. Tessera checks each item against the {bin}’s limit first, so this should not happen; please tell us
+            if it does.
+          </p>
+        )}
         <p className="lede" hidden={undone}>
           {removed > 0 &&
             (permanent
