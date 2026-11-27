@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-reveal-in-scan"
+description = "Enables the reveal_in_scan command without any pre-configured scope."
+commands.allow = ["reveal_in_scan"]
+
+[[permission]]
+identifier = "deny-reveal-in-scan"
+description = "Denies the reveal_in_scan command without any pre-configured scope."
+commands.deny = ["reveal_in_scan"]

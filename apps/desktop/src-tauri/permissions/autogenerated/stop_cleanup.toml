@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-stop-cleanup"
+description = "Enables the stop_cleanup command without any pre-configured scope."
+commands.allow = ["stop_cleanup"]
+
+[[permission]]
+identifier = "deny-stop-cleanup"
+description = "Denies the stop_cleanup command without any pre-configured scope."
+commands.deny = ["stop_cleanup"]

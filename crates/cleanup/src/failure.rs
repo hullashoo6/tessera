@@ -118,7 +118,8 @@ pub fn classify(err: &io::Error, path: &Path) -> Failure {
 /// An in-use failure, with the apps and (for folders) the files involved.
 fn in_use(path: &Path, detail: String) -> Failure {
     let mut f = Failure::new(FailKind::InUse, detail);
-    let files = if path.is_dir() {
+    let dir = path.is_dir();
+    let files = if dir {
         inuse::locked_files_in(path, 20, 50_000, Duration::from_secs(1)).files
     } else if inuse::is_locked(path) {
         vec![path.to_path_buf()]
@@ -131,7 +132,10 @@ fn in_use(path: &Path, detail: String) -> Failure {
         files.clone()
     };
     f.apps = inuse::apps_using(&asked).into_iter().take(5).collect();
-    f.in_use_files = files.into_iter().take(5).collect();
+    // Only a folder has files "inside" it worth listing.
+    if dir {
+        f.in_use_files = files.into_iter().take(5).collect();
+    }
     f
 }
 

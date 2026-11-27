@@ -204,7 +204,11 @@ export function Cleanup(props: Props) {
       .cleanupExceptInUse(scanId, f.id)
       .then((r) => {
         setPartials((p) => ({ ...p, [f.id]: r }))
-        if (r.removed > 0) props.onChanged()
+        if (r.removed > 0) {
+          // The folder is smaller now: check the list again for true sizes.
+          setReviewState(null)
+          props.onChanged()
+        }
       })
       .catch((e) => {
         setPartials((p) => {
@@ -346,10 +350,13 @@ export function Cleanup(props: Props) {
       report.freeBefore !== null && report.freeAfter !== null ? report.freeAfter - report.freeBefore : null
     const groups = groupFailures(report.failures, os)
     const failedIds = report.failures.map((f) => f.id)
+    const undone = undo !== null && undo !== 'busy' && undo.restored > 0
     return (
       <div className="overview cleanup">
         <h2>
-          {removed === 0
+          {undone
+            ? `Put back ${plural(undo.restored, 'item', 'items')}`
+            : removed === 0
             ? report.gone > 0
               ? 'Nothing left to remove'
               : 'Nothing was removed'
@@ -357,7 +364,7 @@ export function Cleanup(props: Props) {
               ? `Deleted ${plural(removed, 'item', 'items')}`
               : `Moved ${plural(removed, 'item', 'items')} to the ${bin}`}
         </h2>
-        <p className="lede">
+        <p className="lede" hidden={undone}>
           {removed > 0 &&
             (permanent
               ? `${size(report.removedLogical, report.removedAllocated)} deleted permanently.${gained !== null && gained > 0 ? ` Free space went up by ${formatBytes(gained)}.` : ''} `
@@ -366,7 +373,7 @@ export function Cleanup(props: Props) {
           {report.stopped &&
             `Stopped: ${plural(report.notStarted, 'item was', 'items were')} not started and ${report.notStarted === 1 ? 'is' : 'are'} still in your cleanup list.`}
         </p>
-        {removed > 0 && !permanent && (
+        {removed > 0 && !permanent && !undone && (
           <div className="actions result-actions">
             <button className="btn" onClick={() => api.openRecycleBin().catch((e) => onError(errorText(e)))}>
               Open {bin}
@@ -385,9 +392,11 @@ export function Cleanup(props: Props) {
         )}
         {undo !== null && undo !== 'busy' && (
           <p className="notice" role="status">
-            Put back {plural(undo.restored, 'item', 'items')}
-            {undo.failed > 0 && ` (${plural(undo.failed, 'item', 'items')} could not be put back; see the Restore page)`}. Scan
-            again to see {undo.restored === 1 ? 'it' : 'them'} on the map.{' '}
+            {undo.restored > 0
+              ? `${undo.restored === 1 ? 'It is' : 'They are'} back where ${undo.restored === 1 ? 'it was' : 'they were'}.`
+              : 'Nothing could be put back.'}
+            {undo.failed > 0 && ` ${plural(undo.failed, 'item', 'items')} could not be put back; see the Restore page.`} Scan
+            again to see the map as it is now.{' '}
             <button className="btn btn-quiet inline-btn" onClick={props.onRescan}>
               Scan again
             </button>
