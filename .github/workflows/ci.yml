@@ -10,6 +10,12 @@ on:
       - 'docs/**'
       - 'bench-results/**'
   pull_request:
+  # macOS runs here: weekly, on request (Actions > CI > Run workflow), and on
+  # any push whose commit message contains [mac]. Ordinary pushes run Windows
+  # only, because macOS minutes cost ten times as much.
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * 1'
 
 permissions:
   contents: read
@@ -25,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         # windows-latest: Windows Server x64; macos-latest: Apple Silicon.
-        os: [windows-latest, macos-latest]
+        os: ${{ fromJSON((github.event_name == 'push' && !contains(github.event.head_commit.message, '[mac]')) && '["windows-latest"]' || '["windows-latest","macos-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5

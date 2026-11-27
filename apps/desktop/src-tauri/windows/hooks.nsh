@@ -14,10 +14,17 @@
   WriteRegStr HKCU "Software\Classes\${KEY}\shell\Tessera\command" "" '"$INSTDIR\${MAINBINARYNAME}.exe" "%V"'
 !macroend
 
+; Tells File Explorer that file-type menus changed (SHCNE_ASSOCCHANGED), so a
+; File Explorer window that is already open shows or drops the entry at once.
+!macro TESSERA_REFRESH_EXPLORER
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   !insertmacro TESSERA_ADD_VERB "Directory"
   !insertmacro TESSERA_ADD_VERB "Directory\Background"
   !insertmacro TESSERA_ADD_VERB "Drive"
+  !insertmacro TESSERA_REFRESH_EXPLORER
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
@@ -30,4 +37,5 @@
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Tessera"
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Tessera"
   ${EndIf}
+  !insertmacro TESSERA_REFRESH_EXPLORER
 !macroend
