@@ -21,7 +21,7 @@ Step 'Interface: lint, tests, build' { Push-Location apps\desktop; npx oxlint sr
 Step 'Format' { cargo fmt --all -- --check }
 Step 'Clippy' { cargo clippy --workspace --all-targets --locked -- -D warnings }
 Step 'Tests' { cargo test --workspace --locked }
-Step 'macOS compile check (crates without Apple tools)' { cargo clippy --target aarch64-apple-darwin -p tessera-scan -p tessera-insights -p tessera-cli -p tessera-treemap --all-targets --locked -- -D warnings }
+Step 'macOS compile check (crates without Apple tools)' { cargo clippy --target aarch64-apple-darwin -p tessera-scan -p tessera-insights -p tessera-cli -p tessera-treemap -p tessera-cleanup --all-targets --locked -- -D warnings }
 if (-not $Quick) {
   $fx = Join-Path $root '.fixtures\check-20k'
   if (-not (Test-Path $fx)) { Step 'Fixture' { cargo run --release --locked -p tessera-cli -- gen $fx --files 20000 } }

@@ -1,68 +1,37 @@
 # Tessera
 
-*Working name — subject to a trademark check before launch.*
+A disk space analyser for Windows and Mac, by Beyond Enterprises.
 
-A privacy-first, cross-platform disk-space analyser for Windows and macOS.
-It shows what is using your storage, where it is, and (later) helps you
-recover space safely through a review-and-Trash workflow.
+Tessera shows exactly what fills your computer as one clear picture: every
+folder becomes a tile sized by the space it uses. It ranks your largest
+files, finds exact duplicates, explains Smart Scan suggestions, and (with
+Tessera Pro, a one-time purchase) helps you remove what you no longer need,
+safely: everything goes to the Recycle Bin or Trash first, with Undo.
 
-**Current stage:** the scanning engine (the core of the product) is built and
-tested on Windows. The desktop app, website and installers are not built yet.
-See [STATUS.md](STATUS.md) for exactly what works and how it was verified.
+**Download and buy:** https://tessera-96w.pages.dev
 
-## For the owner: running what exists today
+## Private by design
 
-All commands are typed into **PowerShell** (Start menu → type "PowerShell").
-
-1. Go to the project folder:
-
-   ```powershell
-   cd C:\Users\mengh\projects\tessera
-   ```
-
-2. Build the command-line scanner (first build takes a few minutes):
-
-   ```powershell
-   cargo build --release -p tessera-cli
-   ```
-
-3. List your drives, with capacity as reported by Windows:
-
-   ```powershell
-   .\target\release\tessera-cli.exe volumes
-   ```
-
-4. Scan any folder (read-only — it never changes or deletes anything):
-
-   ```powershell
-   .\target\release\tessera-cli.exe scan "C:\Program Files"
-   ```
-
-5. Run the automated tests (they only touch temporary folders):
-
-   ```powershell
-   cargo test --workspace
-   ```
-
-## For developers
-
-* Toolchain: Rust 1.100.0 (pinned in `rust-toolchain.toml`); on Windows,
-  Visual Studio 2022 Build Tools with "Desktop development with C++".
-* Layout and design: [ARCHITECTURE.md](ARCHITECTURE.md).
-* Tests: [TESTING.md](TESTING.md). Benchmarks: [BENCHMARKS.md](BENCHMARKS.md).
-* Security model: [SECURITY.md](SECURITY.md).
-
-Benchmark fixtures:
-
-```powershell
-.\target\release\tessera-cli.exe gen .fixtures\f100k --files 100000
-.\target\release\tessera-cli.exe bench .fixtures\f100k --runs 5
-```
-
-`gen` only writes into a new, empty folder; `bench` refuses to run on any
-folder that is not a generated fixture.
+Scans happen entirely on your computer. Tessera never uploads file names,
+folders or scan results, has no analytics, and needs no account. It goes
+online only to check a Pro licence with Dodo Payments and, if you allow it,
+to see whether a new version is available. This code is published so you
+can see that for yourself.
 
 ## Licence
 
-Proprietary. All rights reserved. Third-party components:
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Tessera is proprietary software: see [LICENSE](LICENSE). The source is
+visible, but no licence to use, copy, modify or redistribute it is granted.
+Third-party components keep their own licences
+([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
+## Project notes
+
+* [STATUS.md](STATUS.md): what works and how each part was verified.
+* [CHANGELOG.md](CHANGELOG.md): what changed in each version.
+* [docs/HANDOFF.md](docs/HANDOFF.md): working notes for development.
+
+Built with Rust (scanning engine, crates/) and Tauri with React
+(apps/desktop); the website is in website/.
+
+Contact: hullashoo6@gmail.com

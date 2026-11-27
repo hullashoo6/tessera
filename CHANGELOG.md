@@ -4,6 +4,15 @@ Everything listed works the same on Windows and Mac unless a line says how
 the two differ in wording only (Recycle Bin / Trash, File Explorer / Finder).
 How far each item has been verified is recorded in STATUS.md.
 
+## 1.0.1 (27 Nov 2026)
+
+- Mac version available (Apple silicon and Intel), with everything in 1.0.0.
+- Removed "Start Tessera when I sign in": Tessera is something you open when
+  you want to look at your storage, not something that needs to run all the
+  time. Keeping it in the notification area / menu bar after closing, and the
+  low-space warning, are still in Settings > Background.
+- The same version is offered on the website and in the Microsoft Store.
+
 ## 1.0.0 (27 Nov 2026), first public release
 
 Windows 11. Tessera Pro is on sale (USD 9.78, one-time, one computer):

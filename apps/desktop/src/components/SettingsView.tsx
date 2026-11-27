@@ -103,7 +103,7 @@ export function SettingsView({ settings, os, version, storeManaged, onChange, on
           </>
         )}
       </div>
-      <BackgroundSetting os={os} storeManaged={storeManaged} />
+      <BackgroundSetting os={os} />
       <div className="setting">
         <h3>Privacy</h3>
         <p>

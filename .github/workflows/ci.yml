@@ -3,19 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
-    # Text-only changes do not need a build (saves the account's Actions minutes;
-    # macOS minutes count ten times). The website job still runs for website/.
+    # Text-only changes do not need a build.
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - 'bench-results/**'
   pull_request:
-  # macOS runs here: weekly, on request (Actions > CI > Run workflow), and on
-  # any push whose commit message contains [mac]. Ordinary pushes run Windows
-  # only, because macOS minutes cost ten times as much.
   workflow_dispatch:
-  schedule:
-    - cron: '30 2 * * 1'
 
 permissions:
   contents: read
@@ -31,7 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         # windows-latest: Windows Server x64; macos-latest: Apple Silicon.
-        os: ${{ fromJSON((github.event_name == 'push' && !contains(github.event.head_commit.message, '[mac]')) && '["windows-latest"]' || '["windows-latest","macos-latest"]') }}
+        # The repository is public (27 Nov 2026), so both run on every change.
+        os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -47,6 +42,13 @@ jobs:
           npx oxlint src
           npm test
           npm run build
+      - name: Interface is a production build
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          if grep -l -e jsxDEV -e react-stack-bottom-frame dist/assets/*.js; then
+            echo "React's development build was bundled"; exit 1
+          fi
       - name: Install pinned toolchain (rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -56,9 +58,8 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
-      - name: Real Trash round trip and Put back (macOS)
-        if: runner.os == 'macOS'
-        run: cargo test -p tessera-cleanup --locked -- --ignored put_back
+      - name: Real Recycle Bin / Trash with disposable files (cleanup, Put back, permanent delete)
+        run: cargo test -p tessera-cleanup --locked --test cleanup -- --ignored put_back real_recycle_bin real_cleanup_run
       - name: Smoke-test CLI on a generated fixture
         shell: bash
         run: |

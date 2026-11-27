@@ -250,34 +250,32 @@ describe('Welcome', () => {
 
 describe('Background setting', () => {
   it('is off by default and turns on keep-running only', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false, startAtLogin: false })
-    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false, startAtLogin: false })
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
+    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false })
     render(<BackgroundSetting os="windows" />)
     const keep = await screen.findByLabelText(/notification area of the taskbar when its window is closed/)
     expect((keep as HTMLInputElement).checked).toBe(false)
-    expect((screen.getByLabelText(/Start Tessera there when I sign in/) as HTMLInputElement).disabled).toBe(true)
     fireEvent.click(keep)
-    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false, false)
+    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false)
   })
 
-  it('in the Microsoft Store version, says starting at sign-in is not available yet', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false, startAtLogin: false })
-    render(<BackgroundSetting os="windows" storeManaged />)
-    const login = (await screen.findByLabelText(/Start Tessera there when I sign in/)) as HTMLInputElement
-    expect(login.disabled).toBe(true)
-    expect(screen.getByText(/not available in the Microsoft Store version yet/)).toBeTruthy()
-  })
-
-  it('turning keep-running off also stops starting at sign-in', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: true, startAtLogin: true })
-    api.setBackgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: true, startAtLogin: false })
+  it('has no start-at-sign-in option (Tessera is opened when needed)', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false })
     render(<BackgroundSetting os="windows" />)
-    fireEvent.click(await screen.findByLabelText(/when its window is closed/))
-    expect(api.setBackgroundSettings).toHaveBeenCalledWith(false, true, false)
+    await screen.findByLabelText(/when its window is closed/)
+    expect(screen.queryByText(/sign in/i)).toBeNull()
+  })
+
+  it('turns the low-space warning on and off on its own', async () => {
+    api.backgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: true })
+    api.setBackgroundSettings.mockResolvedValue({ keepRunning: true, lowSpaceAlerts: false })
+    render(<BackgroundSetting os="windows" />)
+    fireEvent.click(await screen.findByLabelText(/Warn me when my main drive is almost full/))
+    expect(api.setBackgroundSettings).toHaveBeenCalledWith(true, false)
   })
 
   it('says menu bar on a Mac', async () => {
-    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false, startAtLogin: false })
+    api.backgroundSettings.mockResolvedValue({ keepRunning: false, lowSpaceAlerts: false })
     render(<BackgroundSetting os="macos" />)
     expect(await screen.findByLabelText(/Keep Tessera in the menu bar/)).toBeTruthy()
   })

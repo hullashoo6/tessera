@@ -3,12 +3,10 @@ import { api, errorText, type BackgroundSettings } from '../api'
 
 interface Props {
   os: string
-  /** Installed from the Microsoft Store: starting at sign-in is not available there yet. */
-  storeManaged?: boolean
 }
 
-/** Settings > Background: keep running after the window closes; low-space warning; start at sign-in. */
-export function BackgroundSetting({ os, storeManaged = false }: Props) {
+/** Settings > Background: keep running after the window closes; low-space warning. */
+export function BackgroundSetting({ os }: Props) {
   const [s, setS] = useState<BackgroundSettings | null>(null)
   const [error, setError] = useState<string | null>(null)
   const place = os === 'macos' ? 'the menu bar' : 'the notification area of the taskbar'
@@ -22,10 +20,8 @@ export function BackgroundSetting({ os, storeManaged = false }: Props) {
 
   const change = (next: BackgroundSettings) => {
     setError(null)
-    // Starting at sign-in only makes sense while Tessera keeps running.
-    const startAtLogin = next.keepRunning && next.startAtLogin
     api
-      .setBackgroundSettings(next.keepRunning, next.lowSpaceAlerts, startAtLogin)
+      .setBackgroundSettings(next.keepRunning, next.lowSpaceAlerts)
       .then(setS)
       .catch((e) => setError(errorText(e)))
   }
@@ -42,16 +38,6 @@ export function BackgroundSetting({ os, storeManaged = false }: Props) {
           <label>
             <input type="checkbox" checked={s.keepRunning} onChange={(e) => change({ ...s, keepRunning: e.target.checked })} />
             Keep Tessera in {place} when its window is closed
-          </label>
-          <label className={s.keepRunning && !storeManaged ? undefined : 'disabled'}>
-            <input
-              type="checkbox"
-              checked={s.keepRunning && s.startAtLogin && !storeManaged}
-              disabled={!s.keepRunning || storeManaged}
-              onChange={(e) => change({ ...s, startAtLogin: e.target.checked })}
-            />
-            Start Tessera there when I sign in
-            {storeManaged && ' (not available in the Microsoft Store version yet)'}
           </label>
           <label>
             <input type="checkbox" checked={s.lowSpaceAlerts} onChange={(e) => change({ ...s, lowSpaceAlerts: e.target.checked })} />

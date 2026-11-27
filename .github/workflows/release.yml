@@ -1,8 +1,9 @@
 name: Release build
 
-# Manual only. Builds installers as private workflow artifacts in this
-# private repository. Nothing is published, uploaded elsewhere or signed
-# with a paid certificate.
+# Manual only. Builds the installers as workflow artifacts, then installs the
+# Mac one on real Apple machines (Apple silicon and Intel) and checks that it
+# starts, scans a folder and keeps running. Nothing is published from here:
+# verified files are put on the website from the owner laptop.
 on:
   workflow_dispatch:
 
@@ -41,9 +42,18 @@ jobs:
       - name: Install interface dependencies
         working-directory: apps/desktop
         run: npm ci
-      - name: Build installer
+      - name: Build installer (production mode)
         working-directory: apps/desktop
+        env:
+          NODE_ENV: production
         run: npx tauri build ${{ matrix.args }}
+      - name: Interface is a production build
+        shell: bash
+        working-directory: apps/desktop
+        run: |
+          if grep -l -e jsxDEV -e react-stack-bottom-frame dist/assets/*.js; then
+            echo "React's development build was bundled"; exit 1
+          fi
       - name: Checksums
         shell: bash
         working-directory: ${{ matrix.out }}
@@ -52,6 +62,67 @@ jobs:
           cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v5
         with:
-          name: tessera-${{ runner.os }}-${{ github.sha }}
+          name: tessera-${{ runner.os }}
           path: ${{ matrix.out }}/*
+          retention-days: 14
+
+  mac-test:
+    name: Mac install and launch test (${{ matrix.label }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: Apple silicon
+            arch: arm64
+          - os: macos-15-intel
+            label: Intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: tessera-macOS
+          path: dmg
+      - name: Install from the DMG, as a person would
+        run: |
+          set -e
+          uname -m; sw_vers
+          DMG=$(ls dmg/*.dmg | head -1)
+          echo "DMG: $DMG"
+          hdiutil attach "$DMG" -nobrowse -mountpoint /Volumes/Tessera
+          ls /Volumes/Tessera
+          cp -R /Volumes/Tessera/Tessera.app /Applications/
+          hdiutil detach /Volumes/Tessera
+          EXE=$(ls /Applications/Tessera.app/Contents/MacOS/ | head -1)
+          echo "EXE=$EXE" >> "$GITHUB_ENV"
+          lipo -archs "/Applications/Tessera.app/Contents/MacOS/$EXE"
+          codesign --verify --verbose /Applications/Tessera.app
+          defaults read /Applications/Tessera.app/Contents/Info.plist CFBundleShortVersionString
+      - name: Launch with a folder, keep running, no crash
+        run: |
+          set -e
+          FX="$RUNNER_TEMP/Tessera test folder"
+          mkdir -p "$FX/Videos" "$FX/Downloads"
+          dd if=/dev/zero of="$FX/Videos/holiday.mov" bs=1m count=40
+          dd if=/dev/zero of="$FX/Downloads/installer.dmg" bs=1m count=12
+          "/Applications/Tessera.app/Contents/MacOS/$EXE" "$FX" > "$RUNNER_TEMP/app-output.txt" 2>&1 &
+          PID=$!
+          sleep 25
+          if ! kill -0 $PID; then echo "Tessera stopped"; cat "$RUNNER_TEMP/app-output.txt"; exit 1; fi
+          screencapture -x "$RUNNER_TEMP/tessera-${{ matrix.arch }}.png" || true
+          LOG="$HOME/Library/Logs/app.tessera.desktop/tessera.log"
+          cat "$LOG"
+          grep -q "start: Tessera" "$LOG"
+          if grep -q "crash" "$LOG"; then echo "crash recorded"; exit 1; fi
+          ps -o pid,rss,command -p $PID
+          kill $PID
+          sleep 2
+          if kill -0 $PID 2>/dev/null; then kill -9 $PID; fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: mac-test-${{ matrix.arch }}
+          path: ${{ runner.temp }}/*.png
           retention-days: 14

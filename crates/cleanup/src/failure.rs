@@ -116,6 +116,8 @@ pub fn classify(err: &io::Error, path: &Path) -> Failure {
 }
 
 /// An in-use failure, with the apps and (for folders) the files involved.
+/// Windows only: macOS lets open files be moved.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn in_use(path: &Path, detail: String) -> Failure {
     let mut f = Failure::new(FailKind::InUse, detail);
     let dir = path.is_dir();

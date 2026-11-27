@@ -24,6 +24,10 @@
   !insertmacro TESSERA_ADD_VERB "Directory"
   !insertmacro TESSERA_ADD_VERB "Directory\Background"
   !insertmacro TESSERA_ADD_VERB "Drive"
+  ; Tessera no longer starts at sign-in (removed in 1.0.1): clear the entry a
+  ; pre-release test build may have left.
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Tessera"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Tessera"
   !insertmacro TESSERA_REFRESH_EXPLORER
 !macroend
 
@@ -31,8 +35,8 @@
   DeleteRegKey HKCU "Software\Classes\Directory\shell\Tessera"
   DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\Tessera"
   DeleteRegKey HKCU "Software\Classes\Drive\shell\Tessera"
-  ; Settings > Background > "Start at sign-in" (tauri-plugin-autostart) adds a
-  ; Run entry named Tessera. Remove it on a real uninstall, not during an update.
+  ; Pre-release builds could add a sign-in Run entry named Tessera. Remove it
+  ; on a real uninstall too.
   ${If} $UpdateMode <> 1
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Tessera"
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Tessera"

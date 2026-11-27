@@ -78,4 +78,4 @@ export const contact = {
 }
 
 /** Newest released app version, read by the app's update check. */
-export const latest = { version: '1.0.0' }
+export const latest = { version: '1.0.1' }

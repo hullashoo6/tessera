@@ -11,9 +11,10 @@ use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tessera_cleanup::{
-    FailKind, Method, Progress, Protection, RunOptions, Status, build_plan, classify, execute,
-    remove_except_in_use, run,
+    FailKind, Method, Progress, Protection, RunOptions, Status, build_plan, execute, run,
 };
+#[cfg(windows)]
+use tessera_cleanup::{classify, remove_except_in_use};
 use tessera_scan::query::find_by_path;
 use tessera_scan::{CancelToken, ROOT, ScanOptions, Tree, scan};
 use tessera_testkit as kit;
@@ -560,6 +561,69 @@ fn put_back_restores_from_the_real_recycle_bin_and_never_overwrites() {
     fs::remove_file(&second).unwrap(); // the test's own file
     tessera_cleanup::put_back(&recycled2, &second).unwrap();
     assert_eq!(fs::read(&second).unwrap(), b"old");
+}
+
+/// The cleanup run as the app does it, on the real Recycle Bin / Trash, with
+/// disposable files: moved (with where it landed), put back, and a second
+/// file deleted permanently. cargo test -p tessera-cleanup -- --ignored real_cleanup_run
+#[cfg(any(windows, target_os = "macos"))]
+#[test]
+#[ignore]
+fn real_cleanup_run_moves_puts_back_and_deletes() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-run-test-")
+        .tempdir()
+        .unwrap();
+    let r = t.path().join("root");
+    kit::dense_file(&r, "move-me.txt", 4096).unwrap();
+    kit::dense_file(&r, "delete-me.txt", 4096).unwrap();
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let plan = build_plan(&tree, &[id(&tree, "move-me.txt")], &open());
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions::default(),
+        &mut |_| {},
+        &mut tessera_cleanup::system_remover(Method::Trash),
+    );
+    assert_eq!(
+        (report.moved, report.failed),
+        (1, 0),
+        "{:?}",
+        report.outcomes
+    );
+    assert!(!r.join("move-me.txt").exists());
+    let landed = report.outcomes[0]
+        .recycled()
+        .cloned()
+        .expect("where it landed");
+    tessera_cleanup::put_back(&landed, &r.join("move-me.txt")).unwrap();
+    assert!(r.join("move-me.txt").exists(), "put back");
+
+    let plan = build_plan(&tree, &[id(&tree, "delete-me.txt")], &open());
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions {
+            method: Method::Permanent,
+            ..RunOptions::default()
+        },
+        &mut |_| {},
+        &mut tessera_cleanup::system_remover(Method::Permanent),
+    );
+    assert_eq!(
+        (report.deleted, report.failed),
+        (1, 0),
+        "{:?}",
+        report.outcomes
+    );
+    assert!(!r.join("delete-me.txt").exists());
 }
 
 /// Real cloud test: TESSERA_CLOUD_TEST_FILE must name a disposable file

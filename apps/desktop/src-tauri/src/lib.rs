@@ -1593,10 +1593,6 @@ pub fn run() {
         // another copy that would scan alongside it. If it was given a folder
         // ("Scan with Tessera" while Tessera is open), the open window scans it.
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-            // A start at sign-in while Tessera is already open changes nothing.
-            if args.iter().any(|a| a == background::BACKGROUND_FLAG) {
-                return;
-            }
             launch::focus(app);
             let cwd = PathBuf::from(cwd);
             if let Some(folder) =
@@ -1608,14 +1604,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        // Settings > Background > start at sign-in. The interface cannot call
-        // this plugin directly (no permissions are granted); background.rs does.
-        .plugin(
-            tauri_plugin_autostart::Builder::new()
-                .app_name("Tessera")
-                .args([background::BACKGROUND_FLAG])
-                .build(),
-        )
         .manage(AppState::default())
         .manage(background::Background::default())
         .setup(|app| {
@@ -1623,10 +1611,8 @@ pub fn run() {
             background::init(app.handle());
             fit_window_to_screen(app.handle());
             // The window starts hidden (tauri.conf.json) and is shown here,
-            // except when Tessera was started at sign-in in background mode.
-            if !background::starts_hidden(app.handle())
-                && let Some(w) = app.get_webview_window("main")
-            {
+            // once it has been fitted to the screen.
+            if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
                 let _ = w.set_focus();
             }
