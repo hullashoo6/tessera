@@ -203,6 +203,8 @@ export interface CleanupProgress {
   done: number
   total: number
   bytes: number
+  /** Name of the item being removed now; absent once finished. */
+  current?: string | null
 }
 
 export interface PartialResult {
@@ -239,6 +241,21 @@ export interface DupGroup {
   reclaimable: number
   hash: string
   copies: FileRow[]
+}
+
+/** How far a duplicate search has got. */
+export interface DupProgress {
+  /** 1: checking samples of files that share a size; 2: comparing in full. */
+  stage: number
+  filesDone: number
+  filesTotal: number
+  /** Stage 2: bytes read of the exact total to read. */
+  bytesDone: number
+  bytesTotal: number
+  bytesRead: number
+  /** Duplicate groups confirmed so far, and the space they could free. */
+  groups: number
+  reclaimable: number
 }
 
 export interface DupReport {
@@ -335,8 +352,8 @@ export const api = {
   printReport: () => invoke<void>('print_report'),
   putBack: (index: number) => invoke<MovedItem[]>('put_back_item', { index }),
   clearMovedHistory: () => invoke<void>('clear_moved_history'),
-  onDupesProgress: (cb: (bytes: number) => void): Promise<UnlistenFn> =>
-    listen<number>('dupes-progress', (e) => cb(e.payload)),
+  onDupesProgress: (cb: (p: DupProgress) => void): Promise<UnlistenFn> =>
+    listen<DupProgress>('dupes-progress', (e) => cb(e.payload)),
   reviewCleanup: (scanId: number, ids: number[]) => invoke<Review>('review_cleanup', { scanId, ids }),
   /** Removes the chosen reviewed items: to the Recycle Bin / Trash, or permanently once confirmed. */
   confirmCleanup: (reviewId: number, ids: number[] | null, permanent: boolean) =>

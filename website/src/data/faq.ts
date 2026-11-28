@@ -22,7 +22,7 @@ export const faqs: [string, string][] = [
   ],
   [
     'Can Tessera delete my files?',
-    'Never by itself. You add items to a cleanup list and review it first, and Tessera then moves them to the Recycle Bin or Trash. Anything too big for the Recycle Bin is left where it is, never deleted in its place. Tessera deletes something permanently only if you choose Delete permanently and confirm a separate warning. System folders are protected.',
+    'Only when you ask it to. You add items to a cleanup list, review it, and Tessera moves them to the Recycle Bin or Trash, where you can get them back. If something is too large for the Recycle Bin, Tessera leaves it in place and tells you. Nothing is deleted permanently unless you choose Delete permanently and confirm a separate warning, and system folders are always protected.',
   ],
   [
     'Can I undo a cleanup?',

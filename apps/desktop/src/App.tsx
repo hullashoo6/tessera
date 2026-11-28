@@ -6,6 +6,7 @@ import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { Details, type ItemCommand } from './components/Details'
 import { Duplicates } from './components/Duplicates'
 import { History } from './components/History'
+import { KeepAlive } from './components/KeepAlive'
 import { LargestFiles } from './components/LargestFiles'
 import { Mark } from './components/Mark'
 import { Overview } from './components/Overview'
@@ -51,6 +52,13 @@ export function App() {
   const [volumes, setVolumes] = useState<Volume[] | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
   const [view, setView] = useState<View>('overview')
+  // Pages with work still going on (shown as a dot in the sidebar, so it is
+  // clear the work carries on while another page is open).
+  const [busy, setBusy] = useState<Partial<Record<View, boolean>>>({})
+  const busyHandlers = useMemo(() => {
+    const on = (v: View) => (b: boolean) => setBusy((s) => (Boolean(s[v]) === b ? s : { ...s, [v]: b }))
+    return { duplicates: on('duplicates'), cleanup: on('cleanup'), apps: on('apps') }
+  }, [])
   const [viewRoot, setViewRoot] = useState(0)
   const [crumbs, setCrumbs] = useState<Crumb[]>([])
   const [selected, setSelected] = useState<number | null>(null)
@@ -344,6 +352,12 @@ export function App() {
             onClick={() => setView(v)}
           >
             {label}
+            {busy[v] && view !== v && (
+              <>
+                <span className="nav-busy" aria-hidden="true" title="Still working" />
+                <span className="sr-only"> (still working)</span>
+              </>
+            )}
             {v === 'cleanup' && marked.size > 0 && <span className="nav-count" aria-label={` chosen`}>{marked.size}</span>}
           </button>
         ))}
@@ -556,18 +570,22 @@ export function App() {
               onError={onError}
             />
           )}
-          {view === 'suggestions' && scanId !== null && (
-            <Suggestions
-              scanId={scanId}
-              scanning={scanning}
-              version={version}
-              marked={marked}
-              onToggleMark={toggleMark}
-              onMarkMany={markMany}
-              onOpenCleanup={() => setView('cleanup')}
-              onError={onError}
-              onDone={setToast}
-            />
+          {/* Pages kept alive once opened (KeepAlive): work on them carries
+              on, and their results stay, while other pages are open. */}
+          {scanId !== null && (
+            <KeepAlive active={view === 'suggestions'}>
+              <Suggestions
+                scanId={scanId}
+                scanning={scanning}
+                version={version}
+                marked={marked}
+                onToggleMark={toggleMark}
+                onMarkMany={markMany}
+                onOpenCleanup={() => setView('cleanup')}
+                onError={onError}
+                onDone={setToast}
+              />
+            </KeepAlive>
           )}
           {view === 'report' && scanId !== null && (
             <Report
@@ -586,20 +604,28 @@ export function App() {
           {view === 'history' && (
             <History pro={entitlement?.pro ?? false} onOpenSettings={() => setView('settings')} onError={onError} />
           )}
-          {view === 'apps' && <Apps os={info.os} scanId={scanId} onDone={setToast} onError={onError} />}
-          {view === 'duplicates' && scanId !== null && (
-            <Duplicates
-              scanId={scanId}
-              scanning={scanning}
-              marked={marked}
-              onToggleMark={toggleMark}
-              onMarkMany={markMany}
-              onOpenCleanup={() => setView('cleanup')}
-              onError={onError}
-            />
+          <KeepAlive active={view === 'apps'}>
+            <Apps os={info.os} scanId={scanId} onBusy={busyHandlers.apps} onDone={setToast} onError={onError} />
+          </KeepAlive>
+          {scanId !== null && (
+            <KeepAlive active={view === 'duplicates'}>
+              <Duplicates
+                scanId={scanId}
+                scanning={scanning}
+                marked={marked}
+                onToggleMark={toggleMark}
+                onMarkMany={markMany}
+                onOpenCleanup={() => setView('cleanup')}
+                onBusy={busyHandlers.duplicates}
+                onError={onError}
+              />
+            </KeepAlive>
           )}
-          {view === 'cleanup' && scanId !== null && (
+          {scanId !== null && (
+            <KeepAlive active={view === 'cleanup'}>
             <Cleanup
+              active={view === 'cleanup'}
+              onBusy={busyHandlers.cleanup}
               scanId={scanId}
               marked={markedList}
               metric={settings.metric}
@@ -623,6 +649,7 @@ export function App() {
               onDone={setToast}
               onError={onError}
             />
+            </KeepAlive>
           )}
           {view === 'settings' && (
             <SettingsView

@@ -5,12 +5,20 @@ import Prose from '../components/Prose.astro'
 
 <Base title="Changelog | Tessera" description="What has changed in Tessera.">
   <Prose title="Changelog" intro="What is new in each version of Tessera.">
+    <h2 id="1.0.2">1.0.2, 28 November 2026</h2>
+    <ul>
+      <li>Smart Scan, Duplicates, Cleanup and Apps keep working, and keep their results, while you use other pages. A dot in the sidebar shows a page that is still working.</li>
+      <li>Finding duplicates is much faster. Several files are compared at once, and the screen shows a progress bar, the time left and how much has been found so far.</li>
+      <li>Cleanup shows steady progress on large folders and names the item it is working on, and Stop takes effect sooner.</li>
+      <li>Delete permanently is much faster, on both Windows and Mac.</li>
+      <li>Checkout asks only for your country and postcode.</li>
+    </ul>
     <h2 id="1.0.1">1.0.1, 27 November 2026</h2>
     <ul>
       <li>Tessera for Mac, for Apple silicon and Intel Macs with macOS 12 or later, with the same features as on Windows.</li>
-      <li>Cleanup never hands Windows anything too big for the Recycle Bin: such items stay where they are, with an explanation and a separate Delete permanently choice. (Before, Windows could delete them permanently instead.)</li>
-      <li>Notices, such as a new version being available, no longer take up a large part of the window.</li>
-      <li>Removed the option to start Tessera when you sign in; open it whenever you want to look at your storage.</li>
+      <li>Cleanup now checks each item against the Recycle Bin’s size limit before moving it. An item too large for the Recycle Bin stays in place, with an explanation and the option to delete it permanently instead.</li>
+      <li>Fixed: notices, such as an available update, could take up too much of the window.</li>
+      <li>Tessera no longer offers to start when you sign in. Open it whenever you want to look at your storage.</li>
     </ul>
     <h2 id="1.0.0">1.0.0, 27 November 2026</h2>
     <p>The first public release, for Windows 11 (64-bit).</p>
@@ -27,7 +35,7 @@ import Prose from '../components/Prose.astro'
     <h3>Tessera Pro (one-time purchase)</h3>
     <ul>
       <li>A cleanup list for everything you choose: select all, filter and sort, then move to the Recycle Bin in one step, with progress, Stop and Undo.</li>
-      <li>Plain answers when something can't be removed, for example which app has a file open, with Try again; a folder an app keeps a few files open in can be emptied of everything else.</li>
+      <li>Plain answers when something can’t be removed, such as which app has a file open, with Try again. When an app holds a few files open inside a folder, Tessera can remove everything else.</li>
       <li>Delete permanently as a separate choice with its own warning.</li>
       <li>Free up space from OneDrive files while keeping them in the cloud, uninstall apps, storage history, CSV and printable reports.</li>
     </ul>

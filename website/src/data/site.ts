@@ -6,7 +6,7 @@ export const product = {
   tagline: 'Every byte, accounted for.',
   summary: 'See what fills your computer. Find the files that matter. Reclaim your space with confidence.',
   description:
-    'Tessera is a disk space analyzer for Windows and Mac that maps every folder on your drive to scale, finds your largest files, and keeps every scan on your computer.',
+    'Tessera is a disk space analyser for Windows and Mac that maps every folder on your drive to scale, finds your largest files, and keeps every scan on your computer.',
 }
 
 /**

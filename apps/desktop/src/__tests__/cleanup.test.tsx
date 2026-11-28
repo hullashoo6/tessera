@@ -232,8 +232,9 @@ describe('removing', () => {
 
   it('shows progress with a Stop button while it runs', async () => {
     api.reviewCleanup.mockResolvedValue(review([item(1, G), item(2, 2 * G)]))
-    let progress: ((p: { done: number; total: number; bytes: number }) => void) | null = null
-    api.onCleanupProgress.mockImplementation((cb: (p: { done: number; total: number; bytes: number }) => void) => {
+    type P = { done: number; total: number; bytes: number; current?: string | null }
+    let progress: ((p: P) => void) | null = null
+    api.onCleanupProgress.mockImplementation((cb: (p: P) => void) => {
       progress = cb
       return Promise.resolve(() => undefined)
     })
@@ -243,11 +244,13 @@ describe('removing', () => {
     fireEvent.click(await screen.findByText('Move 2 items (3.00 GB) to the Recycle Bin'))
     moveDialog()
     await waitFor(() => expect(progress).not.toBeNull())
-    progress!({ done: 1, total: 2, bytes: G })
+    progress!({ done: 1, total: 2, bytes: G, current: 'big-folder' })
     expect(await screen.findByText(`1 of 2 items ${DOT} 1.00 GB moved`)).toBeTruthy()
+    // The item being worked on is named, so a long one is visibly not stuck.
+    expect(screen.getByText('big-folder')).toBeTruthy()
     fireEvent.click(screen.getByText('Stop'))
     expect(api.stopCleanup).toHaveBeenCalled()
-    expect(screen.getByText(/Stopping after the current few items/)).toBeTruthy()
+    expect(screen.getByText('Stopping…')).toBeTruthy()
     finish(report({ moved: 1, stopped: true, notStarted: 1, doneIds: [1] }))
     expect(await screen.findByText(/1 item was not started and is still in your cleanup list/)).toBeTruthy()
   })

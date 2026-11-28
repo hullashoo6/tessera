@@ -573,12 +573,43 @@ pub struct CleanupReportDto {
     pub free_after: Option<u64>,
 }
 
+/// How far a duplicate search has got (`tessera_dupes::Progress`).
 #[derive(Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct DupProgressDto {
+    pub stage: u8,
+    pub files_done: u64,
+    pub files_total: u64,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    pub bytes_read: u64,
+    pub groups: u64,
+    pub reclaimable: u64,
+}
+
+impl From<&tessera_dupes::Progress> for DupProgressDto {
+    fn from(p: &tessera_dupes::Progress) -> Self {
+        DupProgressDto {
+            stage: p.stage,
+            files_done: p.files_done,
+            files_total: p.files_total,
+            bytes_done: p.bytes_done,
+            bytes_total: p.bytes_total,
+            bytes_read: p.bytes_read,
+            groups: p.groups,
+            reclaimable: p.reclaimable,
+        }
+    }
+}
+
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupProgressDto {
     pub done: u32,
     pub total: u32,
     pub bytes: u64,
+    /// Name of the item being removed now (absent once finished).
+    pub current: Option<String>,
 }
 
 #[derive(Serialize)]

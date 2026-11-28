@@ -1,0 +1,99 @@
+---
+import { render } from 'astro:content'
+import Base from '../../layouts/Base.astro'
+import { formatDate, posts, readingMinutes, type Post } from '../../data/blog'
+
+export async function getStaticPaths() {
+  const list = await posts()
+  return list.map((post, i) => ({ params: { slug: post.id }, props: { post, newer: list[i - 1], older: list[i + 1] } }))
+}
+
+interface Props {
+  post: Post
+  newer?: Post
+  older?: Post
+}
+const { post, newer, older } = Astro.props
+const { Content } = await render(post)
+const { title, description, date, updated } = post.data
+const url = new URL(`/blog/${post.id}`, Astro.site).href
+const iso = (d: Date) => d.toISOString().slice(0, 10)
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: iso(date),
+  dateModified: iso(updated ?? date),
+  mainEntityOfPage: url,
+  url,
+  image: new URL('/og.png', Astro.site).href,
+  author: { '@type': 'Organization', name: 'The Tessera team, Beyond Enterprises' },
+  publisher: { '@type': 'Organization', name: 'Beyond Enterprises' },
+}
+---
+
+<Base title={`${title} | Tessera blog`} description={description} schema={schema} type="article">
+  <article class="wrap article">
+    <p class="crumb"><a href="/blog">Blog</a></p>
+    <h1>{title}</h1>
+    <p class="meta muted num">
+      <time datetime={iso(date)}>{formatDate(date)}</time>
+      {updated && <span> · Updated <time datetime={iso(updated)}>{formatDate(updated)}</time></span>}
+      <span aria-hidden="true"> · </span>
+      {readingMinutes(post.body)} min read
+    </p>
+    <div class="body">
+      <Content />
+    </div>
+    <aside class="cta" aria-label="About Tessera">
+      <h2>See what fills your computer</h2>
+      <p>Tessera maps every folder to scale, explains what is safe to remove, and moves it to the Recycle Bin or Trash with Undo. Free for Windows and Mac.</p>
+      <a class="btn btn-primary" href="/#download">Download Tessera free</a>
+    </aside>
+    {(newer || older) && (
+      <nav class="pager" aria-label="More articles">
+        {newer && <a href={`/blog/${newer.id}`}><span class="muted">Newer</span>{newer.data.title}</a>}
+        {older && <a class="older" href={`/blog/${older.id}`}><span class="muted">Older</span>{older.data.title}</a>}
+      </nav>
+    )}
+  </article>
+</Base>
+
+<style>
+  .article { max-width: 760px; padding: 150px 0 110px; display: grid; gap: 20px; }
+  .crumb a { color: var(--sage); font-size: 15px; text-decoration: none; }
+  .crumb a:hover { color: var(--cream); }
+  .article h1 { font-size: clamp(36px, 5vw, 56px); }
+  .meta { font-size: 14px; margin-bottom: 18px; }
+
+  .body { display: grid; gap: 20px; }
+  .body :global(h2) { font-size: 30px; margin-top: 30px; }
+  .body :global(h3) { margin-top: 12px; }
+  .body :global(p), .body :global(li) { color: var(--mist); }
+  .body :global(strong) { color: var(--cream); font-weight: 600; }
+  .body :global(a) { color: var(--amber-soft); }
+  .body :global(ul), .body :global(ol) { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+  .body :global(code) { font-size: 0.9em; padding: 1px 6px; border-radius: 6px; background: rgba(243, 236, 223, 0.08); color: var(--cream); }
+  .body :global(pre) { margin: 0; padding: 16px 18px; border-radius: var(--radius); background: var(--night); border: 1px solid var(--line); overflow-x: auto; }
+  .body :global(pre code) { padding: 0; background: none; }
+  .body :global(blockquote) { margin: 0; padding: 4px 0 4px 18px; border-left: 2px solid var(--amber); }
+  .body :global(table) { border-collapse: collapse; width: 100%; font-size: 15px; display: block; overflow-x: auto; }
+  .body :global(th), .body :global(td) { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .body :global(th) { color: var(--cream); font-weight: 600; }
+  .body :global(td) { color: var(--mist); }
+
+  .cta { margin-top: 40px; padding: 30px; border-radius: var(--radius); border: 1px solid rgba(233, 174, 99, 0.3); background: rgba(233, 174, 99, 0.05); display: grid; gap: 14px; justify-items: start; }
+  .cta h2 { font-size: 26px; }
+  .cta p { color: var(--mist); }
+
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .pager a { display: grid; gap: 4px; text-decoration: none; color: var(--cream); }
+  .pager a:hover { color: var(--amber-soft); }
+  .pager .older { grid-column: 2; text-align: right; }
+  .pager span { font-size: 14px; }
+  @media (max-width: 640px) {
+    .pager { grid-template-columns: 1fr; }
+    .pager .older { grid-column: 1; text-align: left; }
+  }
+</style>

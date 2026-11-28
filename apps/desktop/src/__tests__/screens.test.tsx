@@ -36,7 +36,9 @@ import { Cleanup } from '../components/Cleanup'
 import { Duplicates } from '../components/Duplicates'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { History } from '../components/History'
+import { KeepAlive } from '../components/KeepAlive'
 import { ProLicence } from '../components/ProLicence'
+import { timeLeft } from '../format'
 import { Report } from '../components/Report'
 import { Restore } from '../components/Restore'
 import { Suggestions } from '../components/Suggestions'
@@ -102,9 +104,10 @@ describe('Smart Scan', () => {
   })
 })
 
+const copy = (id: number, modified: number) => ({ node: { id, name: `c${id}`, modified }, path: `C:\\d\\${id}` })
+const report = { groups: [{ size: 3e6, reclaimable: 6e6, hash: 'abc', copies: [copy(1, 10), copy(2, 20), copy(3, 30)] }], filesCompared: 3, bytesRead: 9e6, skipped: 0, cancelled: false }
+
 describe('Duplicates', () => {
-  const copy = (id: number, modified: number) => ({ node: { id, name: `c${id}`, modified }, path: `C:\\d\\${id}` })
-  const report = { groups: [{ size: 3e6, reclaimable: 6e6, hash: 'abc', copies: [copy(1, 10), copy(2, 20), copy(3, 30)] }], filesCompared: 3, bytesRead: 9e6, skipped: 0, cancelled: false }
 
   it('keeps the oldest copy and adds the others', async () => {
     api.findDuplicates.mockResolvedValue(report)
@@ -120,6 +123,65 @@ describe('Duplicates', () => {
     render(<Duplicates scanId={1} scanning={false} marked={new Set([1, 2, 3])} onToggleMark={noop} onMarkMany={noop} onOpenCleanup={noop} onError={noop} />)
     fireEvent.click(screen.getByText('Find duplicates'))
     expect(await screen.findByText(/At least one copy would be lost/)).toBeTruthy()
+  })
+
+  it('shows each stage with a progress bar and what was found so far', async () => {
+    type P = Record<string, number>
+    let send: ((p: P) => void) | null = null
+    api.onDupesProgress.mockImplementation(((cb: (p: P) => void) => {
+      send = cb
+      return Promise.resolve(() => undefined)
+    }) as never)
+    let finish: (r: typeof report) => void = noop
+    api.findDuplicates.mockReturnValue(new Promise((r) => (finish = r)))
+    const busy = vi.fn()
+    render(<Duplicates scanId={1} scanning={false} marked={new Set()} onToggleMark={noop} onMarkMany={noop} onOpenCleanup={noop} onBusy={busy} onError={noop} />)
+    await waitFor(() => expect(send).not.toBeNull())
+    fireEvent.click(screen.getByText('Find duplicates'))
+    await waitFor(() => expect(busy).toHaveBeenLastCalledWith(true))
+    const base = { bytesDone: 0, bytesTotal: 0, bytesRead: 0, groups: 0, reclaimable: 0 }
+    send!({ ...base, stage: 1, filesDone: 40, filesTotal: 100 })
+    expect(await screen.findByText(/Checking files that share a size: 40 of 100/)).toBeTruthy()
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('40')
+    const G = 2 ** 30
+    send!({ ...base, stage: 2, filesDone: 3, filesTotal: 10, bytesDone: 2 * G, bytesTotal: 8 * G, groups: 2, reclaimable: G })
+    expect(await screen.findByText(/Comparing possible copies: 2.00 GB of 8.00 GB/)).toBeTruthy()
+    expect(screen.getByText(/Found so far: 1.00 GB in 2 groups of copies/)).toBeTruthy()
+    expect(screen.getByText(/The search carries on/)).toBeTruthy()
+    finish(report)
+    expect(await screen.findByText('Keep the oldest')).toBeTruthy()
+    expect(busy).toHaveBeenLastCalledWith(false)
+  })
+})
+
+describe('Pages kept alive', () => {
+  it('keep their work and results while another page is open', async () => {
+    api.findDuplicates.mockResolvedValue(report)
+    const page = (active: boolean) => (
+      <KeepAlive active={active}>
+        <Duplicates scanId={1} scanning={false} marked={new Set()} onToggleMark={noop} onMarkMany={noop} onOpenCleanup={noop} onError={noop} />
+      </KeepAlive>
+    )
+    const { container, rerender } = render(page(false))
+    // Not built before it is first opened.
+    expect(container.innerHTML).toBe('')
+    rerender(page(true))
+    fireEvent.click(screen.getByText('Find duplicates'))
+    await screen.findByText('Keep the oldest')
+    rerender(page(false))
+    expect(container.querySelector('.keep-alive')?.hasAttribute('hidden')).toBe(true)
+    rerender(page(true))
+    expect(screen.getByText('Keep the oldest')).toBeTruthy()
+    expect(api.findDuplicates).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('timeLeft', () => {
+  it('waits until the estimate is reliable, then rounds plainly', () => {
+    expect(timeLeft(10, 100, 1000)).toBeNull()
+    expect(timeLeft(50, 100, 20_000)).toBe('less than a minute left')
+    expect(timeLeft(10, 100, 60_000)).toBe('about 9 minutes left')
+    expect(timeLeft(10, 100, 10 * 60_000)).toBe('about 1 hour 30 minutes left')
   })
 })
 

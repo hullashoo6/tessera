@@ -64,6 +64,18 @@ export function formatDuration(ms: number): string {
   return `${m} min ${s} s`
 }
 
+/** "about 3 minutes left", from the speed so far; null until it is reliable. */
+export function timeLeft(done: number, total: number, elapsedMs: number): string | null {
+  if (elapsedMs < 3000 || done <= 0 || total <= done || done / total < 0.01) return null
+  const ms = ((total - done) / done) * elapsedMs
+  if (ms < 60_000) return 'less than a minute left'
+  const min = Math.round(ms / 60_000)
+  if (min < 60) return `about ${plural(min, 'minute', 'minutes')} left`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `about ${plural(h, 'hour', 'hours')}${m ? ` ${plural(m, 'minute', 'minutes')}` : ''} left`
+}
+
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 export function formatDate(unixSeconds: number | null): string {

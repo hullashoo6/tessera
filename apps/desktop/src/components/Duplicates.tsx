@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, errorText, type DupReport } from '../api'
-import { formatBytes, formatDate, plural } from '../format'
+import { api, errorText, type DupProgress, type DupReport } from '../api'
+import { formatBytes, formatCount, formatDate, plural, timeLeft } from '../format'
 
 interface Props {
   scanId: number
@@ -9,36 +9,59 @@ interface Props {
   onToggleMark: (id: number) => void
   onMarkMany: (ids: number[]) => void
   onOpenCleanup: () => void
+  /** Told when a search starts and ends (sidebar "still working"). */
+  onBusy?: (busy: boolean) => void
   onError: (message: string) => void
 }
 
-export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany, onOpenCleanup, onError }: Props) {
-  const [report, setReport] = useState<DupReport | null>(null)
-  const [running, setRunning] = useState(false)
-  const [read, setRead] = useState(0)
+export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany, onOpenCleanup, onBusy, onError }: Props) {
+  // Results belong to the scan they were found in.
+  const [result, setResult] = useState<{ scanId: number; report: DupReport } | null>(null)
+  const [runningFor, setRunningFor] = useState<number | null>(null)
+  const [progress, setProgress] = useState<DupProgress | null>(null)
+  // When the current stage started (for the time left).
+  const [stageStart, setStageStart] = useState<{ stage: number; at: number }>({ stage: 0, at: 0 })
+  const [now, setNow] = useState(() => Date.now())
   // Shown 100 groups at a time so the window stays smooth.
   const [shownGroups, setShownGroups] = useState(100)
+  const report = result?.scanId === scanId ? result.report : null
+  const running = runningFor === scanId
 
   useEffect(() => {
-    const un = api.onDupesProgress(setRead)
+    onBusy?.(runningFor !== null)
+  }, [runningFor, onBusy])
+
+  useEffect(() => {
+    const un = api.onDupesProgress((p) => {
+      setStageStart((s) => (s.stage === p.stage ? s : { stage: p.stage, at: Date.now() }))
+      setProgress(p)
+      setNow(Date.now())
+    })
     return () => {
       void un.then((f) => f())
     }
   }, [])
 
   const start = () => {
-    setRunning(true)
-    setRead(0)
-    setReport(null)
+    const forScan = scanId
+    setRunningFor(forScan)
+    setProgress(null)
+    setStageStart({ stage: 0, at: Date.now() })
+    setShownGroups(100)
     api
-      .findDuplicates(scanId)
-      .then(setReport)
+      .findDuplicates(forScan)
+      .then((r) => setResult({ scanId: forScan, report: r }))
       .catch((e) => onError(errorText(e)))
-      .finally(() => setRunning(false))
+      .finally(() => setRunningFor((s) => (s === forScan ? null : s)))
   }
 
   const total = report?.groups.reduce((n, g) => n + g.reclaimable, 0) ?? 0
   const chosen = report?.groups.flatMap((g) => g.copies).filter((c) => marked.has(c.node.id)).length ?? 0
+  const p = running ? progress : null
+  const comparing = p?.stage === 2
+  const [done, of] = comparing ? [p.bytesDone, p.bytesTotal] : [p?.filesDone ?? 0, p?.filesTotal ?? 0]
+  const pct = of > 0 ? Math.min(100, Math.floor((done / of) * 100)) : 0
+  const left = p ? timeLeft(done, of, now - stageStart.at) : null
 
   return (
     <div className="overview suggestions">
@@ -47,14 +70,44 @@ export function Duplicates({ scanId, scanning, marked, onToggleMark, onMarkMany,
         Tessera compares the contents of files of 1 MB and larger, on this computer only, and lists only exact copies.
         Online-only files are skipped so nothing is downloaded. You choose which copies to remove.
       </p>
+      {running && (
+        <div className="dup-progress">
+          <div
+            className="meter"
+            role="progressbar"
+            aria-label={comparing ? 'Comparing possible copies' : 'Checking files'}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+          >
+            <div
+              className="meter-fill"
+              ref={(el) => {
+                if (el) el.style.width = `${pct}%`
+              }}
+            />
+          </div>
+          <p className="target-meta num">
+            {!p
+              ? 'Starting…'
+              : comparing
+                ? `Comparing possible copies: ${formatBytes(p.bytesDone)} of ${formatBytes(p.bytesTotal)}`
+                : `Checking files that share a size: ${formatCount(p.filesDone)} of ${formatCount(p.filesTotal)}`}
+            {left ? ` · ${left}` : ''}
+          </p>
+          {p && p.groups > 0 && (
+            <p className="target-meta num">
+              Found so far: {formatBytes(p.reclaimable)} in {plural(p.groups, 'group', 'groups')} of copies.
+            </p>
+          )}
+          <p className="target-meta">You can use other pages meanwhile. The search carries on.</p>
+        </div>
+      )}
       <div className="actions">
         {running ? (
-          <>
-            <span className="target-meta num">Comparing files… {formatBytes(read)} read so far</span>
-            <button className="btn" onClick={() => void api.cancelDuplicates()}>
-              Stop
-            </button>
-          </>
+          <button className="btn" onClick={() => void api.cancelDuplicates()}>
+            Stop
+          </button>
         ) : (
           <button className="btn btn-primary" disabled={scanning} onClick={start}>
             {report ? 'Search again' : 'Find duplicates'}

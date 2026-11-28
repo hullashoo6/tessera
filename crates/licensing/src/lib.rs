@@ -45,7 +45,7 @@ pub const TEST: ModeConfig = ModeConfig {
     mode: Mode::Test,
     base_url: "https://test.dodopayments.com",
     pro_product_id: Some("pdt_0Nsmh1XPpX4NRvbkO8N7C"),
-    checkout_url: "https://test.checkout.dodopayments.com/buy/pdt_0Nsmh1XPpX4NRvbkO8N7C?quantity=1",
+    checkout_url: "https://test.checkout.dodopayments.com/buy/pdt_0Nsmh1XPpX4NRvbkO8N7C?quantity=1&minimalAddress=true",
 };
 
 /// Live mode: Tessera Pro, USD 9.78 one-time (tax included), one device,
@@ -55,7 +55,9 @@ pub const LIVE: ModeConfig = ModeConfig {
     mode: Mode::Live,
     base_url: "https://live.dodopayments.com",
     pro_product_id: Some("pdt_0Nsmg4vQiRrOCZ4yTeDEk"),
-    checkout_url: "https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1",
+    // minimalAddress: the checkout asks only for country and postcode, not
+    // a full address (owner, 28 Nov 2026; same link as the website).
+    checkout_url: "https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1&minimalAddress=true",
 };
 
 /// Live licensing: approved by the owner on 27 Nov 2026 ~20:46 IST ("make

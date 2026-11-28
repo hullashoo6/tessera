@@ -226,6 +226,11 @@ fn begin_scan(
         }
         *slot = Some(scan.clone());
     }
+    // A duplicate search of the previous scan would only compete for the
+    // disk; its results no longer apply.
+    if let Some(c) = &*state.dupes_cancel.lock().unwrap_or_else(|e| e.into_inner()) {
+        c.store(true, Ordering::Relaxed);
+    }
     std::thread::Builder::new()
         .name("tessera-scan".into())
         .spawn(move || run_scan(app, scan, opts))
@@ -579,18 +584,29 @@ async fn find_duplicates(
         return Err("Duplicates can be found when the scan finishes.".into());
     }
     let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    *state.dupes_cancel.lock().unwrap_or_else(|e| e.into_inner()) = Some(cancel.clone());
+    // Only one search reads files at a time: an older one is stopped.
+    if let Some(old) = state
+        .dupes_cancel
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(cancel.clone())
+    {
+        old.store(true, Ordering::Relaxed);
+    }
     tauri::async_runtime::spawn_blocking(move || {
         let tree = read(&scan);
-        let mut last = std::time::Instant::now();
+        let mut last: Option<std::time::Instant> = None;
         let report = tessera_dupes::find(
             &tree,
             &tessera_dupes::Options::default(),
             &cancel,
-            &mut |bytes| {
-                if last.elapsed() >= std::time::Duration::from_millis(250) {
-                    last = std::time::Instant::now();
-                    let _ = app.emit("dupes-progress", bytes);
+            &mut |p| {
+                // At most four updates a second, but never skip a new stage.
+                if last.is_none_or(|t| t.elapsed() >= std::time::Duration::from_millis(250))
+                    || p.files_done == 0
+                {
+                    last = Some(std::time::Instant::now());
+                    let _ = app.emit("dupes-progress", dto::DupProgressDto::from(p));
                 }
             },
         );
@@ -1205,8 +1221,8 @@ async fn confirm_cleanup(
         let opts = tessera_cleanup::RunOptions {
             only: only.as_ref(),
             method,
-            batch: 25,
             stop: Some(&stop),
+            ..tessera_cleanup::RunOptions::default()
         };
         let report = tessera_cleanup::run(
             &plan,
@@ -1219,10 +1235,11 @@ async fn confirm_cleanup(
                         done: p.done as u32,
                         total: p.total as u32,
                         bytes: p.bytes,
+                        current: p.current.clone(),
                     },
                 );
             },
-            &mut tessera_cleanup::system_remover(method),
+            &mut tessera_cleanup::system_remover_with_stop(method, Some(&stop)),
         );
         let after = volume_space(&root).ok().map(|s| s.available);
         (report, before, after)

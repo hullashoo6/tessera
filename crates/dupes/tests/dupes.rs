@@ -74,6 +74,69 @@ fn only_identical_content_is_reported() {
     assert_eq!(second.hash.len(), 64);
 }
 
+/// Progress has exact totals for each stage (so the screen can show a bar
+/// and time left), and the groups found so far add up to the final result,
+/// with several files read at once.
+#[test]
+fn progress_has_exact_totals_and_counts_what_was_found() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-dupes-")
+        .tempdir()
+        .unwrap();
+    let r = t.path().join("root");
+    fs::create_dir_all(&r).unwrap();
+    // 4 pairs of copies, each pair a different size and content.
+    for k in 0..4u8 {
+        let data = content(10 + k, (1 << 20) + usize::from(k) * 4096);
+        fs::write(r.join(format!("a{k}.bin")), &data).unwrap();
+        fs::write(r.join(format!("b{k}.bin")), &data).unwrap();
+    }
+    // Same size as pair 0 but different start: ruled out by its samples.
+    let mut other = content(10, 1 << 20);
+    other[0] ^= 1;
+    fs::write(r.join("other.bin"), &other).unwrap();
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let mut seen: Vec<tessera_dupes::Progress> = Vec::new();
+    let opts = Options {
+        sample_threads: 3,
+        full_threads: 3,
+        ..Options::default()
+    };
+    let report = find(&tree, &opts, &AtomicBool::new(false), &mut |p| {
+        seen.push(*p)
+    });
+    assert_eq!(report.groups.len(), 4, "{:?}", report.groups);
+    let s1 = seen.iter().find(|p| p.stage == 1).unwrap();
+    assert_eq!(
+        s1.files_total, 9,
+        "every file that shares a size is sampled"
+    );
+    let last = seen.last().unwrap();
+    assert_eq!(last.stage, 2);
+    assert_eq!(last.files_total, 8, "the odd one out is not read in full");
+    let pairs: u64 = (0..4u64).map(|k| 2 * ((1 << 20) + k * 4096)).sum();
+    assert_eq!(last.bytes_total, pairs);
+    assert_eq!((last.files_done, last.bytes_done), (8, pairs));
+    assert_eq!(last.groups, 4);
+    assert_eq!(
+        last.reclaimable,
+        report.groups.iter().map(|g| g.reclaimable()).sum::<u64>()
+    );
+    // Largest first.
+    assert!(
+        report
+            .groups
+            .windows(2)
+            .all(|w| w[0].reclaimable() >= w[1].reclaimable())
+    );
+}
+
 #[test]
 fn files_changed_after_the_scan_are_skipped_and_cancel_stops() {
     let t = kit::tempfile::Builder::new()

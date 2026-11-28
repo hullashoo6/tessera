@@ -28,7 +28,8 @@ export function Overview({ volumes, status, onScan, onOpenMap, onRefreshDrives }
     <div className="overview">
       <h2>See what fills your storage</h2>
       <p className="lede">
-        Choose a drive or folder. Tessera reads file sizes on this computer only and never changes your files.
+        Choose a drive or folder. Scanning only reads file sizes, on this computer, and changes nothing. Files are
+        removed only when you choose them in Cleanup.
       </p>
 
       {status && (

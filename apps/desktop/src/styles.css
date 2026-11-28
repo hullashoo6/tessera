@@ -89,6 +89,7 @@ button, input, select { font: inherit; color: inherit; }
   .row-swatch { forced-color-adjust: none; outline: 1px solid CanvasText; }
   .row-bar { background: CanvasText; forced-color-adjust: none; }
   .drop-hint { background: Canvas; outline-color: Highlight; }
+  .nav-busy { background: Highlight; forced-color-adjust: none; }
   :focus-visible { outline-color: Highlight; }
 }
 
@@ -336,12 +337,22 @@ button, input, select { font: inherit; color: inherit; }
 .modal h3 { margin: 0 0 8px; font-size: var(--t-title); }
 .modal p { margin: 0; color: var(--ink-2); }
 .modal .actions { justify-content: flex-end; margin-top: 18px; }
+/* A page kept alive in the background: laid out as if it were not wrapped. */
+.keep-alive { display: contents; }
+.keep-alive[hidden] { display: none !important; }
+/* Sidebar dot: work is still going on that page. */
+.nav-busy { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: auto; animation: nav-busy 1.2s ease-in-out infinite; }
+@keyframes nav-busy { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .nav-busy { animation: none; } }
+.nav-busy + .nav-count { margin-left: 6px; }
 .nav-count { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
 .licence-form { display: flex; gap: 8px; max-width: 520px; margin-bottom: 10px; }
 .licence-message { font-weight: 600; }
 
 /* ---------- Smart Scan ---------- */
 .suggestions { max-width: 960px; }
+.dup-progress { display: grid; gap: 6px; max-width: 560px; margin: 14px 0 4px; }
+.dup-progress p { margin: 0; }
 .suggestion-group { margin-top: 26px; }
 .group-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 10px; }
 .group-head .section-title { margin: 0 0 2px; }

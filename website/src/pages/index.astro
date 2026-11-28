@@ -10,7 +10,7 @@ import shotMap from '../assets/screens/app-map.png'
 import shotSmart from '../assets/screens/app-smart.png'
 import shotCleanup from '../assets/screens/app-cleanup.png'
 
-const title = 'Tessera: disk space analyzer for Windows and Mac'
+const title = 'Tessera: disk space analyser for Windows and Mac'
 const description =
   'See what fills your computer, learn what is safe to remove, and clear it away with Undo. For Windows and Mac. Your scans never leave your computer.'
 
@@ -36,8 +36,8 @@ const schema = {
 
 const trust = [
   ['Private by design', 'Scans happen on your computer. There is no account, no upload and no tracking.'],
-  ['Careful by default', 'System folders are protected, and anything too big for the Recycle Bin is left where it is, never deleted in its place.'],
-  ['Pay once', `Pro is a single payment of ${formatPrice()} for one computer, with a 14-day refund if it is not for you.`],
+  ['Careful by default', 'System folders are off limits, every item is checked again just before it is moved, and nothing is deleted permanently unless you choose to.'],
+  ['Pay once', `Pro is a single payment of ${formatPrice()} for one computer, with a full refund within 14 days if it is not for you.`],
 ] as const
 ---
 
@@ -64,7 +64,7 @@ const trust = [
       <figure class="window">
         <Image src={shotMap} alt="Tessera's storage map of a demonstration computer: Games take 101 GB, Videos 43 GB and Backups 40 GB, with Apps, Downloads, Photos and Music beside them." widths={[800, 1200, 1600, 2000]} sizes="(max-width: 1200px) 100vw, 1160px" loading="eager" />
       </figure>
-      <p class="caption muted">Tessera on Windows 11, showing a demonstration computer. The Mac version looks and works the same.</p>
+      <p class="caption muted">Tessera on Windows 11, shown with sample files. The Mac version looks and works the same.</p>
     </div>
   </section>
 
@@ -145,8 +145,8 @@ const trust = [
   <section id="download" aria-labelledby="download-title">
     <div class="wrap">
       <div class="section-head centred">
-        <h2 id="download-title">Download Tessera.</h2>
-        <p class="lede">Free to download and use. Each download lists its exact size and checksum, so you can check the file.</p>
+        <h2 id="download-title">Get Tessera.</h2>
+        <p class="lede">Free to download and use, with no account and no time limit.</p>
       </div>
       <ul class="platforms">
         {platforms.map((p) => {
@@ -154,15 +154,15 @@ const trust = [
           return (
             <li data-platform={p.id}>
               <div class="platform">
-                <h3>{p.label} <span class="yours tag" hidden>This computer</span></h3>
+                <h3>{p.label}</h3>
                 <p class="muted">{r ? r.minimumOs : p.requirement}</p>
               </div>
               {r ? (
                 <div class="release">
-                  <a class="btn btn-primary" href={r.url}>Download for {p.label}</a>
-                  <p class="muted num">Version {r.version}, {(r.bytes / 1048576).toFixed(1)} MB. <a href={r.notesUrl}>What is new</a></p>
+                  <a class="btn btn-primary get" href={r.url}>Download for {p.label}</a>
+                  <p class="muted num">Version {r.version} · {(r.bytes / 1048576).toFixed(1)} MB · <a href={r.notesUrl}>Release notes</a></p>
                   <details class="sum">
-                    <summary>SHA-256 checksum</summary>
+                    <summary>Verify the download (SHA-256)</summary>
                     <code class="num">{r.sha256}</code>
                   </details>
                 </div>
@@ -173,7 +173,7 @@ const trust = [
           )
         })}
       </ul>
-      <p class="install-note muted">The first time you open Tessera, Windows may show “Windows protected your PC”: choose More info, then Run anyway. On a Mac, the download window shows the one-time steps.</p>
+      <p class="install-note muted">Windows may show a “Windows protected your PC” notice the first time you open Tessera. Choose More info, then Run anyway. On a Mac, the installer window shows the one-time step to open it.</p>
     </div>
   </section>
 
@@ -196,10 +196,17 @@ const trust = [
 </Base>
 
 <script>
-  // Mark the visitor's system. The other download stays one click away.
+  // The visitor's own system comes first with the main button; the other
+  // download stays right below it, one click away.
   const ua = navigator.userAgent
   const id = /Windows/.test(ua) ? 'windows-x64' : /Mac/.test(ua) ? 'mac-universal' : null
-  if (id) document.querySelector(`[data-platform="${id}"] .yours`)?.removeAttribute('hidden')
+  const mine = id ? document.querySelector(`[data-platform="${id}"]`) : null
+  if (mine) {
+    mine.parentElement?.prepend(mine)
+    document.querySelectorAll('[data-platform]').forEach((li) => {
+      if (li !== mine) li.querySelector('.get')?.classList.replace('btn-primary', 'btn-quiet')
+    })
+  }
 </script>
 
 <style>
@@ -250,7 +257,6 @@ const trust = [
   .platforms li { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 30px 0; border-bottom: 1px solid var(--line); }
   .platform { display: grid; gap: 6px; }
   .platform h3 { display: flex; align-items: center; gap: 12px; }
-  .yours { white-space: nowrap; font-family: var(--sans); }
   .state { color: var(--sage); font-size: 15px; padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 999px; white-space: nowrap; }
   .release { display: grid; gap: 8px; justify-items: end; text-align: right; }
   .release p { font-size: 14px; }

@@ -9,8 +9,11 @@
 
 mod failure;
 pub mod inuse;
+mod permanent;
 pub mod protect;
 mod trash;
+
+pub use permanent::delete_permanently;
 
 pub use failure::{FailKind, Failure, classify};
 pub use protect::Protection;
@@ -55,6 +58,9 @@ pub struct Candidate {
     /// Bytes counted for this item in the scan (what removing it may free).
     pub logical: u64,
     pub allocated: u64,
+    /// Files and folders inside it (0 for a file): how much work removing it
+    /// is, so a large folder gets an operation of its own.
+    pub entries: u64,
     pub stamp: Stamp,
     /// Shown to the user during review; never blocks.
     pub warning: Option<String>,
@@ -163,6 +169,7 @@ pub fn build_plan(tree: &Tree, selected: &[NodeId], protection: &Protection) -> 
             kind: n.kind,
             logical,
             allocated,
+            entries: u64::from(n.files) + u64::from(n.dirs),
             stamp: Stamp::of(&md),
             warning,
         });
@@ -308,12 +315,15 @@ pub struct Report {
 }
 
 /// Where a cleanup run has got to.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Progress {
     pub done: usize,
     pub total: usize,
     /// Bytes on disk of the items removed so far.
     pub bytes: u64,
+    /// Name of the item being worked on now (the first of its operation),
+    /// so a long removal visibly is not stuck. `None` once finished.
+    pub current: Option<String>,
 }
 
 pub struct RunOptions<'a> {
@@ -322,7 +332,13 @@ pub struct RunOptions<'a> {
     pub method: Method,
     /// Items per operation (Windows moves many items far faster together).
     pub batch: usize,
-    /// Checked between batches: stop early, leaving the rest untouched.
+    /// Files and folders inside the items of one operation: a large folder
+    /// gets an operation of its own, so progress and Stop never wait for a
+    /// whole group of large folders (28 Nov 2026: 17 folders deleted as one
+    /// operation showed "0 of 17" for minutes).
+    pub entries_per_batch: u64,
+    /// Checked between operations (and, when deleting permanently, between
+    /// the entries of a folder): stop early, leaving the rest untouched.
     pub stop: Option<&'a AtomicBool>,
 }
 
@@ -332,6 +348,7 @@ impl Default for RunOptions<'_> {
             only: None,
             method: Method::Trash,
             batch: 25,
+            entries_per_batch: 2_000,
             stop: None,
         }
     }
@@ -342,13 +359,43 @@ pub type Remover<'a> = dyn FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> +
 
 /// The system remover for `method`.
 pub fn system_remover(method: Method) -> impl FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> {
+    system_remover_with_stop(method, None)
+}
+
+/// The system remover for `method`; permanent deletion of a folder checks
+/// `stop` between its entries.
+pub fn system_remover_with_stop(
+    method: Method,
+    stop: Option<&AtomicBool>,
+) -> impl FnMut(&[&Path]) -> Vec<io::Result<Option<PathBuf>>> + '_ {
     move |paths: &[&Path]| match method {
         Method::Trash => move_many_to_trash(paths),
-        Method::Permanent => delete_many_permanently(paths)
-            .into_iter()
-            .map(|r| r.map(|()| None))
+        Method::Permanent => paths
+            .iter()
+            .map(|p| permanent::delete_permanently(p, stop).map(|()| None))
             .collect(),
     }
+}
+
+/// Splits the chosen items into operations: at most `batch` items, and a
+/// new operation once the current one holds `entries` files and folders.
+fn batches<'c>(items: &[&'c Candidate], batch: usize, entries: u64) -> Vec<Vec<&'c Candidate>> {
+    let mut out: Vec<Vec<&Candidate>> = Vec::new();
+    let mut cur: Vec<&Candidate> = Vec::new();
+    let mut weight = 0u64;
+    for &c in items {
+        let w = 1 + c.entries;
+        if !cur.is_empty() && (cur.len() >= batch.max(1) || weight + w > entries.max(1)) {
+            out.push(std::mem::take(&mut cur));
+            weight = 0;
+        }
+        cur.push(c);
+        weight += w;
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    out
 }
 
 /// Removes the planned items (or `opts.only` of them) in batches,
@@ -371,15 +418,24 @@ pub fn run(
         total: chosen.len(),
         ..Progress::default()
     };
-    progress(&p);
-    for (i, chunk) in chosen.chunks(opts.batch.max(1)).enumerate() {
-        if opts.stop.is_some_and(|s| s.load(Ordering::Relaxed)) {
+    let stopped = || opts.stop.is_some_and(|s| s.load(Ordering::Relaxed));
+    let mut started = 0usize;
+    for chunk in batches(&chosen, opts.batch, opts.entries_per_batch) {
+        p.done = report.outcomes.len();
+        p.bytes = report.removed_allocated;
+        p.current = chunk
+            .first()
+            .and_then(|c| c.path.file_name())
+            .map(|n| n.to_string_lossy().into_owned());
+        progress(&p);
+        if stopped() {
             report.stopped = true;
-            report.not_started = chosen.len() - i * opts.batch.max(1);
+            report.not_started = chosen.len() - started;
             break;
         }
+        started += chunk.len();
         let mut ready: Vec<&Candidate> = Vec::new();
-        for c in chunk {
+        for &c in &chunk {
             if std::fs::symlink_metadata(&c.path).is_err() {
                 record(&mut report, c, Status::Gone);
             } else if let Err(reason) = revalidate(c, &plan.root, protection) {
@@ -430,10 +486,14 @@ pub fn run(
             };
             record(&mut report, c, status);
         }
-        p.done = report.outcomes.len();
-        p.bytes = report.removed_allocated;
-        progress(&p);
     }
+    // Stop pressed during the last operation still counts as stopped (a
+    // folder being deleted permanently ends part way).
+    report.stopped |= stopped();
+    p.done = report.outcomes.len();
+    p.bytes = report.removed_allocated;
+    p.current = None;
+    progress(&p);
     report
 }
 

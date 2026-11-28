@@ -4,6 +4,25 @@ Everything listed works the same on Windows and Mac unless a line says how
 the two differ in wording only (Recycle Bin / Trash, File Explorer / Finder).
 How far each item has been verified is recorded in STATUS.md.
 
+## 1.0.2 (28 Nov 2026)
+
+- Work carries on in the background: Smart Scan, Duplicates, Cleanup and
+  Apps keep working, and keep their results, while another page is open. A
+  dot in the sidebar shows a page that is still working.
+- Duplicates is much faster: several files are read at once, and each file is
+  first compared by three small samples (start, middle and end). The screen
+  shows a progress bar for each stage with the time left, and how much has
+  been found so far. Starting a new scan stops a search of the old one.
+- Cleanup no longer looks stuck on large folders: a large folder gets its own
+  step, so the count moves and Stop takes effect sooner, and the screen names
+  the item being worked on. Delete permanently uses a much faster method
+  (the same on Windows and Mac) that never follows links and can stop part
+  way through a large folder.
+- The Buy Tessera Pro checkout asks only for country and postcode, not a full
+  address (same as the website).
+- The start page no longer says Tessera never changes files (cleanup can, when
+  you choose it).
+
 ## 1.0.1 (27 Nov 2026)
 
 - Mac version available (Apple silicon and Intel), with everything in 1.0.0.

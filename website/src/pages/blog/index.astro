@@ -1,0 +1,57 @@
+---
+import Base from '../../layouts/Base.astro'
+import { formatDate, posts, readingMinutes } from '../../data/blog'
+
+const list = await posts()
+const description = 'Practical guides to understanding what fills your storage and getting space back safely on Windows and Mac.'
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'The Tessera blog',
+  description,
+  url: new URL('/blog', Astro.site).href,
+  publisher: { '@type': 'Organization', name: 'Beyond Enterprises' },
+}
+---
+
+<Base title="Blog | Tessera" description={description} schema={schema}>
+  <div class="wrap blog">
+    <header class="head">
+      <h1>Blog</h1>
+      <p class="lede">{description}</p>
+      <p class="feed muted"><a href="/blog/rss.xml">Follow with RSS</a></p>
+    </header>
+    {list.length === 0 && <p class="muted">The first articles are on their way.</p>}
+    <ol class="posts">
+      {list.map((p) => (
+        <li>
+          <a class="post" href={`/blog/${p.id}`}>
+            <p class="meta muted num">
+              <time datetime={p.data.date.toISOString().slice(0, 10)}>{formatDate(p.data.date)}</time>
+              <span aria-hidden="true"> · </span>
+              {readingMinutes(p.body)} min read
+            </p>
+            <h2>{p.data.title}</h2>
+            <p class="desc">{p.data.description}</p>
+            <span class="more">Read the article</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+</Base>
+
+<style>
+  .blog { max-width: 860px; padding: 150px 0 110px; }
+  .head { display: grid; gap: 20px; margin-bottom: 56px; }
+  .head h1 { font-size: clamp(38px, 5vw, 60px); }
+  .feed a { color: var(--sage); font-size: 15px; }
+  .posts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .posts li { border-bottom: 1px solid var(--line); }
+  .post { display: grid; gap: 10px; padding: 34px 0; text-decoration: none; }
+  .post h2 { font-size: clamp(24px, 3vw, 32px); }
+  .post:hover h2 { color: var(--amber-soft); }
+  .meta { font-size: 14px; }
+  .desc { color: var(--mist); max-width: 64ch; }
+  .more { color: var(--amber-soft); font-size: 15px; font-weight: 600; }
+</style>

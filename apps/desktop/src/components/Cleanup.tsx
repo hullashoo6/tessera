@@ -14,6 +14,11 @@ import { REVIEW_EXPIRED, filterItems, groupFailures, parentPath, sortItems, warn
 import { VirtualList } from './VirtualList'
 
 interface Props {
+  /** False while the page is kept alive behind another page: the list is
+   * then not checked again until the person comes back. Default true. */
+  active?: boolean
+  /** Told when a cleanup starts and finishes (sidebar "still working"). */
+  onBusy?: (busy: boolean) => void
   scanId: number
   marked: number[]
   metric: Metric
@@ -54,7 +59,8 @@ const ROW = 52
 const SHOW_PER_GROUP = 100
 
 export function Cleanup(props: Props) {
-  const { scanId, marked, metric, os, pro, onError } = props
+  const { scanId, marked, metric, os, pro, onError, onBusy } = props
+  const active = props.active ?? true
   const mac = os === 'macos'
   const bin = mac ? 'Trash' : 'Recycle Bin'
   const fm = mac ? 'Finder' : 'File Explorer'
@@ -83,7 +89,12 @@ export function Cleanup(props: Props) {
   const review = reviewState && reviewState.scanId === scanId ? reviewState.review : null
   const needsReview = !reviewState || reviewState.scanId !== scanId || marked.some((id) => !reviewState.ids.has(id))
   const key = marked.join(',')
-  const reviewing = pro && marked.length > 0 && !running && needsReview && reviewFailedFor !== `${scanId}:${key}`
+  const reviewing =
+    active && pro && marked.length > 0 && !running && needsReview && reviewFailedFor !== `${scanId}:${key}`
+  const isRunning = running !== null
+  useEffect(() => {
+    onBusy?.(isRunning)
+  }, [isRunning, onBusy])
 
   const items = useMemo(() => (review ? review.items.filter((it) => markedSet.has(it.id)) : []), [review, markedSet])
   const rejected = useMemo(() => (review ? review.rejected.filter((r) => markedSet.has(r.id)) : []), [review, markedSet])
@@ -351,6 +362,11 @@ export function Cleanup(props: Props) {
             ? `${formatCount(done)} of ${plural(total, 'item', 'items')} · ${formatBytes(p.bytes)} ${running.permanent ? 'deleted' : 'moved'}`
             : 'Starting…'}
         </p>
+        {p?.current && (
+          <p className="target-meta" aria-live="polite">
+            Working on <span className="selectable">{p.current}</span>
+          </p>
+        )}
         <div className="actions">
           <button
             className="btn"
@@ -360,7 +376,7 @@ export function Cleanup(props: Props) {
               void api.stopCleanup()
             }}
           >
-            {running.stopping ? 'Stopping after the current few items…' : 'Stop'}
+            {running.stopping ? 'Stopping…' : 'Stop'}
           </button>
         </div>
       </div>

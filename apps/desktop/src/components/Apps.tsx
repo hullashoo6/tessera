@@ -5,6 +5,8 @@ import { formatBytes } from '../format'
 interface Props {
   os: string
   scanId: number | null
+  /** Told while the list is being measured (sidebar "still working"). */
+  onBusy?: (busy: boolean) => void
   onDone: (message: string) => void
   onError: (message: string) => void
 }
@@ -13,8 +15,12 @@ const date = (d: string | null) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/$
 const size = (a: AppItem) => a.measuredBytes ?? a.reportedBytes ?? 0
 
 /** Installed apps with their own uninstallers (Windows). */
-export function Apps({ os, scanId, onDone, onError }: Props) {
+export function Apps({ os, scanId, onBusy, onDone, onError }: Props) {
   const [apps, setApps] = useState<AppItem[] | null>(null)
+  const loading = apps === null
+  useEffect(() => {
+    onBusy?.(loading)
+  }, [loading, onBusy])
   const [filter, setFilter] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [leftovers, setLeftovers] = useState<{ name: string; bundleId: string; items: [string, number][] } | null>(null)
@@ -23,7 +29,10 @@ export function Apps({ os, scanId, onDone, onError }: Props) {
     api
       .listApps(scanId)
       .then((a) => setApps([...a].sort((x, y) => size(y) - size(x))))
-      .catch((e) => onError(errorText(e)))
+      .catch((e) => {
+        onError(errorText(e))
+        setApps((a) => a ?? [])
+      })
   }, [scanId, onError])
   useEffect(load, [load])
 

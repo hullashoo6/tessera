@@ -12,15 +12,17 @@ interface Props {
   /** JSON-LD object for this page, if any. */
   schema?: Record<string, unknown>
   noindex?: boolean
+  /** Open Graph type: "article" for blog articles. */
+  type?: 'website' | 'article'
 }
 
-const { title, description, schema, noindex = false } = Astro.props
+const { title, description, schema, noindex = false, type = 'website' } = Astro.props
 const canonical = new URL(Astro.url.pathname, Astro.site).href
 const ogImage = new URL('/og.png', Astro.site).href
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -30,7 +32,8 @@ const ogImage = new URL('/og.png', Astro.site).href
     {noindex && <meta name="robots" content="noindex" />}
     <meta name="theme-color" content="#142019" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={type} />
+    <link rel="alternate" type="application/rss+xml" title="The Tessera blog" href="/blog/rss.xml" />
     <meta property="og:site_name" content={product.name} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />

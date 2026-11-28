@@ -64,7 +64,10 @@ pub(crate) fn too_big() -> io::Error {
 /// when the person explicitly chose "Delete permanently". One result per
 /// item, in order; an item that is already gone counts as deleted.
 pub fn delete_many_permanently(paths: &[&Path]) -> Vec<io::Result<()>> {
-    imp::delete_many_permanently(paths)
+    paths
+        .iter()
+        .map(|p| crate::permanent::delete_permanently(p, None))
+        .collect()
 }
 
 /// Puts an item Tessera moved back where it was. Never overwrites: fails if
@@ -477,33 +480,6 @@ mod imp {
             .collect()
     }
 
-    /// Deletes items permanently (no Recycle Bin), in one shell operation.
-    pub(super) fn delete_many_permanently(paths: &[&Path]) -> Vec<io::Result<()>> {
-        let keys: Vec<String> = paths.iter().map(|p| path_key(p)).collect();
-        let (batch, _) = run_batch(paths, true);
-        paths
-            .iter()
-            .zip(keys)
-            .map(|(p, k)| {
-                let gone = || std::fs::symlink_metadata(p).is_err();
-                match batch.get(&k) {
-                    Some(Ok(_)) if gone() => Ok(()),
-                    Some(Err(hr)) if *hr != E_ABORT => Err(hr_to_io(*hr)),
-                    _ if gone() => Ok(()),
-                    _ => {
-                        // Not settled: try once more on its own.
-                        let (one, _) = run_batch(&[p], true);
-                        match one.get(&k) {
-                            Some(Err(hr)) => Err(hr_to_io(*hr)),
-                            _ if gone() => Ok(()),
-                            _ => Err(io::Error::other("it is still in place")),
-                        }
-                    }
-                }
-            })
-            .collect()
-    }
-
     type Settled = std::collections::HashMap<String, Result<Option<std::path::PathBuf>, HRESULT>>;
 
     /// One shell operation over `paths`: to the Recycle Bin, or permanently.
@@ -848,21 +824,6 @@ mod imp {
             .map(|s| PathBuf::from(s.to_string())))
     }
 
-    pub(super) fn delete_many_permanently(paths: &[&Path]) -> Vec<io::Result<()>> {
-        paths
-            .iter()
-            .map(|p| {
-                if std::fs::symlink_metadata(p).is_err() {
-                    return Ok(());
-                }
-                let url = NSURL::fileURLWithPath(&NSString::from_str(&p.to_string_lossy()));
-                NSFileManager::defaultManager()
-                    .removeItemAtURL_error(&url)
-                    .map_err(|e| ns_err(&e))
-            })
-            .collect()
-    }
-
     pub(super) fn put_back(recycled: &Path, original: &Path) -> io::Result<()> {
         if std::fs::symlink_metadata(recycled).is_err() {
             return Err(io::Error::new(
@@ -918,17 +879,5 @@ mod imp {
             io::ErrorKind::Unsupported,
             "moving to the Trash is not supported on this system",
         ))
-    }
-
-    pub(super) fn delete_many_permanently(paths: &[&Path]) -> Vec<io::Result<()>> {
-        paths
-            .iter()
-            .map(|_| {
-                Err(io::Error::new(
-                    io::ErrorKind::Unsupported,
-                    "not supported on this system",
-                ))
-            })
-            .collect()
     }
 }

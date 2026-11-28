@@ -230,6 +230,133 @@ fn stop_leaves_the_rest_untouched() {
     assert_eq!((report.moved, report.not_started), (1, 2));
 }
 
+/// 28 Nov 2026: 17 folders went to the system as one operation and the
+/// screen showed "0 of 17" for minutes. A large folder now gets an
+/// operation of its own, and progress names the item being worked on.
+#[test]
+fn a_large_folder_gets_an_operation_of_its_own() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-cleanup-")
+        .tempdir()
+        .unwrap();
+    let r = t.path().join("root");
+    for i in 0..6 {
+        kit::dense_file(&r, format!("big/f{i}.bin"), 10 + i).unwrap();
+    }
+    for name in ["s1.bin", "s2.bin", "s3.bin"] {
+        kit::dense_file(&r, name, 10).unwrap();
+    }
+    let (tree, _) = scan(
+        &r,
+        &ScanOptions::default(),
+        &CancelToken::new(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let ids = [
+        id(&tree, "s1.bin"),
+        id(&tree, "big"),
+        id(&tree, "s2.bin"),
+        id(&tree, "s3.bin"),
+    ];
+    let plan = build_plan(&tree, &ids, &open());
+    assert_eq!(
+        plan.items
+            .iter()
+            .find(|c| c.path.ends_with("big"))
+            .unwrap()
+            .entries,
+        6
+    );
+    let hold = t.path().join("hold");
+    fs::create_dir_all(&hold).unwrap();
+    let mut batches: Vec<Vec<String>> = Vec::new();
+    let mut current: Vec<Option<String>> = Vec::new();
+    let mut n = 0;
+    let report = run(
+        &plan,
+        &open(),
+        &RunOptions {
+            entries_per_batch: 4,
+            ..RunOptions::default()
+        },
+        &mut |p: &Progress| current.push(p.current.clone()),
+        &mut |paths: &[&Path]| {
+            batches.push(
+                paths
+                    .iter()
+                    .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+                    .collect(),
+            );
+            paths
+                .iter()
+                .map(|p| {
+                    n += 1;
+                    let to = hold.join(format!("{n}"));
+                    fs::rename(p, &to).map(|()| Some(to))
+                })
+                .collect()
+        },
+    );
+    assert_eq!((report.moved, report.failed), (4, 0));
+    let big = batches
+        .iter()
+        .find(|b| b.contains(&"big".to_string()))
+        .unwrap();
+    assert_eq!(big.len(), 1, "the large folder is alone: {batches:?}");
+    assert!(batches.len() >= 2, "{batches:?}");
+    // Before each operation the first item's name is shown; none at the end.
+    assert_eq!(current.len(), batches.len() + 1);
+    assert!(current.contains(&Some("big".to_string())), "{current:?}");
+    assert_eq!(current.last(), Some(&None));
+}
+
+/// Permanent deletion (the same code on Windows and macOS): removes a
+/// folder with read-only files inside, removes a link inside it without
+/// touching what the link points to, does nothing when Stop was already
+/// pressed, and treats an item that is already gone as done.
+#[test]
+fn permanent_deletion_never_follows_links_and_honours_stop() {
+    let t = kit::tempfile::Builder::new()
+        .prefix("tessera-cleanup-")
+        .tempdir()
+        .unwrap();
+    let outside = t.path().join("outside");
+    kit::dense_file(&outside, "keep.txt", 50).unwrap();
+    let victim = t.path().join("victim");
+    kit::dense_file(&victim, "a/b/deep.txt", 50).unwrap();
+    kit::dense_file(&victim, "a/ro-inside.txt", 50).unwrap();
+    kit::dense_file(&victim, "ro.txt", 50).unwrap();
+    for f in ["a/ro-inside.txt", "ro.txt"] {
+        let p = victim.join(f);
+        let mut perms = fs::metadata(&p).unwrap().permissions();
+        perms.set_readonly(true);
+        fs::set_permissions(&p, perms).unwrap();
+    }
+    #[cfg(windows)]
+    kit::junction(&victim.join("link"), &outside).unwrap();
+    #[cfg(unix)]
+    kit::symlink_dir(&victim.join("link"), &outside).unwrap();
+
+    let stop = AtomicBool::new(true);
+    let e = tessera_cleanup::delete_permanently(&victim, Some(&stop)).unwrap_err();
+    assert_eq!(e.kind(), io::ErrorKind::Interrupted);
+    assert!(e.to_string().contains("before it was started"), "{e}");
+    assert!(
+        victim.join("a/b/deep.txt").exists(),
+        "nothing deleted after Stop"
+    );
+
+    stop.store(false, Ordering::Relaxed);
+    tessera_cleanup::delete_permanently(&victim, Some(&stop)).unwrap();
+    assert!(!victim.exists(), "folder deleted, read-only files included");
+    assert!(
+        outside.join("keep.txt").exists(),
+        "the link's target is untouched"
+    );
+    tessera_cleanup::delete_permanently(&victim, None).unwrap();
+}
+
 #[test]
 fn permanent_deletion_is_reported_as_deleted() {
     let (t, tree) = fixture();
