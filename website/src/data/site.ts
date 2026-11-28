@@ -19,7 +19,7 @@ export const pricing = {
   onSale: true,
   currency: 'USD',
   pro: 9.78,
-  checkoutUrl: 'https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1',
+  checkoutUrl: 'https://checkout.dodopayments.com/buy/pdt_0Nsmg4vQiRrOCZ4yTeDEk?quantity=1&minimalAddress=true',
 }
 
 export type Status = 'available' | 'in development'
