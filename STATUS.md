@@ -6,7 +6,7 @@ tested** · **Real platform tested** · **Blocked**
 "Real platform tested" here means exercised on the owner's Windows 11 laptop
 against real NTFS data. No macOS hardware has been used yet.
 
-Last updated: 2026-11-27.
+Last updated: 2026-11-28 (1.0.2 changes and the blog: see "28 Nov 2026" at the end).
 
 ## Phase 1 — Foundation
 
@@ -147,3 +147,31 @@ Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and
 |---|---|---|---|
 | Tessera_0.1.0_x64-setup.exe | 3.3 MB | 34df36201b4c9ba3bc13acaae4782e7e199f8911275a7553e102c40b214a50d3 | Installed on Windows 11 (owner laptop): silent install over the previous build, licence notices shipped, folder argument scan, Smart Scan, Duplicates (exact copies), cleanup of 2 copies to the Recycle Bin then Put back with identical contents and nothing left in the bin, Pro licence active, no false update banner, single instance, window responding. Unsigned |
 | Tessera_0.1.0_universal.dmg | 10 MB | 4f5cdd636c02f2814d0b0ddcaa745fbc08f87b1dcafb5a368ce59e6217e3e5d4 | Built on GitHub's macOS runner; ad-hoc signed, not notarised; not run on a real Mac |
+
+## 28 Nov 2026
+
+### Release 1.0.1 (published ~12:35 IST, owner OK)
+
+| Item | State |
+|---|---|
+| Windows `Tessera_1.0.1_x64-setup.exe` | 3,752,185 bytes, sha256 b7098a7224bfdaf837f9c9675b306f0e6aab945a1f85d7e439e7fde6f8747466. tools/release.ps1: all checks, production interface, installed on the laptop, smoke test passed (slowest answer 18 ms). Unsigned. On the website; the live download is byte-identical |
+| Mac `Tessera_1.0.1_universal.dmg` | 11,433,794 bytes, sha256 6837290a29ed33734378d0e7bf2d8f7d7f31c88e76b4385a16b48a23024e1ffe. Release run 46036777057: **installed and launched on Apple silicon and Intel GitHub runners** (screenshots show the app scanning a test folder). Ad-hoc signed, not notarised; still never run on real Mac hardware. On the website; the live download is byte-identical |
+| Website | Redesign live; latest.json 1.0.1 (1.0.0 copies see the update banner); checkout link with minimalAddress=true |
+| Microsoft Store | `target\store-submission\Tessera_1.0.1.0_x64.msix` (5,340,297 bytes, sha256 59c8594c...) built from the 1.0.1 program, test-installed with Developer Mode (window opened), removed. Not yet submitted (helper) |
+
+### 1.0.2 (committed 00dde44; release in progress, see HANDOFF "Start here")
+
+| Item | Status |
+|---|---|
+| Pages kept alive (Smart Scan, Duplicates, Cleanup, Apps keep working and keep results on other pages; sidebar dot) | Automatically tested (screen test: results kept, search not restarted, page hidden while away). Not yet clicked through in a real build |
+| Cleanup: large folders get their own operation; "Working on" item name; Stop inside a large folder when deleting permanently | Automatically tested (engine test with a 6-file folder and an entries limit of 4; screen test for "Working on" and "Stopping…"). Not yet seen in a real build |
+| Delete permanently with the standard library, same code on Windows and macOS (no links followed, read-only files, Stop part way) | Automatically tested on Windows (junction inside the folder left its target untouched; read-only files nested and at the top; Stop before start; already gone counts as done) and the real-system run test `real_cleanup_run_moves_puts_back_and_deletes`. macOS: CI |
+| Duplicates: three 16 KiB samples, 4 + 2 threads, exact stage totals, found so far, time left; a new search or scan stops an older one | Automatically tested (exact totals, groups and space found, largest first, near-identical file excluded, changed file skipped, cancel); screen test for both stages. Speed on a real drive not yet measured |
+| App Buy link with minimalAddress=true; start page wording | Done |
+
+### Website (copy review and blog, committed 00dde44; live with the 1.0.2 deploy)
+
+| Item | Status |
+|---|---|
+| Copy review: no "This computer" badge (visitor's platform first), Terms no longer say Tessera never deletes permanently, FAQ/trust/changelog without internal bug details, British spelling, 404 | Built and checked locally |
+| Blog `/blog`: list, article pages (BlogPosting data), RSS `/blog/rss.xml`, sitemap entries, menu and footer links; 3 articles (docs/BLOG.md) | Built; checked in a local preview on desktop and phone (no overflow) |
