@@ -1,16 +1,27 @@
 {
-    "comment":  "Written by tools/publish-windows-download.ps1 from an installer that passed tools/release.ps1. Never edit by hand to add a release that has not passed installed-build testing.",
-    "releases":  [
-                     {
-                         "platform":  "windows-x64",
-                         "version":  "1.0.0",
-                         "installer":  "for Windows",
-                         "file":  "Tessera_1.0.0_x64-setup.exe",
-                         "url":  "https://tessera-96w.pages.dev/downloads/Tessera_1.0.0_x64-setup.exe",
-                         "bytes":  3765434,
-                         "sha256":  "cae6eeaedef26cd3981ae52b79b798fd823f614edc3045b19f88a1cfeca90e1e",
-                         "minimumOs":  "Windows 11, 64-bit",
-                         "notesUrl":  "/changelog#1.0.0"
-                     }
-                 ]
+  "comment": "Written by tools/publish-download.ps1 from installers that passed their tests. Never edit by hand to add a release that has not passed installed-build testing.",
+  "releases": [
+    {
+      "platform": "mac-universal",
+      "version": "1.0.1",
+      "installer": "for Mac",
+      "file": "Tessera_1.0.1_universal.dmg",
+      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.1_universal.dmg",
+      "bytes": 11433794,
+      "sha256": "6837290a29ed33734378d0e7bf2d8f7d7f31c88e76b4385a16b48a23024e1ffe",
+      "minimumOs": "macOS 12 or later, Apple silicon and Intel",
+      "notesUrl": "/changelog#1.0.1"
+    },
+    {
+      "platform": "windows-x64",
+      "version": "1.0.1",
+      "installer": "for Windows",
+      "file": "Tessera_1.0.1_x64-setup.exe",
+      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.1_x64-setup.exe",
+      "bytes": 3752185,
+      "sha256": "b7098a7224bfdaf837f9c9675b306f0e6aab945a1f85d7e439e7fde6f8747466",
+      "minimumOs": "Windows 11, 64-bit",
+      "notesUrl": "/changelog#1.0.1"
+    }
+  ]
 }

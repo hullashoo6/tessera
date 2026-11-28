@@ -32,12 +32,16 @@ Copy-Item $File (Join-Path $downloads $name) -Force
 $item = Get-Item (Join-Path $downloads $name)
 $sha = (Get-FileHash $item.FullName -Algorithm SHA256).Hash.ToLower()
 $entry = [ordered]@{
-  platform = $id; version = $version; installer = "for $Platform"; file = $name
+  platform = $id; version = $version; installer = $(if ($Platform -eq 'windows') { 'for Windows' } else { 'for Mac' }); file = $name
   url = "https://tessera-96w.pages.dev/downloads/$name"; bytes = $item.Length; sha256 = $sha
   minimumOs = $os; notesUrl = "/changelog#$version"
 } | ConvertTo-Json -Compress
 # Merged with node (never Windows PowerShell 5.1's JSON for files we keep).
+# The entry goes through an environment variable: Windows PowerShell 5.1
+# strips the double quotes from arguments given to native programs.
 $manifest = Join-Path $root 'website\src\data\releases.json'
-node -e "const fs=require('fs');const f=process.argv[1];const e=JSON.parse(process.argv[2]);const j=JSON.parse(fs.readFileSync(f,'utf8'));j.comment='Written by tools/publish-download.ps1 from installers that passed their tests. Never edit by hand to add a release that has not passed installed-build testing.';j.releases=(j.releases||[]).filter(r=>r.platform!==e.platform).concat([e]).sort((a,b)=>a.platform.localeCompare(b.platform));fs.writeFileSync(f,JSON.stringify(j,null,2)+'\n')" $manifest $entry
+$env:TESSERA_RELEASE_ENTRY = $entry
+node -e "const fs=require('fs');const f=process.argv[1];const e=JSON.parse(process.env.TESSERA_RELEASE_ENTRY);const j=JSON.parse(fs.readFileSync(f,'utf8'));j.comment='Written by tools/publish-download.ps1 from installers that passed their tests. Never edit by hand to add a release that has not passed installed-build testing.';j.releases=(j.releases||[]).filter(r=>r.platform!==e.platform).concat([e]).sort((a,b)=>a.platform.localeCompare(b.platform));fs.writeFileSync(f,JSON.stringify(j,null,2)+'\n')" $manifest
+Remove-Item Env:TESSERA_RELEASE_ENTRY
 if ($LASTEXITCODE -ne 0) { throw 'could not update releases.json' }
 "published $name ($($item.Length) bytes, sha256 $sha) for $id"
