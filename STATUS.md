@@ -159,19 +159,27 @@ Website refresh, 27 Nov 2026: screenshots of Smart Scan, Duplicates, Restore and
 | Website | Redesign live; latest.json 1.0.1 (1.0.0 copies see the update banner); checkout link with minimalAddress=true |
 | Microsoft Store | `target\store-submission\Tessera_1.0.1.0_x64.msix` (5,340,297 bytes, sha256 59c8594c...) built from the 1.0.1 program, test-installed with Developer Mode (window opened), removed. Not yet submitted (helper) |
 
-### 1.0.2 (committed 00dde44; release in progress, see HANDOFF "Start here")
+### Release 1.0.2 (published ~14:25 IST; commit 00dde44)
+
+| Installer | Size | SHA-256 | Verified |
+|---|---|---|---|
+| Tessera_1.0.2_x64-setup.exe | 3,767,783 bytes | 3f3e2ca0b5f282a9c88ee5cf6cbdea85ed2c8de1fb287d60abb8f40ba3215545 | tools/release.ps1: all checks, production interface, installed on the laptop, smoke test (slowest answer 24 ms). Duplicates and kept-alive pages clicked through in this installed build (below). Unsigned. Live download byte-identical |
+| Tessera_1.0.2_universal.dmg | 11,472,724 bytes | bb5357cdae9e112653f11c52d617bf5139f0514c754b295c969acd126acc73a4 | Release run 46123931732: installed and launched on Apple silicon and Intel runners (screenshots show it scanning). Ad-hoc signed, not notarised; not on real Mac hardware. Live download byte-identical |
+| Tessera_1.0.2.0_x64.msix (Store) | 5,363,178 bytes | 6bab9f59afdfec162c80ebdedc2eace04e63f7222efe184587ecccc6287950d0 | Test-installed with Developer Mode, window opened, removed. In `target\store-submission`; not yet submitted |
 
 | Item | Status |
 |---|---|
-| Pages kept alive (Smart Scan, Duplicates, Cleanup, Apps keep working and keep results on other pages; sidebar dot) | Automatically tested (screen test: results kept, search not restarted, page hidden while away). Not yet clicked through in a real build |
+| Pages kept alive (Smart Scan, Duplicates, Cleanup, Apps keep working and keep results on other pages; sidebar dot) | **Real platform tested (Windows, installed 1.0.2)** for Duplicates: results kept after visiting the storage map, no second search, sidebar "Duplicates (still working)" while away, cleared when done. Screen-tested for the rest |
+| Duplicates in the installed 1.0.2, disposable 3.2 GB folder (14 exact copies, 3 same-size look-alikes) | **Real platform tested (Windows)**: progress bar with "870 MB of 1.62 GB" and "found so far" during the search; 14 groups, 827 MB, look-alikes not listed; 32 files compared. Large real drives not measured |
 | Cleanup: large folders get their own operation; "Working on" item name; Stop inside a large folder when deleting permanently | Automatically tested (engine test with a 6-file folder and an entries limit of 4; screen test for "Working on" and "Stopping…"). Not yet seen in a real build |
 | Delete permanently with the standard library, same code on Windows and macOS (no links followed, read-only files, Stop part way) | Automatically tested on Windows (junction inside the folder left its target untouched; read-only files nested and at the top; Stop before start; already gone counts as done) and the real-system run test `real_cleanup_run_moves_puts_back_and_deletes`. macOS: CI |
 | Duplicates: three 16 KiB samples, 4 + 2 threads, exact stage totals, found so far, time left; a new search or scan stops an older one | Automatically tested (exact totals, groups and space found, largest first, near-identical file excluded, changed file skipped, cancel); screen test for both stages. Speed on a real drive not yet measured |
 | App Buy link with minimalAddress=true; start page wording | Done |
 
-### Website (copy review and blog, committed 00dde44; live with the 1.0.2 deploy)
+### Website (live since ~14:25 IST)
 
 | Item | Status |
 |---|---|
-| Copy review: no "This computer" badge (visitor's platform first), Terms no longer say Tessera never deletes permanently, FAQ/trust/changelog without internal bug details, British spelling, 404 | Built and checked locally |
-| Blog `/blog`: list, article pages (BlogPosting data), RSS `/blog/rss.xml`, sitemap entries, menu and footer links; 3 articles (docs/BLOG.md) | Built; checked in a local preview on desktop and phone (no overflow) |
+| Copy review: no "This computer" badge (visitor's platform first), Terms no longer say Tessera never deletes permanently, FAQ/trust/changelog without internal bug details, British spelling, 404 | Live; download section checked on the live site |
+| Blog `/blog`: list, article pages (BlogPosting data), RSS `/blog/rss.xml`, sitemap entries, menu and footer links; 3 articles (docs/BLOG.md) | Live (all pages load); checked in a preview on desktop and phone (no overflow) |
+| Downloads and update check | 1.0.2 for Windows and Mac; latest.json 1.0.2 |

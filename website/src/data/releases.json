@@ -3,25 +3,25 @@
   "releases": [
     {
       "platform": "mac-universal",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "installer": "for Mac",
-      "file": "Tessera_1.0.1_universal.dmg",
-      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.1_universal.dmg",
-      "bytes": 11433794,
-      "sha256": "6837290a29ed33734378d0e7bf2d8f7d7f31c88e76b4385a16b48a23024e1ffe",
+      "file": "Tessera_1.0.2_universal.dmg",
+      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.2_universal.dmg",
+      "bytes": 11472724,
+      "sha256": "bb5357cdae9e112653f11c52d617bf5139f0514c754b295c969acd126acc73a4",
       "minimumOs": "macOS 12 or later, Apple silicon and Intel",
-      "notesUrl": "/changelog#1.0.1"
+      "notesUrl": "/changelog#1.0.2"
     },
     {
       "platform": "windows-x64",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "installer": "for Windows",
-      "file": "Tessera_1.0.1_x64-setup.exe",
-      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.1_x64-setup.exe",
-      "bytes": 3752185,
-      "sha256": "b7098a7224bfdaf837f9c9675b306f0e6aab945a1f85d7e439e7fde6f8747466",
+      "file": "Tessera_1.0.2_x64-setup.exe",
+      "url": "https://tessera-96w.pages.dev/downloads/Tessera_1.0.2_x64-setup.exe",
+      "bytes": 3767783,
+      "sha256": "3f3e2ca0b5f282a9c88ee5cf6cbdea85ed2c8de1fb287d60abb8f40ba3215545",
       "minimumOs": "Windows 11, 64-bit",
-      "notesUrl": "/changelog#1.0.1"
+      "notesUrl": "/changelog#1.0.2"
     }
   ]
 }

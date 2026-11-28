@@ -76,6 +76,13 @@ Set-Content (Join-Path $fx 'web\package.json') '{}'
 [IO.File]::WriteAllBytes((Join-Path $fx 'web\node_modules\dep\index.js'), (New-Object byte[] (2MB)))
 $log = Join-Path $env:LOCALAPPDATA 'app.tessera.desktop\logs\tessera.log'
 $logBefore = if (Test-Path $log) { (Get-Item $log).Length } else { 0 }
+# The smoke test's scan must not end up in the owner's storage History
+# (28 Nov 2026: 31 test scans had collected there). Copied byte for byte
+# and put back after the test; never edited here.
+$hist = Join-Path $env:LOCALAPPDATA 'app.tessera.desktop\storage-history.json'
+$histBackup = Join-Path $root 'target\storage-history.before-smoke.json'
+$hadHist = Test-Path $hist
+if ($hadHist) { Copy-Item $hist $histBackup -Force }
 
 Add-Type @'
 using System; using System.Text; using System.Runtime.InteropServices;
@@ -139,6 +146,8 @@ if (Get-Process -Id $app.Id -ErrorAction SilentlyContinue) {
   Ok 'closing the window quit'
 }
 if (Test-Path (Join-Path $fx '.tessera-fixture')) { Remove-Item $fx -Recurse -Force }
+if ($hadHist) { Copy-Item $histBackup $hist -Force } elseif (Test-Path $hist) { Remove-Item $hist }
+Ok 'storage History left as it was'
 
 Write-Host "== 4. Manifest" -ForegroundColor Cyan
 powershell -NoProfile -File (Join-Path $PSScriptRoot 'release-manifest.ps1') -Notes "Release candidate built locally $(Get-Date -Format 'yyyy-MM-dd'); automated smoke test passed"
